@@ -1,0 +1,6 @@
+/mhasnd c.addsndfile.filename=ann_reich_23.wav
+
+/giso/elev 0
+/giso/phi0 -234
+/giso/setelev 1
+/giso/locate 1

@@ -1,0 +1,4 @@
+/*/g_in 0
+/*/apply 0.5
+/mhasnd c.addsndfile.filename=ann_mute.wav
+

@@ -1,0 +1,10 @@
+/claire/sendphi /julia/phi0
+,0.05
+/julia/locate 0
+
+/julia/f 0.25
+/julia/apply 0
+,0.1
+/julia/f 0
+/julia/r 5
+/julia/apply 5

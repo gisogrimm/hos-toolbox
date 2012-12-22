@@ -1,0 +1,25 @@
+/claire/phi0   0
+/laura/phi0    90
+/claas/phi0    180
+/julia/phi0    260
+/giso/phi0     0
+/*/locate 0.2
+
+/*/elev 0
+/giso/elev 90
+
+/*/r 0.5
+/*/f 0.1
+/*/r_epi 0
+/*/f_epi 0
+
+/*/setelev 0.2
+/*/apply 0.2
+
+/rmsmeter/target/* 67
+/rmsmeter/target/giso 0
+/rmsmeter/target/gisofezzo 0
+/rmsmeter/target/gisobass 70
+/rmsmeter/target/claire 72
+/rmsmeter/target/julia 72
+

@@ -1,0 +1,27 @@
+#/c/ola/c/te/mode vowel
+
+
+
+/*/r 4
+/*/random 0.1
+
+/claire/f 0.03
+/laura/f -0.013
+/claas/f 0.0312
+/julia/f -0.0145
+/giso/f 0.0128
+
+/*/f_epi 0.3
+
+/giso/f_epi -0.26
+/claas/f_epi -0.35
+
+/claire/r_epi 2.3
+/laura/r_epi 2
+/claas/r_epi 3
+/julia/r_epi 2.7
+/giso/r_epi 3.2
+
+
+
+/*/apply 19

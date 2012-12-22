@@ -1,0 +1,41 @@
+/*/f         0
+/*/r	     0.5
+/*/width     18
+/*/rho_maxw  8
+/*/theta     0
+/*/e	     0
+/*/f_epi     0
+/*/r_epi     0
+/*/onset     0
+/*/phi0_epi 0
+/*/g_in 1
+/*/g_rvb 1
+/*/random 0
+
+/*/elev      0
+/*/rvbelev   0
+
+/claire/phi0   -18
+/laura/phi0    -90
+/claas/phi0    -162
+/julia/phi0    -234
+/giso/phi0     -306
+/extra/phi0     0
+/extra/r 8
+
+/*/apply     1
+/*/locate    1
+/*/setelev   1
+
+/*/randpos 0
+
+/*/map_octave 0
+
+,0.1
+
+/mhaalgo prog.select=(none)
+
+/rmsmeter/target/* 70
+
+
+/fuss/block block

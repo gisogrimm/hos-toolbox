@@ -1,0 +1,21 @@
+/*/e         0
+/*/f_epi     0
+/*/r_epi     0
+
+/claire/f      0.125
+/laura/f       0.041667
+/claas/f       0.025
+/julia/f       0.0625
+/giso/f	       0.031250
+
+
+/claire/r      2
+/laura/r       3.7
+/claas/r       6.4
+/julia/r       2.9
+/giso/r	       4.1
+
+/*/apply 1
+
+#,8
+#/*/apply     20

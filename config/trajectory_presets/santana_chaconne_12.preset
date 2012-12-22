@@ -1,0 +1,27 @@
+/*/f 0
+/*/f_epi 0
+/*/r 5
+/*/r_epi 0
+/*/apply 0
+/*/elev 0
+/*/setelev 0
+
+,0.1
+
+/claire/f 25
+/claire/apply 17
+/julia/f 0.5
+/julia/apply 2.4
+
+,2.5
+
+/julia/f 25
+/julia/apply 7
+
+,5
+
+/claas/f 25
+/claas/apply 9
+
+/laura/f -0.1
+/laura/apply 6

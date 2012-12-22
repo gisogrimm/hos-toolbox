@@ -1,0 +1,19 @@
+/*/r 0.5
+/*/apply 0.1
+
+,0.2
+
+/julia/r 8
+/julia/apply 4
+
+,10
+
+/julia/phi0 246
+/julia/locate 1
+
+,10
+
+/claire/r 8
+/claire/apply 1
+/claire/phi0 6
+/claire/locate 1

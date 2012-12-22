@@ -1,0 +1,50 @@
+/*/e         0
+
+/claire/f      0.125
+/laura/f       0.041667
+/claas/f       0.025
+/julia/f       0.0625
+/giso/f	       0.031250
+
+/claire/f_epi  0.75
+/laura/f_epi   0.0791667
+/laura/f_epi   -0.166667
+/claas/f_epi   -0.0525000
+/julia/f_epi   0.2437500
+/julia/f_epi   0.5
+/giso/f_epi    -0.31250
+
+/claire/r      2.4
+/laura/r       4.0
+/claas/r       5.6
+/julia/r       3.2
+/giso/r	       4.8
+
+/claire/r      2
+/laura/r       3.7
+/claas/r       6.4
+/julia/r       2.9
+/giso/r	       4.1
+
+
+
+/claire/r_epi  0.5
+/laura/r_epi   1.2
+/claas/r_epi   3.2
+/julia/r_epi   0.7
+/giso/r_epi    0.3
+
+
+/claire/f 0.2
+/claire/r 1
+/julia/f 0.133333
+/julia/r 1.5
+/laura/f 0.1
+/laura/r 2
+/giso/f 0.0666667
+/giso/r 3
+/claas/f 0.05
+/claas/r 4
+
+/*/apply 0
+#/*/apply     8

@@ -1,0 +1,23 @@
+/laura/sendphi /giso/phi0
+,0.05
+/giso/locate 0
+
+/giso/f 0.25
+/giso/apply 0
+,0.1
+/giso/f 0
+/giso/r 5
+/giso/apply 5
+
+,2.5
+
+/giso/sendphi /claas/phi0
+,0.05
+/claas/locate 0
+
+/claas/f 0.25
+/claas/apply 0
+,0.1
+/claas/f 0
+/claas/r 5
+/claas/apply 5

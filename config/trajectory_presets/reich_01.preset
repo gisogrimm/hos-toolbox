@@ -1,0 +1,32 @@
+/mhasnd c.addsndfile.filename=ann_reich_01.wav
+
+
+/rmsmeter/target/* 76
+/rmsmeter/target/gisofezzo 0
+/rmsmeter/target/gisobass 0
+/rmsmeter/target/claire 0
+
+/*/f         0
+/*/r	     2
+/*/width     90
+/*/rho_maxw  18
+/*/theta     0
+/*/e       0
+/*/f_epi     0
+/*/r_epi     0
+/*/onset     0
+
+/*/elev      0
+/*/rvbelev      0
+
+/*/phi0   -234
+
+/claire/g_in 0
+/claire/phi0 0
+/claire/r 18
+/extra/phi0 0
+/extra/r 18
+
+/*/apply     1
+/*/locate    1
+/*/setelev   1

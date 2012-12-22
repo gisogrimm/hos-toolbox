@@ -1,0 +1,36 @@
+/*/f 0
+/*/f_epi 0
+/*/elev 0
+/*/setelev 0
+
+/claas/apply 28
+/claire/apply 28
+/laura/apply 28
+/julia/apply 28
+#/giso/r 1.2
+#/giso/apply 10
+#/giso/elev 90
+#/giso/setelev 10
+/giso/r 0.5
+/giso/apply 10
+,16
+
+/claire/phi0     234
+/claire/phi0_epi 234
+/claas/phi0      -36
+/claas/phi0_epi  -36
+/laura/phi0    144
+/laura/phi0_epi    144
+/julia/phi0   234
+/julia/phi0_epi  234
+
+/claire/phi0     180
+/claire/phi0_epi 180
+/claas/phi0      -90
+/claas/phi0_epi  -90
+/laura/phi0       90
+/laura/phi0_epi   90
+/julia/phi0      180
+/julia/phi0_epi  180
+
+/*/locate 18

@@ -1,0 +1,38 @@
+#/claire/r      2
+#/julia/r       2
+#/claire/r_epi  0
+#/julia/r_epi   0
+#/claire/f_epi  0
+#/julia/f_epi   0
+#
+#,3
+#/claire/apply   18
+#/julia/apply    18
+
+#/claire/r 0
+#/julia/r  0
+#/claire/apply 14
+#/julia/apply 14
+#,14.05
+#/claire/phi0 162
+#/julia/phi0 168
+#/claire/locate 0
+#/julia/locate 0
+#/claire/r 16
+#/claire/apply 14
+#/julia/r 15.5
+#/julia/apply 14
+
+/claire/f 0.01
+/claire/f_epi -0.01
+/julia/f -0.01
+/julia/f_epi 0.01
+/claire/apply 0
+/julia/apply 0
+,14
+/laura/f 0.02
+/laura/f_epi -0.02
+/claas/f -0.02
+/claas/f_epi 0.02
+/laura/apply 0
+/claas/apply 0

@@ -1,0 +1,24 @@
+/*/r 6
+/*/r_epi 0
+/*/f 0
+/*/f -0.1
+/*/f_epi 0
+/*/elev 0
+
+/julia/r 3
+/julia/f 0.1
+/julia/f 0
+/julia/elev 85
+/julia/r 3
+/julia/elev 0
+
+/laura/phi0 114
+/claire/phi0 -6
+/giso/phi0 54
+/julia/phi0 126
+/julia/phi0 -18
+/claas/phi0 234
+
+/*/apply 0.25
+/*/locate 0.25
+/*/setelev 0.25

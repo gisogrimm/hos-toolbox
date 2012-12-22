@@ -1,0 +1,34 @@
+/julia/r 4
+/julia/f 0.34
+/julia/apply 0.05
+/giso/r 4
+/giso/f 0.34
+/giso/apply 0.05
+
+,1
+
+/giso/f 0
+/giso/r 0.5
+/giso/applyat 54 0.2
+
+/laura/r 0.5
+/laura/f 0
+/laura/applyat -90 0.2
+
+/claire/f 0.34
+/claire/r 4
+/claire/apply 2
+
+,3
+
+/claire/r 0.5
+/claire/applyat -18 0.2
+
+,2
+
+,3
+
+/*/r 0.5
+
+/julia/applyat 126 0.5
+/claas/applyat 198 0.5

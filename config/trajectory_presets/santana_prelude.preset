@@ -1,0 +1,61 @@
+/*/f         0
+/*/r	       2
+/*/width     60
+/*/rho_maxw  8
+/*/theta     0
+/*/e	       0
+/*/f_epi     0
+/*/r_epi     0
+/*/onset     0
+/*/phi0_epi  0
+/*/elev 0
+
+/claire/phi0     234
+/claire/phi0_epi 234
+/laura/phi0      -36
+/laura/phi0_epi  -36
+/claas/phi0    144
+/claas/phi0_epi    144
+/julia/phi0   234
+/julia/phi0_epi  234
+/giso/phi0     54
+
+/claire/phi0     180
+/claire/phi0_epi 180
+/laura/phi0      -90
+/laura/phi0_epi  -90
+/claas/phi0       90
+/claas/phi0_epi   90
+/julia/phi0      180
+/julia/phi0_epi  180
+/giso/phi0         0
+
+/giso/r 4
+
+/*/locate 0
+/*/setelev 0
+
+#/claire/r      40
+#/julia/r       40
+#/claire/r_epi  12
+#/julia/r_epi   12
+#/claire/f_epi  1.2
+#/julia/f_epi   -1.2
+#
+#/laura/r       10
+#/claas/r       10
+/claire/r 8
+/claire/r_epi 7
+/julia/r 8
+/julia/r_epi 7
+/laura/r 6
+/laura/r_epi 4
+/claas/r 6
+/claas/r_epi 4
+
+/*/apply     0
+
+/rmsmeter/target/* 55
+/rmsmeter/target/giso 0
+/rmsmeter/target/gisofezzo 0
+

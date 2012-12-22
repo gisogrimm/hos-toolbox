@@ -1,0 +1,51 @@
+/*/e	     0
+/*/f         0
+/*/f_epi     0
+/*/g_in      1
+/*/onset     0
+/*/r         1.5
+/*/r_epi     0
+/*/rho_maxw  8
+/*/theta     0
+/*/width    18
+
+/*/apply     0
+
+/*/elev 0
+/*/rvelev 0
+/*/setelev 0
+
+,0.01
+
+/*/phi0      -90
+/*/phi0_epi  0
+/*/locate    0
+
+,2.05
+/*/f         0
+/*/r         1.5
+#/laura/r       5
+/*/f_epi     0
+/laura/f_epi   0
+/*/r_epi     2.5
+/laura/r_epi   0
+/*/apply     1
+
+,1
+
+/claire/f_epi  0.125
+/claire/apply  0
+,2
+/giso/f_epi    0.125
+/giso/apply    0
+,2
+/julia/f_epi    0.125
+/julia/apply    0
+,2
+/claas/f_epi    0.125
+/claas/apply    0
+
+/*/f         -0.06
+#/*/f_epi     0.25
+/*/apply    0
+

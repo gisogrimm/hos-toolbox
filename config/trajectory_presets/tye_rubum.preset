@@ -1,0 +1,24 @@
+/*/f         0
+/*/r	     1
+/*/width     18
+/*/rho_maxw  8
+/*/theta     0
+/*/e	     0
+/*/f_epi     0
+/*/r_epi     0
+/*/onset     0
+
+/*/elev      0
+/*/rvbelev   0
+
+/claire/phi0   -18
+/laura/phi0    -90
+/claas/phi0    -162
+/julia/phi0    -234
+/giso/phi0     -306
+
+/*/apply     0
+/*/locate    0
+/*/setelev   0
+
+/*/randpos 0.02

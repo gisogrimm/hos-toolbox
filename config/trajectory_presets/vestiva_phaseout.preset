@@ -1,0 +1,6 @@
+/extra/elev 90
+/extra/setelev 1
+
+/mhaalgo ?read:delays_reich.cfg
+
+/mhaalgo prog.select=delay

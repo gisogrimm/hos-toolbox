@@ -1,0 +1,11 @@
+/mhasnd c.addsndfile.filename=ann_reich_12.wav
+
+/giso/phi0 -114
+/julia/phi0 -114
+
+/*/locate 1
+
+,10
+/julia/f -0.005
+/julia/apply 1
+/julia/stopat 6

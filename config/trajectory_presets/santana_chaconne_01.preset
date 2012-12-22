@@ -1,0 +1,23 @@
+/*/r 0.5
+/*/f 0
+/*/r_epi 0
+/*/f_epi 0
+/*/apply 0.5
+
+/*/elev 0
+/*/setelev 0.5
+
+/*/phi_epi 0
+/claire/phi0   -18
+/laura/phi0    -90
+/claas/phi0    -162
+/julia/phi0    -234
+/giso/phi0     -306
+
+/*/locate 0.5
+
+
+/rmsmeter/target/* 68
+/rmsmeter/target/giso 0
+/rmsmeter/target/gisofezzo 0
+

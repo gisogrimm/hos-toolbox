@@ -1,0 +1,31 @@
+/mhaalgo prog.select=cage
+
+
+/*/r 9
+/*/random 0.5
+
+/claire/f 0.4
+/laura/f -0.123
+/claas/f 0.2412
+/julia/f -0.1245
+/giso/f 0.1228
+
+/*/f_epi 0.6
+
+/giso/f_epi -0.46
+/claas/f_epi -0.7
+
+/claire/r_epi 5.3
+/laura/r_epi 4
+/claas/r_epi 6
+/julia/r_epi 4.7
+/giso/r_epi 4.2
+
+
+
+/*/apply 15
+
+
+/rmsmeter/target/* 57
+/rmsmeter/target/gisofezzo 0
+/rmsmeter/target/gisobass 0

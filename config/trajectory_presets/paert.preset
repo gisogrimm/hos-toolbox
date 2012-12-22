@@ -1,0 +1,66 @@
+/*/f         0
+/*/r	       3.7
+/*/width     18
+/*/rho_maxw  8
+/*/theta     0
+/*/e	       0
+/*/f_epi     0
+/*/r_epi     0
+/*/onset     0
+
+#/claire/phi0   -18
+/julia/phi0   -18
+/laura/phi0    -90
+/claas/phi0    -162
+#/julia/phi0    -234
+/claire/phi0    -234
+/giso/phi0     -306
+
+/*/apply 1
+/*/locate 1
+
+/julia/f      0.1
+/julia/r      1.5
+/julia/width  6
+
+#/claire/f      0.1
+#/claire/r      1.5
+#/claire/width  6
+
+/laura/f       -0.05
+/laura/r       12
+/laura/width   60
+
+/claas/f       -120.0
+/claas/r       3.7
+/claas/width   0
+/claas/onset   1
+/claas/e       0.5
+/claas/theta   -162
+
+/claire/f       120.0
+/claire/r       3.7
+/claire/width   0
+/claire/onset   1
+/claire/e       0.5
+/claire/theta   -234
+
+#/julia/f       120.0
+#/julia/r       3.7
+#/julia/width   0
+#/julia/onset   1
+#/julia/e       0.5
+#/julia/theta   -234
+
+/giso/f	       0
+/giso/r	       1.8
+
+/*/locate 0
+/*/apply  0
+
+/rmsmeter/target/* 55
+/rmsmeter/target/julia 60
+/rmsmeter/target/laura 60
+
+/rmsmeter/target/giso 0
+/rmsmeter/target/gisobass 0

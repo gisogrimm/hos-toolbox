@@ -1,0 +1,20 @@
+/claire/phi0   0
+/laura/phi0    90
+/claas/phi0    180
+/julia/phi0    -90
+/giso/phi0     90
+
+/*/r 2
+
+/*/f 0.05
+/laura/f -0.05
+/laura/r 8
+/laura/g_rvb 0.5
+
+/laura/elev 90
+/laura/rvelev 0
+/laura/width 90
+
+/*/setelev 1
+/*/apply 1
+/*/locate 0

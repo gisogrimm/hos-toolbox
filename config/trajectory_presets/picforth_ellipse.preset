@@ -1,0 +1,35 @@
+/*/f_epi     0
+/*/r_epi     0
+
+/claire/f      0.166667
+/laura/f       0.100000
+/claas/f       0.071429
+/julia/f       0.125000
+/giso/f	       0.083333
+
+/claire/r      2.4
+/laura/r       3.4
+/claas/r       4.4
+/julia/r       2.9
+/giso/r	       3.9
+
+/claire/r      2
+/laura/r       3.7
+/claas/r       6.4
+/julia/r       2.9
+/giso/r	       4.1
+
+
+/claire/e      0.4
+/laura/e       0.6
+/claas/e       0.8
+/julia/e       0.5
+/giso/e	       0.7
+
+/claire/theta  162
+/laura/theta   90
+/claas/theta   -18
+/julia/theta   -54
+/giso/theta    -126
+
+/*/apply     8

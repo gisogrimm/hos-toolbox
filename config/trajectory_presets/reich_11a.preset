@@ -1,0 +1,13 @@
+/mhasnd c.addsndfile.filename=ann_reich_11a.wav
+
+/julia/phi0   -234
+/giso/phi0   -114
+/*/f 0
+/laura/phi0   -234
+/claas/phi0   -234
+/laura/elev 0
+/claas/elev 0
+
+/*/apply 1
+/*/locate 1
+/*/setelev 1
