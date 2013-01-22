@@ -1,0 +1,73 @@
+<ommo>
+  <!--
+  <oscserver port="9000">
+    <osc dest="osc.udp://localhost:9001/" path="/tx" serverpath="/x" types="ff"/>
+    <osc dest="osc.udp://localhost:9001/" path="/ty" serverpath="/x" types="ff" map="1,0"/>
+    <osc dest="osc.udp://localhost:9001/" path="/ty" serverpath="/x" types="ff" map="1,0,0,0,1"/>
+    <osc dest="osc.udp://localhost:9001/" path="/tz" serverpath="/x" types="ff" map="replace"/>
+    <osc dest="osc.udp://localhost:9001/" path="/tz" serverpath="/x" types="ff" map="replace">
+      <data type="f" value="0.7"/>
+      <data type="s" value="Huhu"/>
+      <data type="i" value="76669"/>
+    </osc>
+    <midicc serverpath="/midi1" types="f" channel="0" param="0" argnum="0"/>
+    <midicc serverpath="/midi2" types="f" channel="0" param="1" argnum="0"/>
+    <midicc serverpath="/midi3" types="ff" channel="0" param="2" argnum="0"/>
+    <midicc serverpath="/midi3" types="ff" channel="0" param="3" argnum="1"/>
+  </oscserver>
+  -->
+  <oscserver port="8000">
+    <!-- reset jack transport: -->
+    <osc dest="osc.udp://localhost:9876/" path="/transport/locate" serverpath="/1/push1" types="f" map="replace" constraint="1">
+      <data type="f" value="0"/>
+    </osc>
+    <!-- re-trigger loop 0: -->
+    <osc dest="osc.udp://localhost:9951/" path="/sl/0/hit" serverpath="/1/push1" types="f" map="replace" constraint="1">
+      <data type="s" value="trigger"/>
+    </osc>
+    <osc dest="osc.udp://localhost:9951/" path="/set" serverpath="/1/push1" types="f" map="replace" constraint="1">
+      <data type="s" value="eighth_per_cycle"/>
+      <data type="f" value="32"/>
+    </osc>
+    <osc dest="osc.udp://localhost:9876/" path="/transport/locate" serverpath="/1/push2" types="f" map="replace" constraint="1">
+      <data type="f" value="0"/>
+    </osc>
+    <!-- re-trigger loop 0: -->
+    <osc dest="osc.udp://localhost:9951/" path="/sl/0/hit" serverpath="/1/push2" types="f" map="replace" constraint="1">
+      <data type="s" value="trigger"/>
+    </osc>
+    <osc dest="osc.udp://localhost:9951/" path="/set" serverpath="/1/push2" types="f" map="replace" constraint="1">
+      <data type="s" value="eighth_per_cycle"/>
+      <data type="f" value="48"/>
+    </osc>
+    <osc dest="osc.udp://localhost:9876/" path="/transport/locate" serverpath="/1/push3" types="f" map="replace" constraint="1">
+      <data type="f" value="0"/>
+    </osc>
+    <!-- re-trigger loop 0: -->
+    <osc dest="osc.udp://localhost:9951/" path="/sl/0/hit" serverpath="/1/push3" types="f" map="replace" constraint="1">
+      <data type="s" value="trigger"/>
+    </osc>
+    <osc dest="osc.udp://localhost:9951/" path="/set" serverpath="/1/push3" types="f" map="replace" constraint="1">
+      <data type="s" value="eighth_per_cycle"/>
+      <data type="f" value="64"/>
+    </osc>
+    <!-- simple transport control -->
+    <osc dest="osc.udp://localhost:9876/" path="/transport/start" serverpath="/1/push10" types="f" map="replace" constraint="1"/>
+    <osc dest="osc.udp://localhost:9876/" path="/transport/stop" serverpath="/1/push11" types="f" map="replace" constraint="1"/>
+    <!-- record 1-->
+    <osc dest="osc.udp://localhost:9951/" path="/sl/0/hit" serverpath="/1/push7" types="f" map="replace" constraint="1">
+      <data type="s" value="record"/>
+    </osc>
+    <!-- record 2-->
+    <osc dest="osc.udp://localhost:9951/" path="/sl/1/hit" serverpath="/1/push8" types="f" map="replace" constraint="1">
+      <data type="s" value="record"/>
+    </osc>
+  </oscserver>
+  <!--
+  <midireceiver>
+    <osc dest="osc.udp://192.168.178.114:9000/" path="/1/fader1" clientchannel="0" clientparam="0"/>
+    <osc dest="osc.udp://192.168.178.114:9000/" path="/1/fader2" clientchannel="0" clientparam="1"/>
+    <midicc clientchannel="0" clientparam="1" channel="0" param="6"/>
+  </midireceiver>
+  -->
+</ommo>
