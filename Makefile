@@ -1,6 +1,6 @@
 PREFIX = /usr/local
 
-BINFILES = ommo_bridge
+BINFILES = ommo_bridge hos_theremin
 
 
 #	hos_sphere_amb30 \
@@ -77,6 +77,9 @@ $(BINFILES): $(OBJECTS)
 	$(CPP) $(CPPFLAGS) -MM -MF $(@:.o=.mk) $<
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+hos_theremin: LDLIBS += -lfftw3f
+
+hos_theremin: EXTERNALS += gtkmm-2.4
 
 # Local Variables:
 # compile-command: "make"

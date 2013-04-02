@@ -14,7 +14,9 @@
 
 class wave_t {
 public:
-  wave_t(uint32_t n) : n_(n),b(new float[n_]){};
+  wave_t(uint32_t n) : n_(n),b(new float[n_]){
+    memset(b,0,n_*sizeof(float));
+  };
   wave_t(const wave_t& src) : n_(src.n_),b(new float[n_]){};
   ~wave_t(){
     //DEBUG(b);
@@ -154,13 +156,45 @@ void fifo_t::write_advance()
   pos.w = nr;
 }
 
+class lp_t : public wave_t {
+public:
+  lp_t(uint32_t n, float c);
+  void filter(const wave_t& src);
+private:
+  float c1;
+  float c2;
+};
+
+lp_t::lp_t(uint32_t n, float c)
+  : wave_t(n),c1(c),c2(1.0f-c)
+{
+}
+
+void lp_t::filter(const wave_t& src)
+{
+  for(unsigned int k=0;k<std::min(n_,src.n_);k++)
+    b[k] = c1*b[k]+c2*src.b[k];
+}
+
 class irs_recorder_t : public jackc_t {
 public:
   irs_recorder_t(const std::string& clientname,uint32_t len, uint32_t fifolen);
+  ~irs_recorder_t(){
+    pthread_mutex_trylock( &mtx );
+    pthread_mutex_unlock(  &mtx );
+    pthread_mutex_destroy( &mtx );
+  };
   int process(jack_nframes_t nframes,const std::vector<float*>& inBuffer,const std::vector<float*>& outBuffer);
   void start_service();
   void stop_service();
   void run();
+  spec_t& get_lock_z(){
+    pthread_mutex_lock( &mtx );
+    return z;
+  };
+  void unlock_z(){
+    pthread_mutex_unlock( &mtx );
+  };
 private:
   static void * service(void *);
 protected:
@@ -176,7 +210,9 @@ private:
   fft_t fft1;
   fft_t fft2;
   wave_t testsig;
-public:
+  lp_t lp1;
+  lp_t lp2;
+  pthread_mutex_t mtx;
   spec_t z;
 };
 
@@ -190,6 +226,8 @@ irs_recorder_t::irs_recorder_t(const std::string& clientname,uint32_t len, uint3
     fft1(fftlen),
     fft2(fftlen),
     testsig(fftlen),
+    lp1(fftlen,0.9),
+    lp2(fftlen,0.9),
     z(fftlen/2+1)
 {
   add_input_port("U");
@@ -200,7 +238,8 @@ irs_recorder_t::irs_recorder_t(const std::string& clientname,uint32_t len, uint3
     tc.b[k] = cexpf(I*2*M_PI*rand()/RAND_MAX);
   fft1.execute(tc);
   testsig.copy(fft1.w);
-  testsig /= 2*testsig.maxabs();
+  testsig /= 2.0*testsig.maxabs();
+  pthread_mutex_init( &mtx, NULL );
 }
 
 int irs_recorder_t::process(jack_nframes_t nframes,const std::vector<float*>& inBuffer,const std::vector<float*>& outBuffer)
@@ -269,8 +308,10 @@ void irs_recorder_t::service()
 
 void irs_recorder_t::process_buffer(const buffer_t& b)
 {
-  fft1.execute(b.w1);
-  fft2.execute(b.w2);
+  lp1.filter(b.w1);
+  lp2.filter(b.w2);
+  fft1.execute(lp1);
+  fft2.execute(lp2);
   z.copy(fft1.s);
   z /= fft2.s;
 }
@@ -290,6 +331,8 @@ class theremin_win_t
 public:
   theremin_win_t();
   void draw(spec_t* s,Cairo::RefPtr<Cairo::Context> cr, double msize);
+  void draw_phase(spec_t* s,Cairo::RefPtr<Cairo::Context> cr, double msize);
+  void draw_abs(spec_t& s,Cairo::RefPtr<Cairo::Context> cr, double msize);
 protected:
   virtual bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr);
   virtual bool on_expose_event(GdkEventExpose* event);
@@ -297,7 +340,7 @@ protected:
   double scale;
 public:
   Gtk::DrawingArea da;
-  spec_t* spec;
+  irs_recorder_t* irs;
 };
 
 theremin_win_t::theremin_win_t()
@@ -325,11 +368,41 @@ void theremin_win_t::draw(spec_t* s,Cairo::RefPtr<Cairo::Context> cr, double msi
   cr->save();
   cr->set_source_rgb(1, 0, 0 );
   cr->set_line_width( 0.2*msize );
-  for(unsigned int k=4;k<std::min(s->n_,500u);k++){
-    if( k==0 )
+  for(unsigned int k=4;k<std::min(s->n_,1000u);k++){
+    if( k==4 )
       cr->move_to( creal(s->b[k]), cimag(s->b[k]) );
     else
       cr->line_to( creal(s->b[k]), cimag(s->b[k]) );
+  }
+  cr->stroke();
+  cr->restore();
+}
+
+void theremin_win_t::draw_phase(spec_t* s,Cairo::RefPtr<Cairo::Context> cr, double msize)
+{
+  cr->save();
+  cr->set_source_rgb(1, 0, 0 );
+  cr->set_line_width( 0.2*msize );
+  for(unsigned int k=0;k<std::min(s->n_,1000u);k++){
+    if( k==0 )
+      cr->move_to( 0.003*k, cargf(s->b[k]) );
+    else
+      cr->line_to( 0.003*k, cargf(s->b[k]) );
+  }
+  cr->stroke();
+  cr->restore();
+}
+
+void theremin_win_t::draw_abs(spec_t& s,Cairo::RefPtr<Cairo::Context> cr, double msize)
+{
+  cr->save();
+  cr->set_source_rgb(1, 0, 0 );
+  cr->set_line_width( 0.2*msize );
+  for(unsigned int k=0;k<std::min(s.n_,1000u);k++){
+    if( k==0 )
+      cr->move_to( 0.007*k-2, cabsf(s.b[k]) );
+    else
+      cr->line_to( 0.007*k-2, cabsf(s.b[k]) );
   }
   cr->stroke();
   cr->restore();
@@ -350,18 +423,17 @@ bool theremin_win_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
     cr->scale( wscale, wscale );
     cr->set_line_width( 0.3*markersize );
     cr->set_font_size( 2*markersize );
-    double scale_len(pow(10.0,floor(log10(scale))));
-    double scale_r(scale/scale_len);
-    if( scale_r >= 5 )
-      scale_len *=5;
-    else if( scale_r >= 2 )
-      scale_len *= 2;
     cr->save();
     cr->set_source_rgb( 1, 1, 1 );
     cr->paint();
     cr->restore();
-    if( spec )
-      draw( spec, cr, markersize );
+    if( irs ){
+      spec_t& spec(irs->get_lock_z());
+      //draw( spec, cr, markersize );
+      //draw_phase( spec, cr, markersize );
+      draw_abs( spec, cr, markersize );
+      irs->unlock_z();
+    }
     cr->save();
     cr->set_source_rgba(0.2, 0.2, 0.2, 0.8);
     cr->move_to(-markersize, 0 );
@@ -404,7 +476,7 @@ int main(int argc, char** argv)
   irs.start_service();
   irs.activate();
   //irs.run();
-  c.spec = &(irs.z);
+  c.irs = &irs;
   irs.connect_in(0,"system:capture_3");
   irs.connect_in(1,"system:capture_4");
   irs.connect_out(0,"system:playback_1");
