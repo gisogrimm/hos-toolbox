@@ -1,6 +1,6 @@
 PREFIX = /usr/local
 
-BINFILES = ommo_bridge hos_theremin
+BINFILES = ommo_bridge hos_theremin tmcl
 
 
 #	hos_sphere_amb30 \
