@@ -56,6 +56,9 @@ public:
   void close();
   void rotate(uint8_t motor,uint32_t vel,dir_t dir);
   void motor_stop(uint8_t motor){write_cmd(3,0,motor,0);};
+  void move_to(uint8_t motor, int32_t pos){
+    write_cmd(4,0,motor,pos);
+  };
 private:
   int configure_port(int);
   int device;
@@ -121,20 +124,20 @@ uint32_t tmcm6110_t::write_cmd(uint8_t command_no,
     throw str_error("select failed");
   }
   if( n >0 ){
-    size_t rlen(read(device,data,9));
-    if( rlen == 9 ){
-      retv = data[2];
-      retv_value = (data[4]<<24) & (data[5]<<16) & (data[6]<<8) & (data[7]);
-      if( retv != 100 ){
-        throw tmcm_error(retv);
-      }
-    }else{
-      DEBUG(rlen);
+  size_t rlen(read(device,data,9));
+  if( rlen == 9 ){
+    retv = data[2];
+    retv_value = (data[4]<<24) & (data[5]<<16) & (data[6]<<8) & (data[7]);
+    if( retv != 100 ){
+      throw tmcm_error(retv);
     }
   }else{
-    DEBUG(n);
-    throw str_error("Timeout while reading response");
+    DEBUG(rlen);
   }
+   }else{
+       DEBUG(n);
+       throw str_error("Timeout while reading response");
+     }
   return retv_value;
 }                 
 
@@ -148,6 +151,7 @@ void tmcm6110_t::open(const std::string& devname)
     printf("port is open.\n");
   }
   configure_port(device);
+  usleep(20000);
 } //open_port
 
 int tmcm6110_t::configure_port(int fd)      // configure the port
@@ -177,11 +181,36 @@ void tmcm6110_t::close()
 int main(void)
 {
   try{
-  tmcm6110_t tmcm;
-  tmcm.open("/dev/ttyACM0");
-  tmcm.rotate(0,1000,tmcm6110_t::left);
-  sleep(4);
-  tmcm.motor_stop(0);
+    tmcm6110_t tmcm;
+    tmcm.open("/dev/ttyACM0");
+    bool b_run(true);
+    while( b_run ){
+      try{
+        char s[1024];
+        gets(s);
+        if( strncmp(s,"ror",3)==0 )
+          tmcm.rotate(0,1000,tmcm6110_t::right);
+        if( strncmp(s,"rol",3)==0)
+          tmcm.rotate(0,2000,tmcm6110_t::left);
+        if( strncmp(s,"rok",3)==0)
+          tmcm.rotate(0,3000,tmcm6110_t::left);
+        if( strncmp(s,"mst",3)==0)
+          tmcm.motor_stop(0);
+        if( strncmp(s,"mv0",3)==0)
+          tmcm.move_to(0,0);
+        if( strncmp(s,"mv1",3)==0)
+          tmcm.move_to(0,1000);
+        if( strncmp(s,"mv2",3)==0)
+          tmcm.move_to(0,2000);
+        if( strncmp(s,"mv3",3)==0)
+          tmcm.move_to(0,3000);
+        if( strncmp(s,"quit",4)==0)
+          b_run = false;
+      }
+      catch( const std::exception& e ){
+        std::cerr << "Warning: " << e.what() << std::endl;
+      }
+    }
   }
   catch( const std::exception& e){
     std::cerr << "Error: " << e.what() << std::endl;
