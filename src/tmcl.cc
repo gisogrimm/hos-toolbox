@@ -12,23 +12,86 @@
 
 #define DEBUG(x) std::cerr << __FILE__ << ":" << __LINE__ << " " #x "=" << x << std::endl
 
-#define TMCL_ROR 1
-#define TMCL_ROL 2
-#define TMCL_MST 3
-#define TMCL_MVP 4
-#define TMCL_SIO 14
-#define TMCL_GIO 15
-#define TMCL_SCO 30
-#define TMCL_GCO 31
+class str_error : public std::exception {
+public:
+  str_error(const std::string& msg):msg_(msg){};
+  ~str_error() throw() {};
+  const char* what() const throw() { return msg_.c_str();};
+private:
+  std::string msg_;
+};
 
-uint8_t write_tmcl(int fd,
-                   uint8_t module_addr,
-                   uint8_t command_no,
-                   uint8_t type_no,
-                   uint8_t motor_no,
-                   uint32_t value,
-                   uint32_t& ret_value)
+class tmcm_error : public std::exception {
+public:
+  tmcm_error(uint8_t err_no);
+  const char* what() const throw() {
+    switch( errno_ ){
+      case 101 : return "Command loaded into TMCL program error";
+      case 1 : return "Wrong checksum";
+      case 2 : return "Invalid command";
+      case 3 : return "Wrong type";
+      case 4 : return "Invalid value";
+      case 5 : return "Configuration EEPROM locked";
+      case 6 : return "Command not available";
+      };
+    return "Unknown error";
+  };
+private:
+  uint32_t errno_;
+};
+
+tmcm_error::tmcm_error(uint8_t err_no)
+ : errno_(errno)
 {
+}
+
+class tmcm6110_t {
+public:
+  enum dir_t { left, right };
+  tmcm6110_t();
+  ~tmcm6110_t();
+  void open(const std::string& devname);
+  void set_module_addr(uint8_t ma);
+  uint32_t write_cmd(uint8_t cmd_no,uint8_t type_no,uint8_t motor_no,uint32_t value);
+  void close();
+  void rotate(uint8_t motor,uint32_t vel,dir_t dir);
+  void motor_stop(uint8_t motor){write_cmd(3,0,motor,0);};
+private:
+  int configure_port(int);
+  int device;
+  uint8_t module_addr;
+};
+
+tmcm6110_t::tmcm6110_t()
+  : device(-1),
+    module_addr(1)
+{
+}
+
+tmcm6110_t::~tmcm6110_t()
+{
+  if( device != -1 )
+    close();
+}
+
+void tmcm6110_t::rotate(uint8_t motor,uint32_t vel,dir_t dir)
+{
+  uint8_t cmd(1);
+  switch( dir ){
+  case right :
+    cmd = 1;
+  case left :
+    cmd = 2;
+  }
+  write_cmd(cmd,0,motor,vel);
+}
+
+uint32_t tmcm6110_t::write_cmd(uint8_t command_no,
+                               uint8_t type_no,
+                               uint8_t motor_no,
+                               uint32_t value)
+{
+  uint32_t retv_value(0);
   fd_set rdfs;
   struct timeval timeout;
   // initialise the timeout structure
@@ -47,52 +110,47 @@ uint8_t write_tmcl(int fd,
   data[8] = 0;
   for(unsigned int k=0;k<8;k++)
     data[8] += data[k];
-  int wcnt(write(fd, data, 9));
+  int wcnt(write(device, data, 9));
   DEBUG(wcnt);
   FD_ZERO( &rdfs );
-  FD_SET( fd, &rdfs );
+  FD_SET( device, &rdfs );
   // do the select
-  int n = select(fd + 1, &rdfs, NULL, NULL, &timeout);
+  int n = select(device + 1, &rdfs, NULL, NULL, &timeout);
   // check if an error has occured
   if(n < 0){
-      perror("select failed\n");
-      return 0;
+    throw str_error("select failed");
   }
   if( n >0 ){
-    size_t rlen(read(fd,data,9));
+    size_t rlen(read(device,data,9));
     if( rlen == 9 ){
       retv = data[2];
-      ret_value = (data[4]<<24) & (data[5]<<16) & (data[6]<<8) & (data[7]);
+      retv_value = (data[4]<<24) & (data[5]<<16) & (data[6]<<8) & (data[7]);
+      if( retv != 100 ){
+        throw tmcm_error(retv);
+      }
     }else{
       DEBUG(rlen);
     }
   }else{
     DEBUG(n);
+    throw str_error("Timeout while reading response");
   }
-  return retv;
+  return retv_value;
 }                 
 
-int open_port(void)
+void tmcm6110_t::open(const std::string& devname)
 {
-  int fd; // file description for the serial port
-	
-  fd = open("/dev/ttyACM0", O_RDWR | O_NOCTTY | O_NDELAY);
-	
-  if(fd == -1) // if open is unsucessful
-    {
-      //perror("open_port: Unable to open /dev/ttyS0 - ");
-      printf("open_port: Unable to open /dev/ttyS0. \n");
-    }
-  else
-    {
-      fcntl(fd, F_SETFL, 0);
-      printf("port is open.\n");
-    }
-	
-  return(fd);
+  device = ::open(devname.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
+  if(device == -1){
+    throw str_error("Unable to open device "+devname);
+  }else{
+    fcntl(device, F_SETFL, 0);
+    printf("port is open.\n");
+  }
+  configure_port(device);
 } //open_port
 
-int configure_port(int fd)      // configure the port
+int tmcm6110_t::configure_port(int fd)      // configure the port
 {
   struct termios port_settings;      // structure to store the port settings in
 
@@ -109,74 +167,26 @@ int configure_port(int fd)      // configure the port
 
 } //configure_port
 
-int query_modem(int fd)   // query modem with an AT command
+void tmcm6110_t::close()
 {
-  char n;
-  fd_set rdfs;
-  struct timeval timeout;
-	
-  // initialise the timeout structure
-  timeout.tv_sec = 10; // ten second timeout
-  timeout.tv_usec = 0;
-	
-  //Create byte array
-  //unsigned char send_bytes[] = { 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xC8, 0xCA};
-  //unsigned char send_bytes[] = {0x01, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04};
-  unsigned char send_bytes[] = {0x01, 0x0f, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11};
-	
-	
-  write(fd, send_bytes, 9);  //Send data
-  printf("Wrote the bytes. \n");
-  
-  FD_ZERO( &rdfs );
-  FD_SET( fd, &rdfs );
-  // do the select
-  n = select(fd + 1, &rdfs, NULL, NULL, &timeout);
-	
-  // check if an error has occured
-  if(n < 0)
-    {
-      perror("select failed\n");
-    }
-  else if (n == 0)
-    {
-      puts("Timeout!");
-    }
-  else
-    {
-      unsigned char response[1024];
-      size_t rlen=0;
-      rlen=read(fd,response,40);
-      DEBUG(rlen);
-      for( unsigned int k=0;k<rlen;k++)
-        DEBUG((int)(response[k]));
-      std::cout << response << std::endl;
-      printf("\nBytes detected on the port!\n");
-    }
-
-  return 0;
-	
-} //query_modem
+  ::close(device);
+}
 
 #include <fstream>
 
 int main(void)
-{ 
-  //std::fstream file("/dev/ttyACM0");
-  //file << ":35" << std::endl; // endl does flush, which may be important
-  //std::string response;
-  //file >> response;
-  //std::cout << response;
-  int fd = open_port();
-  configure_port(fd);
-  //query_modem(fd);
-  uint32_t retv(0);
-  DEBUG((int)write_tmcl(fd,1,TMCL_ROR,0,0,700,retv));
-  DEBUG(retv);
-  DEBUG((int)write_tmcl(fd,1,TMCL_GIO,0,0,0,retv));
-  DEBUG(retv);
-  DEBUG((int)write_tmcl(fd,1,TMCL_GCO,0,0,0,retv));
-  DEBUG(retv);
+{
+  try{
+  tmcm6110_t tmcm;
+  tmcm.open("/dev/ttyACM0");
+  tmcm.rotate(0,1000,tmcm6110_t::left);
+  sleep(4);
+  tmcm.motor_stop(0);
+  }
+  catch( const std::exception& e){
+    std::cerr << "Error: " << e.what() << std::endl;
+    return 1;
+  }
   return(0);
 	
 }
