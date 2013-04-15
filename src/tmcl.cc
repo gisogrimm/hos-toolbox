@@ -94,6 +94,7 @@ uint32_t tmcm6110_t::write_cmd(uint8_t command_no,
                                uint8_t motor_no,
                                uint32_t value)
 {
+  printf("%d: type=%d motor=%d val=%d\n",command_no,type_no,motor_no,value);
   uint32_t retv_value(0);
   fd_set rdfs;
   struct timeval timeout;
@@ -114,7 +115,9 @@ uint32_t tmcm6110_t::write_cmd(uint8_t command_no,
   for(unsigned int k=0;k<8;k++)
     data[8] += data[k];
   int wcnt(write(device, data, 9));
-  DEBUG(wcnt);
+  //DEBUG(wcnt);
+  if( wcnt != 9 )
+    throw str_error("Unable to write 9 bytes to device.");
   FD_ZERO( &rdfs );
   FD_SET( device, &rdfs );
   // do the select
@@ -131,6 +134,7 @@ uint32_t tmcm6110_t::write_cmd(uint8_t command_no,
     if( retv != 100 ){
       throw tmcm_error(retv);
     }
+    printf("cmd ok\n");
   }else{
     DEBUG(rlen);
   }
@@ -182,30 +186,59 @@ int main(void)
 {
   try{
     tmcm6110_t tmcm;
-    tmcm.open("/dev/ttyACM0");
+    tmcm.open("/dev/ttyACM1");
+    // acceleration
+    tmcm.write_cmd(5,5,0,400);
+    // velocity
+    tmcm.write_cmd(5,4,0,2047);
+    // standby current
+    tmcm.write_cmd(5,7,0,12);
+    // micro steps:
+    tmcm.write_cmd(5,140,0,5);
+    // reference:
+    tmcm.write_cmd(13,0,0,0);
     bool b_run(true);
     while( b_run ){
       try{
         char s[1024];
-        gets(s);
-        if( strncmp(s,"ror",3)==0 )
-          tmcm.rotate(0,1000,tmcm6110_t::right);
-        if( strncmp(s,"rol",3)==0)
-          tmcm.rotate(0,2000,tmcm6110_t::left);
-        if( strncmp(s,"rok",3)==0)
-          tmcm.rotate(0,3000,tmcm6110_t::left);
+        char* s2 = gets(s);
+        char c_tmp[1024];
+        memset(c_tmp,0,1024);
+        uint32_t v;
+        double d(0);
+        if( sscanf(s, "ror %d",&v)==1 )
+          tmcm.rotate(0,v,tmcm6110_t::right);
+        if( sscanf(s, "rol %d",&v)==1 )
+          tmcm.rotate(0,v,tmcm6110_t::left);
         if( strncmp(s,"mst",3)==0)
           tmcm.motor_stop(0);
-        if( strncmp(s,"mv0",3)==0)
-          tmcm.move_to(0,0);
-        if( strncmp(s,"mv1",3)==0)
-          tmcm.move_to(0,1000);
-        if( strncmp(s,"mv2",3)==0)
-          tmcm.move_to(0,2000);
-        if( strncmp(s,"mv3",3)==0)
-          tmcm.move_to(0,3000);
-        if( strncmp(s,"quit",4)==0)
+        if( sscanf(s, "mvp %d",&v)==1 )
+          tmcm.move_to(0,v);
+        if( sscanf(s, "mv %lf",&d)==1 ){
+          tmcm.move_to(0,(int32_t)(-8000.0*d));
+        }
+        if( sscanf(s, "sap_cs %d",&v)==1 )
+          tmcm.write_cmd(5,6,0,v);
+        if( sscanf(s, "sap_sc %d",&v)==1 )
+          tmcm.write_cmd(5,7,0,v);
+        if( sscanf(s, "sap_acc %d",&v)==1 )
+          tmcm.write_cmd(5,5,0,v);
+        if( sscanf(s, "sap_vel %d",&v)==1 )
+          tmcm.write_cmd(5,4,0,v);
+        if( sscanf(s, "sap_micro %d",&v)==1 )
+          tmcm.write_cmd(5,140,0,v);
+        if( sscanf(s, "rfs %s",&c_tmp)==1 ){
+          if( strcmp(c_tmp,"start")==0 )
+            tmcm.write_cmd(13,0,0,0);
+          if( strcmp(c_tmp,"stop")==0 )
+            tmcm.write_cmd(13,1,0,0);
+          if( strcmp(c_tmp,"status")==0 )
+            printf("reference search %d\n",tmcm.write_cmd(13,2,0,0));
+        }
+        if( strncmp(s,"quit",4)==0){
           b_run = false;
+          tmcm.move_to(0,0);
+        }
       }
       catch( const std::exception& e ){
         std::cerr << "Warning: " << e.what() << std::endl;
