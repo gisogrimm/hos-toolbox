@@ -1,0 +1,10 @@
+<ommo>
+  <midireceiver>
+    <osc dest="osc.udp://localhost:11002/" path="/mvp" clientchannel="0" clientparam="1" valmap="0,-0.01" argmap="0,1">
+      <data type="i" value="0"/>
+    </osc>
+    <osc dest="osc.udp://localhost:11001/" path="/mvp" clientchannel="0" clientparam="1" valmap="0,-0.00001" argmap="0,1">
+      <data type="i" value="0"/>
+    </osc>
+  </midireceiver>
+</ommo>
