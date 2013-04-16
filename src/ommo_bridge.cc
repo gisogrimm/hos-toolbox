@@ -102,7 +102,8 @@ private:
 void osc_destination_t::set_valmap(float v1, float v2)
 {
   val_min = v1;
-  val_scale = std::min(1.0,std::max(0.0,1.0/(v2-v1)));
+  //val_scale = std::min(1.0,std::max(0.0,1.0/(v2-v1)));
+  val_scale = 1.0/(v2-v1);
   use_valmap = true;
 }
 
