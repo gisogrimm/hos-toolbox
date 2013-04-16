@@ -18,7 +18,7 @@ BINFILES = ommo_bridge hos_theremin tmcl
 #	mplayer_jack_transport \
 
 
-OBJECTS = jackclient.o osc_helper.o libhos_midi_ctl.o 
+OBJECTS = jackclient.o osc_helper.o libhos_midi_ctl.o errorhandling.o
 
 
 INSTBIN = $(patsubst %,$(PREFIX)/bin/%,$(BINFILES))
