@@ -182,11 +182,14 @@ void tmcm6110_t::close()
 
 #include <fstream>
 
-int main(void)
+int main(int argc, char** argv)
 {
   try{
     tmcm6110_t tmcm;
-    tmcm.open("/dev/ttyACM1");
+    std::string dev("/dev/ttyACM0");
+    if( argc > 1 )
+      dev = argv[1];
+    tmcm.open(dev);
     // acceleration
     tmcm.write_cmd(5,5,0,400);
     // velocity
