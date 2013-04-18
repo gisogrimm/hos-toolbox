@@ -85,7 +85,7 @@ public:
   void add_string(const std::string& s);
   void set_condition(float val);
   void remove_condition();
-  bool lo_message_copy_arg(lo_message dest, lo_message src, int arg);
+  bool lo_message_copy_arg(lo_message dest, lo_message src, int arg, bool x_valmap);
 private:
   lo_address target_;
   std::string path_;
@@ -103,7 +103,7 @@ void osc_destination_t::set_valmap(float v1, float v2)
 {
   val_min = v1;
   //val_scale = std::min(1.0,std::max(0.0,1.0/(v2-v1)));
-  val_scale = 1.0/(v2-v1);
+  val_scale = (v2-v1);
   use_valmap = true;
 }
 
@@ -133,7 +133,7 @@ void osc_destination_t::add_string(const std::string& s)
   lo_message_add_string(own_msg,s.c_str());
 }
 
-bool osc_destination_t::lo_message_copy_arg(lo_message dest, lo_message src, int arg)
+bool osc_destination_t::lo_message_copy_arg(lo_message dest, lo_message src, int arg, bool x_valmap)
 {
   int argc(lo_message_get_argc(src));
   const char* types(lo_message_get_types(src));
@@ -146,8 +146,8 @@ bool osc_destination_t::lo_message_copy_arg(lo_message dest, lo_message src, int
       return true;
     case 'f' :
       val = argv[arg]->f;
-      if( use_valmap )
-        val = val_scale*(val-val_min);
+      if( use_valmap && x_valmap )
+        val = val_scale*val+val_min;
       lo_message_add_float(dest,val);
       return true;
     case 's' :
@@ -206,10 +206,10 @@ int osc_destination_t::event_handler(const char *path, const char *types, lo_arg
       int own_msg_arg_index(0);
       for(unsigned int k=0;k<argmap_.size();k++){
         if( (argmap_[k]) == 0 ){
-          lo_message_copy_arg( msg, own_msg, own_msg_arg_index );
+          lo_message_copy_arg( msg, own_msg, own_msg_arg_index, false );
           own_msg_arg_index++;
         }else{
-          lo_message_copy_arg( msg, in_msg, argmap_[k]-1 );
+          lo_message_copy_arg( msg, in_msg, argmap_[k]-1, true );
         }
       }
       lo_send_message( target_, path_.c_str(), msg );
