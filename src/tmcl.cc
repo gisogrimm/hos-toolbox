@@ -188,7 +188,7 @@ void tmcm6110_t::open(const std::string& devname)
 int tmcm6110_t::configure_port(int fd)      // configure the port
 {
   struct termios port_settings;      // structure to store the port settings in
-
+  memset(&port_settings,0,sizeof(port_settings));
   cfsetispeed(&port_settings, B9600);    // set baud rates
   cfsetospeed(&port_settings, B9600);
 
