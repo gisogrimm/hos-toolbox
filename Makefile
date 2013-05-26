@@ -18,9 +18,9 @@ BINFILES = ommo_bridge hos_sphere_amb30 hos_sendosc hos_delay hos_cyclephase hos
 #	mplayer_jack_transport \
 
 
-OBJECTS = jackclient.o osc_helper.o libhos_midi_ctl.o errorhandling.o libhos_gainmatrix.o
+OBJECTS = jackclient.o osc_helper.o libhos_midi_ctl.o errorhandling.o libhos_gainmatrix.o audiochunks.o
 
-GUIOBJ = hosgui_meter.o hosgui_mixer.o hosgui_sphere.o hosgui_cyclephase.o
+GUIOBJ = hosgui_meter.o hosgui_mixer.o hosgui_sphere.o 
 
 INSTBIN = $(patsubst %,$(PREFIX)/bin/%,$(BINFILES))
 
@@ -38,7 +38,7 @@ GTKMMBIN = hos_oscrmsmeter hos_visualize mm_gui hos_visualize_sphere tascar_draw
 
 CXXFLAGS += -Wall -O3 -msse -msse2 -mfpmath=sse -ffast-math -fomit-frame-pointer -fno-finite-math-only -L./
 
-EXTERNALS = alsa jack libxml++-2.6 liblo
+EXTERNALS = alsa jack libxml++-2.6 liblo fftw3f
 
 LDLIBS += `pkg-config --libs $(EXTERNALS)`
 CXXFLAGS += `pkg-config --cflags $(EXTERNALS)`

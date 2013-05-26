@@ -9,82 +9,9 @@
 #include <gtkmm/window.h>
 #include <gtkmm/drawingarea.h>
 #include <cairomm/context.h>
+#include "audiochunks.h"
 
 #define DEBUG(x) std::cerr << __FILE__ << ":" << __LINE__ << " " << #x << "=" << x << std::endl
-
-class wave_t {
-public:
-  wave_t(uint32_t n) : n_(n),b(new float[n_]){
-    memset(b,0,n_*sizeof(float));
-  };
-  wave_t(const wave_t& src) : n_(src.n_),b(new float[n_]){};
-  ~wave_t(){
-    //DEBUG(b);
-    //DEBUG(this);
-    //delete [] b;
-  };
-  void operator/=(const float& d){
-    if(fabsf(d)>0)
-      for(unsigned int k=0;k<n_;k++)
-        b[k]/=d;
-  };
-  float maxabs(){
-    float r(0);
-    for(unsigned int k=0;k<n_;k++)
-      r = std::max(r,fabsf(b[k]));
-    return r;
-  };
-  void copy(const wave_t& src){memcpy(b,src.b,std::min(n_,src.n_)*sizeof(float));};
-  uint32_t n_;
-  float* b;
-};
-
-class spec_t {
-public:
-  spec_t(uint32_t n) : n_(n),b(new float _Complex [n_]){};
-  spec_t(const spec_t& src) : n_(src.n_),b(new float _Complex [n_]){};
-  ~spec_t(){delete [] b;};
-  void copy(const spec_t& src){memcpy(b,src.b,std::min(n_,src.n_)*sizeof(float _Complex));};
-  void operator/=(const spec_t& o);
-  uint32_t n_;
-  float _Complex * b;
-};
-
-void spec_t::operator/=(const spec_t& o)
-{
-  for(unsigned int k=0;k<std::min(o.n_,n_);k++){
-    if( cabs(o.b[k]) > 0 )
-      b[k] /= o.b[k];
-  }
-}
-
-
-class fft_t {
-public:
-  fft_t(uint32_t fftlen);
-  void execute(const wave_t& src){w.copy(src);fftwf_execute(fftwp);};
-  void execute(const spec_t& src){s.copy(src);fftwf_execute(fftwp_s2w);};
-  ~fft_t();
-  wave_t w;
-  spec_t s;
-private:
-  fftwf_plan fftwp;
-  fftwf_plan fftwp_s2w;
-};
-
-fft_t::fft_t(uint32_t fftlen)
-  : w(fftlen),
-    s(fftlen/2+1),
-    fftwp(fftwf_plan_dft_r2c_1d(fftlen,w.b,s.b,0)),
-    fftwp_s2w(fftwf_plan_dft_c2r_1d(fftlen,s.b,w.b,0))
-{
-}
-
-fft_t::~fft_t()
-{
-  fftwf_destroy_plan(fftwp);
-  fftwf_destroy_plan(fftwp_s2w);
-}
 
 class buffer_t {
 public:
