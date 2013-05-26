@@ -1,6 +1,6 @@
 PREFIX = /usr/local
 
-BINFILES = ommo_bridge hos_sphere_amb30 hos_sendosc
+BINFILES = ommo_bridge hos_sphere_amb30 hos_sendosc hos_delay hos_cyclephase hos_visualize hos_visualize_sphere hos_cyclephasegui
 
 
 #	hos_sphere_amb30 \
@@ -18,8 +18,9 @@ BINFILES = ommo_bridge hos_sphere_amb30 hos_sendosc
 #	mplayer_jack_transport \
 
 
-OBJECTS = jackclient.o osc_helper.o libhos_midi_ctl.o errorhandling.o
+OBJECTS = jackclient.o osc_helper.o libhos_midi_ctl.o errorhandling.o libhos_gainmatrix.o
 
+GUIOBJ = hosgui_meter.o hosgui_mixer.o hosgui_sphere.o hosgui_cyclephase.o
 
 INSTBIN = $(patsubst %,$(PREFIX)/bin/%,$(BINFILES))
 
@@ -33,7 +34,7 @@ LOBIN = \
 
 ALSABIN = mm_midicc mm_hdsp
 
-GTKMMBIN = hos_oscrmsmeter hos_visualize mm_gui hos_visualize_sphere hosgui_meter.o hosgui_mixer.o hosgui_sphere.o tascar_draw
+GTKMMBIN = hos_oscrmsmeter hos_visualize mm_gui hos_visualize_sphere tascar_draw hos_cyclephasegui
 
 CXXFLAGS += -Wall -O3 -msse -msse2 -mfpmath=sse -ffast-math -fomit-frame-pointer -fno-finite-math-only -L./
 
@@ -82,6 +83,10 @@ hos_theremin: LDLIBS += -lfftw3f
 hos_theremin: EXTERNALS += gtkmm-2.4
 
 hos_sphere_amb30: libhos_sphereparam.o 
+
+$(GTKMMBIN): $(GUIOBJ)
+
+$(GTKMMBIN): EXTERNALS += gtkmm-2.4
 
 # Local Variables:
 # compile-command: "make"
