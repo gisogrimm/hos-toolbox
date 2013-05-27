@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# disable screen saver:
+xset -dpms
+xset s off
+
+# maximum CPU performance:
+cpufreq-selector -c 0 -f 3000000
+cpufreq-selector -c 1 -f 3000000
+
+# scan midi devices:
+BCF2000=`cat /proc/asound/seq/clients | grep -e 'Client .* "BCF2000"' | sed -e 's/Client[[:blank:]]*//1' -e 's/[[:blank:]]*:.*//1'`
+echo "BCF2000 = ${BCF2000}"
+
+#mm_hdsp &
+#mm_midicc $BCF2000 1 224.1.2.3 6978 osc.udp://localhost:6976/ &
+#sleep 1
+#xterm -T "Matrix Mixer" -e mm_file hos.mm &
+
+
+# start jackd:
+jackd -P84 -u -p512 -t5000 -c s -dalsa -dhw:DSP -r48000 -p64 -n2 -I33 -O34 &
+#jackd -P84 -u -p512 -t5000 -c c -s -S -dalsa -dhw:DSP -r44100 -p64 -n2 -I33 -O34 &
+sleep 1
+
+# start parameter control/footswitch:
+./midi2bash.py &
+
+# input patchbay:
+
+# Sphere / trajectory generators:
+
+# check all connections:
+./connect_beats_and_patterns
+
+# load default preset:
+./loadpreset 15
