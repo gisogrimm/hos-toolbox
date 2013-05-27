@@ -1,0 +1,44 @@
+#!/bin/bash
+k=1
+for m in claire laura claas julia giso extra; do
+    jack_connect $m:0.W "ardour:spheres out/in 1"
+    jack_connect $m:1.X "ardour:spheres out/in 2"
+    jack_connect $m:1.Y "ardour:spheres out/in 3"
+    jack_connect $m:2.U "ardour:spheres out/in 4"
+    jack_connect $m:2.V "ardour:spheres out/in 5"
+    jack_connect $m:3.P "ardour:spheres out/in 6"
+    jack_connect $m:3.Q "ardour:spheres out/in 7"
+    jack_connect "ardour:spheres in/out ${k}" $m:direct
+    let k=$k+1
+done
+k=1
+for m in claire laura claas julia giso; do
+    jack_connect "ardour:insert 1/out ${k}" MHAalgo:in${k}_${m}
+    jack_connect MHAalgo:out${k}_${m} "ardour:insert 1/in ${k}"
+    let k=$k+1
+done
+jack_connect "ardour:amb master/out 1" ambdec:in.0w
+jack_connect "ardour:amb master/out 2" ambdec:in.1x
+jack_connect "ardour:amb master/out 3" ambdec:in.1y
+jack_connect "ardour:amb master/out 4" ambdec:in.2u
+jack_connect "ardour:amb master/out 5" ambdec:in.2v
+jack_connect "ardour:amb master/out 6" ambdec:in.3p
+jack_connect "ardour:amb master/out 7" ambdec:in.3q
+
+jack_disconnect "ardour:log1 claire/out 1" MHAsnd:i1_claire
+jack_disconnect "ardour:log2 laura/out 1" MHAsnd:i2_laura
+jack_disconnect "ardour:log3 claas/out 1" MHAsnd:i3_claas
+jack_disconnect "ardour:log4 julia/out 1" MHAsnd:i4_julia
+jack_disconnect "ardour:log5 giso/out 1" MHAsnd:i5_giso
+jack_disconnect "ardour:log5 giso/out 1" MHAsnd:i6_gisofezzo
+jack_disconnect "ardour:log5 giso/out 1" MHAsnd:i7_gisobass
+
+jack_connect "ardour:mic1 claire/out 1" MHAsnd:i1_claire
+jack_connect "ardour:mic2 laura/out 1" MHAsnd:i2_laura
+jack_connect "ardour:mic3 claas/out 1" MHAsnd:i3_claas
+jack_connect "ardour:mic4 julia/out 1" MHAsnd:i4_julia
+jack_connect "ardour:mic5 giso/out 1" MHAsnd:i5_giso
+jack_connect "ardour:mic6 gisofezzo/out 1" MHAsnd:i6_gisofezzo
+jack_connect "ardour:mic7 gisobass/out 1" MHAsnd:i7_gisobass
+
+aconnect "Hammerfall DSP":0 mididings:0
