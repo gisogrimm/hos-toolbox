@@ -26,4 +26,4 @@ hos_delay simon &
 ./connect
 
 # load default preset:
-./loadpreset 15
+./loadpreset 40

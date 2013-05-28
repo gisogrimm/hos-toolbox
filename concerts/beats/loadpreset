@@ -3,49 +3,44 @@
 # FCB1010 preset layout:
 
 # Reich:
-p[40]="default reich_init reich_01"
-c[40]="send_osc 3819 /ardour/locate 34197376 1;send_osc 3819 /ardour/set_record_enable 1"
+p[40]="default reich_01"
 p[31]="reich_02"
-p[32]="reich_11a"
-p[33]="reich_12"
-p[34]="reich_19"
-p[35]="reich_20"
-p[21]="reich_21a"
-p[22]="reich_21b"
-p[23]="reich_23"
+p[32]="reich_12"
+p[33]="reich_20"
+p[34]="reich_mute"
 
-# Ansage Unsterblichkeit
-p[26]="default"
-c[26]="send_osc 3819 /ardour/locate 305216776 1;send_osc 3819 /ardour/set_record_enable 0"
-
-# Strogers In Nomine:
-p[16]="default strogers"
-c[16]="send_osc 3819 /ardour/locate 137371500 1;send_osc 3819 /ardour/set_record_enable 1"
-
-# Tye - Rubum:
-p[17]="default tye_rubum"
-c[17]="send_osc 3819 /ardour/locate 126787500 1;send_osc 3819 /ardour/set_record_enable 1"
-
-# Tye - Trust:
-p[18]="default tye_trust"
-c[18]="send_osc 3819 /ardour/locate 116203500 1;send_osc 3819 /ardour/set_record_enable 1"
-
-# John Cage: Five
-p[71]="default"
-c[71]="send_osc 3819 /ardour/locate 2205000 1;send_osc 3819 /ardour/set_record_enable 1"
-
-# Ansage heilige Vaeter;
-p[76]="default"
-c[76]="send_osc 3819 /ardour/locate 301855766 1;send_osc 3819 /ardour/set_record_enable 0"
-
-# Paert:
-p[72]="default paert"
-c[72]="send_osc 3819 /ardour/locate 86083200 1;send_osc 3819 /ardour/set_record_enable 1"
-
-# Palestrina: Phaseout. Vestiva
-p[73]="default vestiva_phaseout"
-#p[73]="default"
-c[73]="send_osc 3819 /ardour/locate 19770906 1;send_osc 3819 /ardour/set_record_enable 1"
+## Ansage Unsterblichkeit
+#p[26]="default"
+#c[26]="send_osc 3819 /ardour/locate 305216776 1;send_osc 3819 /ardour/set_record_enable 0"
+#
+## Strogers In Nomine:
+#p[16]="default strogers"
+#c[16]="send_osc 3819 /ardour/locate 137371500 1;send_osc 3819 /ardour/set_record_enable 1"
+#
+## Tye - Rubum:
+#p[17]="default tye_rubum"
+#c[17]="send_osc 3819 /ardour/locate 126787500 1;send_osc 3819 /ardour/set_record_enable 1"
+#
+## Tye - Trust:
+#p[18]="default tye_trust"
+#c[18]="send_osc 3819 /ardour/locate 116203500 1;send_osc 3819 /ardour/set_record_enable 1"
+#
+## John Cage: Five
+#p[71]="default"
+#c[71]="send_osc 3819 /ardour/locate 2205000 1;send_osc 3819 /ardour/set_record_enable 1"
+#
+## Ansage heilige Vaeter;
+#p[76]="default"
+#c[76]="send_osc 3819 /ardour/locate 301855766 1;send_osc 3819 /ardour/set_record_enable 0"
+#
+## Paert:
+#p[72]="default paert"
+#c[72]="send_osc 3819 /ardour/locate 86083200 1;send_osc 3819 /ardour/set_record_enable 1"
+#
+## Palestrina: Phaseout. Vestiva
+#p[73]="default vestiva_phaseout"
+##p[73]="default"
+#c[73]="send_osc 3819 /ardour/locate 19770906 1;send_osc 3819 /ardour/set_record_enable 1"
 
 
 
