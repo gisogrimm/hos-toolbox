@@ -1,6 +1,6 @@
 PREFIX = /usr/local
 
-BINFILES = ommo_bridge hos_sphere_amb30 hos_sendosc hos_delay hos_cyclephase hos_visualize hos_visualize_sphere hos_cyclephasegui
+BINFILES = ommo_bridge hos_sphere_amb30 hos_sendosc hos_delay hos_cyclephase hos_visualize hos_visualize_sphere hos_cyclephasegui hos_sampler
 
 
 #	hos_sphere_amb30 \
@@ -38,7 +38,7 @@ GTKMMBIN = hos_oscrmsmeter hos_visualize mm_gui hos_visualize_sphere tascar_draw
 
 CXXFLAGS += -Wall -O3 -msse -msse2 -mfpmath=sse -ffast-math -fomit-frame-pointer -fno-finite-math-only -L./
 
-EXTERNALS = alsa jack libxml++-2.6 liblo fftw3f
+EXTERNALS = alsa jack libxml++-2.6 liblo fftw3f sndfile
 
 LDLIBS += `pkg-config --libs $(EXTERNALS)`
 CXXFLAGS += `pkg-config --cflags $(EXTERNALS)`

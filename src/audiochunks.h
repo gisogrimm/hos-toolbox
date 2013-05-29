@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <complex.h>
 #include <fftw3.h>
+#include <sndfile.h>
+#include <string>
 
 namespace HoS {
 
@@ -11,12 +13,17 @@ namespace HoS {
   public:
     wave_t(uint32_t n);
     wave_t(const wave_t& src);
+    wave_t(uint32_t n,float* ptr);
     ~wave_t();
     void operator/=(const float& d);
     float maxabs() const;
     void copy(const wave_t& src);
+    inline float& operator[](uint32_t k){return b[k];};
+    inline const float& operator[](uint32_t k) const{return b[k];};
+    inline uint32_t size() const {return n_;};
     uint32_t n_;
     float* b;
+    bool own_pointer;
   };
 
   class spec_t {
@@ -28,6 +35,24 @@ namespace HoS {
     void operator/=(const spec_t& o);
     uint32_t n_;
     float _Complex * b;
+  };
+
+  class sndfile_handle_t {
+  public:
+    sndfile_handle_t(const std::string& fname);
+    ~sndfile_handle_t();
+    uint32_t get_frames() const {return sf_inf.frames;};
+    uint32_t get_channels() const {return sf_inf.channels;};
+    uint32_t readf_float( float* buf, uint32_t frames );
+  private:
+    SNDFILE* sfile;
+    SF_INFO sf_inf;
+  };
+
+  class sndfile_t : public sndfile_handle_t, public wave_t {
+  public:
+    sndfile_t(const std::string& fname,uint32_t channel=0);
+    void add_chunk(int32_t chunk_time, int32_t start_time,float gain,wave_t& chunk);
   };
 
   class fft_t {

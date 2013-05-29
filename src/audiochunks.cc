@@ -3,24 +3,31 @@
 #include <math.h>
 #include <complex.h>
 #include <algorithm>
+#include "errorhandling.h"
 
 using namespace HoS;
 
 wave_t::wave_t(uint32_t n)
-  : n_(n),b(new float[n_])
+  : n_(n),b(new float[n_]), own_pointer(true)
 {
   memset(b,0,n_*sizeof(float));
 }
 
+wave_t::wave_t(uint32_t n,float* ptr)
+  : n_(n),b(ptr), own_pointer(false)
+{
+}
+
 wave_t::wave_t(const wave_t& src)
-  : n_(src.n_),b(new float[n_])
+  : n_(src.n_),b(new float[n_]), own_pointer(true)
 {
   copy(src);
 }
 
 wave_t::~wave_t()
 {
-  delete [] b;
+  if( own_pointer )
+    delete [] b;
 }
 
 void wave_t::operator/=(const float& d)
@@ -144,6 +151,41 @@ void delay1_t::process(const wave_t& w)
     b[k] = w.b[k-1];
   b[0] = state;
   state = w.b[n_-1];
+}
+
+sndfile_handle_t::sndfile_handle_t(const std::string& fname)
+  : sfile(sf_open(fname.c_str(),SFM_READ,&sf_inf))
+{
+  if( !sfile )
+    throw TASCAR::ErrMsg("Unable to open sound file \""+fname+"\" for reading.");
+}
+    
+sndfile_handle_t::~sndfile_handle_t()
+{
+  sf_close(sfile);
+}
+
+uint32_t sndfile_handle_t::readf_float( float* buf, uint32_t frames )
+{
+  return sf_readf_float( sfile, buf, frames );
+}
+
+sndfile_t::sndfile_t(const std::string& fname,uint32_t channel)
+  : sndfile_handle_t(fname),
+    wave_t(get_frames())
+{
+  uint32_t ch(get_channels());
+  uint32_t N(get_frames());
+  wave_t chbuf(N*ch);
+  readf_float(chbuf.b,N);
+  for(uint32_t k=0;k<N;k++)
+    b[k] = chbuf[k*ch+channel];
+}
+
+void sndfile_t::add_chunk(int32_t chunk_time, int32_t start_time,float gain,wave_t& chunk)
+{
+  for(int32_t k=std::max(start_time,chunk_time);k < std::min(start_time+(int32_t)(size()),chunk_time+(int32_t)(chunk.size()));k++)
+    chunk[k-chunk_time] += gain*b[k-start_time];
 }
 
 
