@@ -13,11 +13,17 @@ cpufreq-selector -c 1 -f 3000000
 #jackd -P84 -u -p512 -t5000 -c c -s -S -dalsa -dhw:DSP -r44100 -p64 -n2 -I33 -O34 &
 sleep 1
 
+hos_cyclephase &
+
+sleep 1
+
 # load Reich delaylines:
 hos_delay julia &
 hos_delay claas &
 hos_delay giso &
 hos_delay simon &
+
+hos_cyclephasegui &
 
 # start parameter control/footswitch:
 ./midi2bash.py &

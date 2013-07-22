@@ -1,13 +1,22 @@
-function create_sounds
-  [x,fs] = wavread('picforth5.wav');
-  vPitch = [-9,-7,-5,-4,-2,0,1,3,5];
+function create_sounds( name, f0, d )
+  if nargin < 1
+    name = 'picforth5';
+  end
+  if nargin < 2
+    f0 = 0;
+  end
+  if nargin < 3
+    d = 4;
+  end
+  [x,fs] = wavread([name,'.wav']);
+  vPitch = [-9,-7,-5,-4,-2,0,1,3,5]+f0;
   for k=1:numel(vPitch)
     if vPitch(k) ~= 0
       x0 = resample(x,round(2^(-vPitch(k)/12)*512),512);
     else
       x0 = x;
     end
-    pulsesound(x0,fs,sprintf('pf%d.wav',k),3.8);
+    pulsesound(x0,fs,sprintf('%s_%d.wav',name,k),d);
   end
 
 function pulsesound( x,fs, sOutput, vdur )

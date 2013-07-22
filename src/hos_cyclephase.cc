@@ -30,12 +30,43 @@
 #include <string.h>
 #include "jackclient.h"
 #include "osc_helper.h"
+#include <math.h>
+#include "defs.h"
 
 #define MAXDELAY 480000
 #define OSC_ADDR "224.1.2.3"
 #define OSC_PORT "6978"
 
 namespace HoS {
+
+  class maxtrack_t {
+  public:
+    maxtrack_t(float fs,float tau);
+    inline bool filter(float val){
+      if( val >= state ){
+        was_rising = true;
+        state = val;
+        emit = false;
+      }else{
+        state *= c1;
+        state += c2*val;
+        emit = was_rising && (cnt==0);
+        was_rising = false;
+        if( emit )
+          cnt = timeout;
+      }
+      if( cnt )
+        cnt--;
+      return emit;
+    };
+    float state;
+    bool emit;
+  private:
+    bool was_rising;
+    float c1, c2;
+    uint32_t timeout;
+    uint32_t cnt;
+  };
 
   /**
      \ingroup apphos
@@ -54,19 +85,38 @@ namespace HoS {
     double dt;
     double t;
     bool b_quit;
+    std::vector<maxtrack_t> mt;
   };
 
 }
 
 using namespace HoS;
 
+maxtrack_t::maxtrack_t(float fs,float tau)
+  : state(0.0f),
+    emit(false),
+    was_rising(false),
+    c1(expf( -1.0f/(tau*fs))),
+    c2(1.0f-c1),
+    timeout(fs*tau),
+    cnt(0)
+{
+  DEBUG(c1);
+  DEBUG(c2);
+}
+
 cyclephase_t::cyclephase_t(const std::string& name)
   : jackc_t(name),
     TASCAR::osc_server_t(OSC_ADDR,OSC_PORT),
     dt(1.0/srate),
     t(0.0),
-    b_quit(false)
+    b_quit(false),
+    mt(std::vector<maxtrack_t>(4,maxtrack_t(srate,0.3)))
 {
+  add_input_port("L1");
+  add_input_port("L2");
+  add_input_port("L3");
+  add_input_port("L4");
   add_output_port("phase");
   set_prefix("/"+name);
   add_method("/t0","f",cyclephase_t::osc_set_t0,this);
@@ -106,6 +156,11 @@ int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBu
     if( t > 1.0 )
       t = 0.0;
     v_out[i] = t;
+    for( uint32_t ch=0;ch<4;ch++){
+      if( mt[ch].filter(inBuffer[ch][i])){
+        std::cout << ch << "  " << mt[ch].state << std::endl;
+      }
+    }
   }
   return 0;
 }
@@ -114,6 +169,10 @@ void cyclephase_t::run()
 {
   TASCAR::osc_server_t::activate();
   jackc_t::activate();
+  connect_in(0,"system:capture_17");
+  connect_in(1,"system:capture_18");
+  connect_in(2,"system:capture_19");
+  connect_in(3,"system:capture_20");
   while( !b_quit ){
     sleep( 1 );
   }

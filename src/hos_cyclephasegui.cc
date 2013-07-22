@@ -98,8 +98,8 @@ using namespace HoSGUI;
 
 cycle_t::cycle_t(double x, double y,uint32_t channels, const std::string& name,uint32_t chunksize,double srate)
   : x_(x),y_(y),channels_(channels),name_(name),current(channels,0.0),inBuffer(chunksize),delay(chunksize),
-    stft0(std::max(1024u,2*chunksize),std::max(1024u,2*chunksize),chunksize,HoS::stft_t::WND_HANNING),
-    stft1(std::max(1024u,2*chunksize),std::max(1024u,2*chunksize),chunksize,HoS::stft_t::WND_HANNING),
+    stft0(std::max(2048u,2*chunksize),std::max(2048u,2*chunksize),chunksize,HoS::stft_t::WND_HANNING),
+    stft1(std::max(2048u,2*chunksize),std::max(2048u,2*chunksize),chunksize,HoS::stft_t::WND_HANNING),
     instf(stft0.s.n_),
     ifscale(srate/(2.0*M_PI)),
     last_phase(0.0)

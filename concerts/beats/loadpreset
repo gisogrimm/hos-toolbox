@@ -8,6 +8,9 @@ p[31]="reich_02"
 p[32]="reich_12"
 p[33]="reich_20"
 p[34]="reich_mute"
+p[35]="reich_unmute"
+p[36]="picforth"
+p[37]="picforthmute"
 
 ## Ansage Unsterblichkeit
 #p[26]="default"

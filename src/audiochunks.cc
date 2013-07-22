@@ -128,8 +128,8 @@ stft_t::stft_t(uint32_t fftlen, uint32_t wndlen, uint32_t chunksize, windowtype_
     
 void stft_t::process(const wave_t& w)
 {
-  for(unsigned int k=wshift;k<wndlen_;k++)
-    long_in.b[k-wshift] = long_in.b[k];
+  for(unsigned int k=chunksize_;k<wndlen_;k++)
+    long_in.b[k-chunksize_] = long_in.b[k];
   for(unsigned int k=0;k<chunksize_;k++)
     long_in.b[k+wndlen_-chunksize_] = w.b[k];
   for(unsigned int k=0;k<wndlen_;k++)
