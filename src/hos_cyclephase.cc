@@ -41,8 +41,8 @@ namespace HoS {
 
   class maxtrack_t {
   public:
-    maxtrack_t(float fs, float tau, float tau2);
-    inline bool filter(float val){
+    maxtrack_t(double fs, double tau, double tau2);
+    inline bool filter(double val){
       if( val >= state2 ){
         state2 = val;
       }else{
@@ -65,13 +65,13 @@ namespace HoS {
         cnt--;
       return emit;
     };
-    float state;
+    double state;
     bool emit;
   private:
     bool was_rising;
-    float c1, c2;
-    float c3, c4;
-    float state2;
+    double c1, c2;
+    double c3, c4;
+    double state2;
     uint32_t timeout;
     uint32_t cnt;
   };
@@ -94,18 +94,18 @@ namespace HoS {
     double t;
     bool b_quit;
     std::vector<maxtrack_t> mt;
-    uint32_t phase_i;
-    uint32_t last_phase_i;
+    std::vector<uint32_t> phase_i;
     double bpm;
     double pps;
-    double p0, p1, p2, p3;
+    std::vector<double> p0;
+    double phase;
   };
 
 }
 
 using namespace HoS;
 
-maxtrack_t::maxtrack_t(float fs,float tau, float tau2)
+maxtrack_t::maxtrack_t(double fs,double tau, double tau2)
   : state(0.0f),
     emit(false),
     was_rising(false),
@@ -125,21 +125,26 @@ cyclephase_t::cyclephase_t(const std::string& name)
     dt(1.0/srate),
     t(0.0),
     b_quit(false),
-    mt(std::vector<maxtrack_t>(4,maxtrack_t(srate,0.3,2.2))),
-    phase_i(0),
-    last_phase_i(0),
+    mt(std::vector<maxtrack_t>(4,maxtrack_t(srate,0.3,8.0))),
+    phase_i(std::vector<uint32_t>(4,0)),
     bpm(1.0),
     pps(1.0),
-    p0(0.0),p1(10.0/36.0),p2(18.0/36.0),p3(28.0/36.0)
+    phase(0.0)
 {
   add_input_port("L1");
   add_input_port("L2");
   add_input_port("L3");
   add_input_port("L4");
   add_output_port("phase");
+  add_output_port("bicycle");
   set_prefix("/"+name);
   add_method("/t0","f",cyclephase_t::osc_set_t0,this);
   add_method("/quit","",cyclephase_t::osc_quit,this);
+  p0.resize(4);
+  p0[0] = 0.0;
+  p0[1] = 10.0/36.0;
+  p0[2] = 18.0/36.0;
+  p0[3] = 28.0/36.0;
 }
 
 cyclephase_t::~cyclephase_t()
@@ -168,25 +173,28 @@ void cyclephase_t::set_t0(double t0)
 
 int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBuffer,const std::vector<float*>& outBuffer)
 {
-  float* v_out(outBuffer[0]);
+  float* v_out0(outBuffer[0]);
+  float* v_out1(outBuffer[1]);
   // main loop:
   for (jack_nframes_t i = 0; i < nframes; ++i){
-    phase_i++;
     t += dt;
     if( t > 1.0 )
       t = 0.0;
-    v_out[i] = t;
+    v_out0[i] = t;
     for( uint32_t ch=0;ch<4;ch++){
+      phase_i[ch]++;
       if( mt[ch].filter(inBuffer[ch][i])){
-        if( ch==0){
-          last_phase_i = phase_i;
-          pps = 1.0/(double)phase_i;
-          bpm = srate*pps*60.0*4.0;
-          phase_i = 0;
-        }
-        std::cout << ch << "  " << mt[ch].state << " " << phase_i << " " << (double)phase_i/(double)last_phase_i << " " << bpm << " " << mt[ch].state/pps << std::endl;
+        phase = p0[ch];
+        pps = 1.0/(double)phase_i[ch];
+        phase_i[ch] = 0;
+        bpm = srate*pps*60.0*4.0;
+        //std::cout << ch << "  " << mt[ch].state << " " << phase_i << " " << (double)phase_i/(double)last_phase_i << " " << bpm << " " << mt[ch].state/pps << std::endl;
       }
     }
+    v_out1[i] = phase;
+    phase += pps;
+    if( phase > 1.0 )
+      phase = 1.0;
   }
   return 0;
 }
