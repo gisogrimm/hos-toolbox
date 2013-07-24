@@ -37,6 +37,9 @@
 #define OSC_ADDR "224.1.2.3"
 #define OSC_PORT "6978"
 
+#define PI2 6.283185307179586232
+#define PI2INV 0.15915494309189534561
+
 namespace HoS {
 
   class maxtrack_t {
@@ -74,6 +77,26 @@ namespace HoS {
     double state2;
     uint32_t timeout;
     uint32_t cnt;
+  };
+
+  class drift_filter_t {
+  public:
+    drift_filter_t();
+    inline double filter(double x){
+      y1 = c*y1 + c1*(x-xn1);
+      y2 = y2+y1;
+      y3 = y2+c2*(xn1-y3);
+      xn1 = x;
+      return y3;
+    };
+  private:
+    double xn1;
+    double y1;
+    double y2;
+    double y3;
+    double c;
+    double c1;
+    double c2;
   };
 
   /**
@@ -116,6 +139,17 @@ maxtrack_t::maxtrack_t(double fs,double tau, double tau2)
     state2(0.0f),
     timeout(fs*tau),
     cnt(0)
+{
+}
+
+drift_filter_t::drift_filter_t()
+  : xn1(0),
+    y1(0),
+    y2(0),
+    y3(0),
+    c(0.99),
+    c1(1.0-c),
+    c2(0.001)
 {
 }
 
