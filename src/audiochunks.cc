@@ -174,10 +174,7 @@ uint32_t sndfile_handle_t::readf_float( float* buf, uint32_t frames )
 
 sndfile_t::sndfile_t(const std::string& fname,uint32_t channel)
   : sndfile_handle_t(fname),
-    wave_t(get_frames()),
-    tsample(0),
-    tloop(0),
-    loopgain(1.0)
+    wave_t(get_frames())
 {
   uint32_t ch(get_channels());
   uint32_t N(get_frames());
@@ -193,28 +190,6 @@ void sndfile_t::add_chunk(int32_t chunk_time, int32_t start_time,float gain,wave
     chunk[k-chunk_time] += gain*b[k-start_time];
 }
 
-void sndfile_t::loop(wave_t& chunk)
-{
-  //DEBUG(tloop);
-  //DEBUG(tsample);
-  for( uint32_t k=0;k<chunk.size();k++){
-    if( tloop == -2 ){
-      tsample = 0;
-      tloop = 0;
-    }
-    if( tsample )
-    tsample--;
-    else{
-      if( tloop ){
-        if( tloop > 0 )
-          tloop--;
-        tsample = n_ - 1;
-      }
-    }
-    if( tsample || tloop )
-      chunk[k] += loopgain*b[n_-1 - tsample];
-  }
-}
 
 
 /*
