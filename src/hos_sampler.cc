@@ -45,8 +45,10 @@ public:
   void quit() { b_quit = true;};
   static int osc_set_t0(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   static int osc_quit(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
+  static int osc_setloop(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
 private:
   std::vector<sndfile_t*> sounds;
+  std::vector<std::string> soundnames;
   std::vector<note_event_t> notes;
   double current_time;
   double last_phase;
@@ -75,6 +77,14 @@ int sampler_t::osc_set_t0(const char *path, const char *types, lo_arg **argv, in
   return 0;
 }
 
+int sampler_t::osc_setloop(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
+{
+  if( (user_data) && (argc == 2) && (types[0]=='i') && (types[1]=='f') ){
+    ((sndfile_t*)user_data)->set_loop(argv[0]->i,argv[1]->f);
+  }
+  return 0;
+}
+
 int sampler_t::osc_quit(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
 {
   if( user_data )
@@ -95,7 +105,12 @@ sampler_t::~sampler_t()
 
 int sampler_t::process(jack_nframes_t n, const std::vector<float*>& sIn, const std::vector<float*>& sOut)
 {
-  memset(sOut[0],0,n*sizeof(float));
+  for(uint32_t k=0;k<sOut.size();k++)
+    memset(sOut[k],0,n*sizeof(float));
+  for(uint32_t k=0;k<sounds.size();k++){
+    wave_t wout(n,sOut[k+1]);
+    sounds[k]->loop(wout);
+  }
   float* vPhase(sIn[0]);
   double dt(0.0);
   double t0(vPhase[0]);
@@ -141,6 +156,8 @@ void sampler_t::open_sounds(const std::string& fname)
     if(fname.size()){
       sndfile_t* sf(new sndfile_t(fname));
       sounds.push_back(sf);
+      soundnames.push_back(fname);
+      add_output_port(fname);
     }
   }
 }
@@ -160,6 +177,9 @@ void sampler_t::open_notes(const std::string& fname)
 
 void sampler_t::run()
 {
+  for(uint32_t k=0;k<sounds.size();k++){
+    add_method("/"+soundnames[k],"if",sampler_t::osc_setloop,sounds[k]);
+  }
   jackc_t::activate();
   TASCAR::osc_server_t::activate();
   try{

@@ -53,6 +53,17 @@ namespace HoS {
   public:
     sndfile_t(const std::string& fname,uint32_t channel=0);
     void add_chunk(int32_t chunk_time, int32_t start_time,float gain,wave_t& chunk);
+    void loop(wave_t& chunk);
+    // loop count can be: 
+    // 0  : stop after current loop
+    // >0 : loop loop count times
+    // -1 : loop infinitely
+    // -2 : stop immediately
+    void set_loop(int32_t loop_,float gain) { tloop = loop_;loopgain=gain;};
+  private:
+    uint32_t tsample;
+    int32_t tloop;
+    float loopgain;
   };
 
   class fft_t {
