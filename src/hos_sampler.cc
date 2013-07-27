@@ -326,7 +326,10 @@ int main(int argc,char** argv)
 {
   if( argc < 3 )
     throw TASCAR::ErrMsg(std::string("Usage: ")+argv[0]+" soundfont notesfile");
-  sampler_t s;
+  std::string jname("sampler");
+  if( argc > 3 )
+    jname = argv[3];
+  sampler_t s(jname);
   DEBUG(1);
   s.open_sounds(argv[1]);
   DEBUG(1);

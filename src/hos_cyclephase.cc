@@ -225,9 +225,9 @@ cyclephase_t::cyclephase_t(const std::string& name)
   add_method("/quit","",cyclephase_t::osc_quit,this);
   p0.resize(4);
   p0[0] = 0.0;
-  p0[1] = 10.0/36.0;
-  p0[2] = 18.0/36.0;
-  p0[3] = 28.0/36.0;
+  p0[1] = 10.2/36.0;
+  p0[2] = 18.4/36.0;
+  p0[3] = 27.5/36.0;
   lp_phase.set_tau(0.25*srate);
   lp_if.set_tau(4.0*srate);
   lp_drift.set_tau(4.0*srate);
