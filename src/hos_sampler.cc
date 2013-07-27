@@ -113,22 +113,31 @@ class note_event_t {
 public:
   note_event_t(uint32_t note,double time,float gain);
   note_event_t();
+  inline void process_time(double time) {
+    if( time < time_ )
+      t = -1;
+    else
+      t++;
+  };
   uint32_t note_;
   double time_;
   float gain_;
+  int32_t t;
 };
 
 note_event_t::note_event_t(uint32_t note,double time,float gain)
   : note_(note),
     time_(time),
-    gain_(gain)
+    gain_(gain),
+    t(-1)
 {
 }
 
 note_event_t::note_event_t()
   : note_(0),
     time_(0),
-    gain_(1)
+    gain_(1),
+    t(-1)
 {
 }
 
@@ -154,6 +163,7 @@ private:
   double current_time;
   double last_phase;
   bool b_quit;
+  double* vtime;
 };
 
 sampler_t::sampler_t(const std::string& jname)
@@ -161,7 +171,8 @@ sampler_t::sampler_t(const std::string& jname)
     osc_server_t("224.1.2.3","6978"),
     current_time(0),
     last_phase(0),
-    b_quit(false)
+    b_quit(false),
+    vtime(new double[fragsize])
 {
   add_input_port("phase");
   add_output_port("out");
@@ -218,6 +229,7 @@ sampler_t::~sampler_t()
 {
   for( unsigned int k=0;k<sounds.size();k++)
     delete sounds[k];
+  delete [] vtime;
 }
 
 int sampler_t::process(jack_nframes_t n, const std::vector<float*>& sIn, const std::vector<float*>& sOut)
@@ -229,34 +241,26 @@ int sampler_t::process(jack_nframes_t n, const std::vector<float*>& sIn, const s
     sounds[k]->loop(wout);
   }
   float* vPhase(sIn[0]);
-  double dt(0.0);
-  double t0(vPhase[0]);
-  uint32_t Nphase(0);
-  double lct(current_time);
   for( uint32_t k=0;k<n;k++){
     double dphase(vPhase[k]-last_phase);
-    if( dphase < 0 )
-      current_time += 1.0;
-    else{
-      dt += dphase;
-      Nphase++;
-    }
+    if( dphase < -0.5 )
+      dphase += 1.0;
+    if( dphase > 0.5 )
+      dphase -= 1.0;
+    current_time += dphase;
     last_phase = vPhase[k];
+    vtime[k] = current_time;
   }
-  dt /= (double)Nphase;
-  if( dt <= 0)
-    return 0;
-  t0 += lct;
-  wave_t out(n,sOut[0]);
-  double samples_per_period(1.0/dt);
-  int32_t t0block(round(vPhase[0]*samples_per_period));
-  int32_t chunk_time(round(lct*samples_per_period));
-  chunk_time += t0block;
   //std::cerr << chunk_time << ",..." << std::endl;
   //  DEBUG(chunk_time);
-  for(unsigned int k=0;k<notes.size();k++){
-    if( notes[k].note_ < sounds.size() ){
-      sounds[notes[k].note_]->add_chunk(chunk_time,notes[k].time_*samples_per_period,notes[k].gain_,out);
+  for(unsigned int kn=0;kn<notes.size();kn++){
+    if( notes[kn].note_ < sounds.size() ){
+      for(uint32_t k=0;k<n;k++){
+        notes[kn].process_time(vtime[k]);
+        if( (notes[kn].t >= 0) && ((uint32_t)notes[kn].t < sounds[notes[kn].note_]->size()))
+          sOut[0][k] += (*sounds[notes[kn].note_])[notes[kn].t];
+      }
+      //sounds[notes[kn].note_]->add_chunk(chunk_time,notes[kn].time_*samples_per_period,notes[k].gain_,out);
     }
   }
   return 0;
