@@ -30,6 +30,7 @@
 #include <string.h>
 #include "jackclient.h"
 #include "osc_helper.h"
+#include <complex.h>
 #include <math.h>
 #include "defs.h"
 
@@ -42,16 +43,24 @@
 
 namespace HoS {
 
-  class lp_t {
+  inline double c2normphase(double complex p)
+  {
+    double rp(atan2(cimag(p),creal(p)));
+    if( rp < 0 )
+      rp += PI2;
+    return PI2INV*rp;
+  }
+
+  class clp_t {
   public:
-    lp_t();
+    clp_t();
     void set_tau(double tau);
-    inline double filter(double val){
+    inline double complex filter(double complex val){
       state *= c1;
       return (state += c2*val);
     }
   private:
-    double state;
+    double complex state;
     double c1;
     double c2;
   };
@@ -135,23 +144,30 @@ namespace HoS {
     //double bpm;
     //double pps;
     std::vector<double> p0;
-    double phase;
-    lp_t lp_re;
-    lp_t lp_im;
+    double complex cphase_raw;
+    double complex cphase_lp;
+    double complex cphase_lpdrift;
+    double complex cdrift_raw;
+    double complex cdrift_lp;
+    double complex cdphase;
+    double complex cdphase_lp;
+    clp_t lp_phase;
+    clp_t lp_drift;
+    clp_t lp_if;
   };
 
 }
 
 using namespace HoS;
 
-lp_t::lp_t()
+clp_t::clp_t()
   : state(0.0),
     c1(0.0),
     c2(1.0)
 {
 }
 
-void lp_t::set_tau(double tau)
+void clp_t::set_tau(double tau)
 {
   c1 = exp( -1.0/tau);
   c2 = 1.0 - c1;
@@ -190,16 +206,20 @@ cyclephase_t::cyclephase_t(const std::string& name)
     b_quit(false),
     mt(std::vector<maxtrack_t>(4,maxtrack_t(srate,0.3,8.0))),
     phase_i(std::vector<uint32_t>(4,0)),
-    //bpm(1.0),
-    //pps(1.0),
-    phase(0.0)
+    cphase_raw(0.0),
+    cphase_lp(0.0),
+    cdrift_raw(0.0),
+    cdrift_lp(0.0)
 {
   add_input_port("L1");
   add_input_port("L2");
   add_input_port("L3");
   add_input_port("L4");
+  //add_output_port("phase_raw");
   add_output_port("phase");
-  add_output_port("bicycle");
+  add_output_port("rps");
+  //add_output_port("drift_raw");
+  //add_output_port("drift_lp");
   set_prefix("/"+name);
   add_method("/t0","f",cyclephase_t::osc_set_t0,this);
   add_method("/quit","",cyclephase_t::osc_quit,this);
@@ -208,6 +228,9 @@ cyclephase_t::cyclephase_t(const std::string& name)
   p0[1] = 10.0/36.0;
   p0[2] = 18.0/36.0;
   p0[3] = 28.0/36.0;
+  lp_phase.set_tau(0.25*srate);
+  lp_if.set_tau(4.0*srate);
+  lp_drift.set_tau(4.0*srate);
 }
 
 cyclephase_t::~cyclephase_t()
@@ -236,28 +259,46 @@ void cyclephase_t::set_t0(double t0)
 
 int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBuffer,const std::vector<float*>& outBuffer)
 {
-  float* v_out0(outBuffer[0]);
-  float* v_out1(outBuffer[1]);
+  //float* v_phase_raw(outBuffer[0]);
+  float* v_phase_lp(outBuffer[0]);
+  //float* v_drift_raw(outBuffer[2]);
+  //float* v_drift_lp(outBuffer[3]);
+  float* v_rps(outBuffer[1]);
   // main loop:
   for (jack_nframes_t i = 0; i < nframes; ++i){
     t += dt;
     if( t > 1.0 )
       t = 0.0;
-    v_out0[i] = t;
+    //v_out0[i] = t;
     for( uint32_t ch=0;ch<4;ch++){
       phase_i[ch]++;
       if( mt[ch].filter(inBuffer[ch][i])){
-        phase = p0[ch];
+        cphase_raw = cexp(I*PI2*p0[ch]);
+        cdrift_raw = cphase_raw * conj(cphase_lp);
         //pps = 1.0/(double)phase_i[ch];
-        //phase_i[ch] = 0;
+        lp_phase.set_tau(std::min(8.0*srate,0.5*(double)(phase_i[ch])));
+        phase_i[ch] = 0;
         //bpm = srate*pps*60.0*4.0;
         //std::cout << ch << "  " << mt[ch].state << " " << phase_i << " " << (double)phase_i/(double)last_phase_i << " " << bpm << " " << mt[ch].state/pps << std::endl;
       }
     }
-    v_out1[i] = phase;
+    cdrift_lp = lp_drift.filter(cdrift_raw);
+    //cdrift_lp /= cabs(cdrift_lp);
+    cphase_lp = lp_phase.filter(cphase_raw);
+    cdphase = conj(cphase_lpdrift);
+    cphase_lpdrift = cphase_lp*cdrift_lp;
+    cdphase *= cphase_lpdrift;
+    cdphase_lp = lp_if.filter(cdphase);
+    
+    //v_phase_raw[i] = c2normphase(cphase_raw);
+    //v_drift_lp[i] = c2normphase(cdrift_lp);
+    //v_drift_raw[i] = c2normphase(cdrift_raw);
+    v_phase_lp[i] = c2normphase(cphase_lpdrift);
+    v_rps[i] = srate*PI2INV*atan2(cimag(cdphase_lp),creal(cdphase_lp));
+    //v_out2[i] = PI2INV*atan2(lp_im.filter(sin(phase*PI2)),lp_re.filter(cos(phase*PI2)))+0.5;
     //phase += pps;
-    if( phase > 1.0 )
-      phase = 1.0;
+    //if( phase > 1.0 )
+    //  phase = 1.0;
   }
   return 0;
 }

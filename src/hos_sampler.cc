@@ -294,13 +294,17 @@ void sampler_t::open_notes(const std::string& fname)
 
 void sampler_t::run()
 {
+  DEBUG(1);
   for(uint32_t k=0;k<sounds.size();k++){
     add_method("/"+soundnames[k]+"/add","if",sampler_t::osc_addloop,sounds[k]);
     add_method("/"+soundnames[k]+"/stop","",sampler_t::osc_stoploop,sounds[k]);
     add_method("/"+soundnames[k]+"/clear","",sampler_t::osc_clearloop,sounds[k]);
   }
+  DEBUG(1);
   jackc_t::activate();
+  DEBUG(1);
   TASCAR::osc_server_t::activate();
+  DEBUG(1);
   try{
     connect_in(0,"phase:phase");
   }
@@ -319,8 +323,11 @@ int main(int argc,char** argv)
   if( argc < 3 )
     throw TASCAR::ErrMsg(std::string("Usage: ")+argv[0]+" soundfont notesfile");
   sampler_t s;
+  DEBUG(1);
   s.open_sounds(argv[1]);
+  DEBUG(1);
   s.open_notes(argv[2]);
+  DEBUG(1);
   s.run();
 }
 

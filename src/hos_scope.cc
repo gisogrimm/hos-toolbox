@@ -212,7 +212,7 @@ int main(int argc, char** argv)
   Gtk::Main kit(argc, argv);
   Gtk::Window win;
   win.set_title("HoS oscilloscope");
-  HoSGUI::scope_t c("scope",2,600,300);
+  HoSGUI::scope_t c("scope",4,600,300);
   //c.add_cycle(0,1,"1");
   //c.add_cycle(-0.866,-0.5,"2");
   //c.add_cycle(0.866,-0.5,"3");
