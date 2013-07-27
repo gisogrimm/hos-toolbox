@@ -42,6 +42,20 @@
 
 namespace HoS {
 
+  class lp_t {
+  public:
+    lp_t();
+    void set_tau(double tau);
+    inline double filter(double val){
+      state *= c1;
+      return (state += c2*val);
+    }
+  private:
+    double state;
+    double c1;
+    double c2;
+  };
+
   class maxtrack_t {
   public:
     maxtrack_t(double fs, double tau, double tau2);
@@ -118,15 +132,30 @@ namespace HoS {
     bool b_quit;
     std::vector<maxtrack_t> mt;
     std::vector<uint32_t> phase_i;
-    double bpm;
-    double pps;
+    //double bpm;
+    //double pps;
     std::vector<double> p0;
     double phase;
+    lp_t lp_re;
+    lp_t lp_im;
   };
 
 }
 
 using namespace HoS;
+
+lp_t::lp_t()
+  : state(0.0),
+    c1(0.0),
+    c2(1.0)
+{
+}
+
+void lp_t::set_tau(double tau)
+{
+  c1 = exp( -1.0/tau);
+  c2 = 1.0 - c1;
+}
 
 maxtrack_t::maxtrack_t(double fs,double tau, double tau2)
   : state(0.0f),
@@ -161,8 +190,8 @@ cyclephase_t::cyclephase_t(const std::string& name)
     b_quit(false),
     mt(std::vector<maxtrack_t>(4,maxtrack_t(srate,0.3,8.0))),
     phase_i(std::vector<uint32_t>(4,0)),
-    bpm(1.0),
-    pps(1.0),
+    //bpm(1.0),
+    //pps(1.0),
     phase(0.0)
 {
   add_input_port("L1");
@@ -219,14 +248,14 @@ int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBu
       phase_i[ch]++;
       if( mt[ch].filter(inBuffer[ch][i])){
         phase = p0[ch];
-        pps = 1.0/(double)phase_i[ch];
-        phase_i[ch] = 0;
-        bpm = srate*pps*60.0*4.0;
+        //pps = 1.0/(double)phase_i[ch];
+        //phase_i[ch] = 0;
+        //bpm = srate*pps*60.0*4.0;
         //std::cout << ch << "  " << mt[ch].state << " " << phase_i << " " << (double)phase_i/(double)last_phase_i << " " << bpm << " " << mt[ch].state/pps << std::endl;
       }
     }
     v_out1[i] = phase;
-    phase += pps;
+    //phase += pps;
     if( phase > 1.0 )
       phase = 1.0;
   }
