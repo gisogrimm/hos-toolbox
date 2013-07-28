@@ -282,9 +282,9 @@ int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBu
         cphase_raw = cexp(I*PI2*p0[ch]);
         cdrift_raw = cphase_raw * conj(cphase_if);
         //pps = 1.0/(double)phase_i[ch];
-        lp_phase.set_tau(std::min(8.0*srate,0.5*(double)(phase_i[ch])));
-        lp_if.set_tau(std::min(8.0*srate,0.5*(double)(phase_i[ch])));
-        lp_drift.set_tau(std::min(8.0*srate,1.0*(double)(phase_i[ch])));
+        lp_phase.set_tau(std::min(2.0*srate,0.5*(double)(phase_i[ch])));
+        lp_if.set_tau(std::min(2.0*srate,0.5*(double)(phase_i[ch])));
+        lp_drift.set_tau(std::min(2.0*srate,1.0*(double)(phase_i[ch])));
         phase_i[ch] = 0;
         //bpm = srate*pps*60.0*4.0;
         //std::cout << ch << "  " << mt[ch].state << " " << phase_i << " " << (double)phase_i/(double)last_phase_i << " " << bpm << " " << mt[ch].state/pps << std::endl;
@@ -296,6 +296,7 @@ int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBu
     cphase_lp = lp_phase.filter(cphase_raw);
     cdphase *= cphase_lp;
     cdphase_lp = lp_if.filter(cdphase);
+    //cphase_if *= cexp(I*std::max(0.0,carg(cdphase_lp)));
     cphase_if *= cexp(I*carg(cdphase_lp));
     cphase_lpdrift = cphase_if*cdrift_lp;
     
@@ -306,6 +307,7 @@ int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBu
     //v_rps[i] = srate*PI2INV*atan2(cimag(cdphase_lp),creal(cdphase_lp));
     //v_rps_raw[i] = srate*PI2INV*atan2(cimag(cdphase),creal(cdphase));
     v_phase_lp[i] = c2normphase(cphase_lpdrift);
+    //v_phase_lp[i] = c2normphase(cphase_if);
     //v_out2[i] = PI2INV*atan2(lp_im.filter(sin(phase*PI2)),lp_re.filter(cos(phase*PI2)))+0.5;
     //phase += pps;
     //if( phase > 1.0 )
