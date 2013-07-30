@@ -1,0 +1,19 @@
+<rack>
+<plugin type="phonoeq" instance-name="phonoeq" input-index="1" output-index="1">
+<preset bank="0" program="0" plugin="phonoeq" name="">
+  <param name="bypass" value="0" />
+  <param name="level_in" value="1" />
+  <param name="level_out" value="1" />
+  <param name="meter_inL" value="0.0328446" />
+  <param name="meter_inR" value="0.0297928" />
+  <param name="meter_outL" value="0.0708651" />
+  <param name="meter_outR" value="0.0638308" />
+  <param name="clip_inL" value="0" />
+  <param name="clip_inR" value="0" />
+  <param name="clip_outL" value="0" />
+  <param name="clip_outR" value="0" />
+  <param name="mode" value="0" />
+  <param name="type" value="3" />
+</preset>
+</plugin>
+</rack>
