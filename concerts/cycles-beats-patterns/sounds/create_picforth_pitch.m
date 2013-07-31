@@ -60,7 +60,7 @@ function create_picforth_pitch(name)
     vt = ([1:numel(p)]-numel(p))*dt+e;
     fh = fopen(sprintf('picforth_%d.pitch',v),'w');
     for k=1:numel(vt)
-      fprintf(fh,'%g %d 1\n',vt(k),p(k));
+      fprintf(fh,'%g %d 0.1\n',vt(k),p(k));
     end
     fclose(fh);
   end

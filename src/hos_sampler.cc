@@ -258,7 +258,7 @@ int sampler_t::process(jack_nframes_t n, const std::vector<float*>& sIn, const s
       for(uint32_t k=0;k<n;k++){
         notes[kn].process_time(vtime[k]);
         if( (notes[kn].t >= 0) && ((uint32_t)notes[kn].t < sounds[notes[kn].note_]->size()))
-          sOut[0][k] += (*sounds[notes[kn].note_])[notes[kn].t];
+          sOut[0][k] += (*sounds[notes[kn].note_])[notes[kn].t] * notes[kn].gain_;
       }
       //sounds[notes[kn].note_]->add_chunk(chunk_time,notes[kn].time_*samples_per_period,notes[k].gain_,out);
     }
