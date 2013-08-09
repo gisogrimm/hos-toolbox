@@ -1,0 +1,24 @@
+<ommo>
+  <!--
+  <oscserver port="9000">
+    <osc dest="osc.udp://localhost:9001/" path="/tx" serverpath="/x" types="ff"/>
+    <osc dest="osc.udp://localhost:9001/" path="/ty" serverpath="/x" types="ff" map="1,0"/>
+    <osc dest="osc.udp://localhost:9001/" path="/ty" serverpath="/x" types="ff" map="1,0,0,0,1"/>
+    <osc dest="osc.udp://localhost:9001/" path="/tz" serverpath="/x" types="ff" map="replace"/>
+    <osc dest="osc.udp://localhost:9001/" path="/tz" serverpath="/x" types="ff" map="replace">
+      <data type="f" value="0.7"/>
+      <data type="s" value="Huhu"/>
+      <data type="i" value="76669"/>
+    </osc>
+    <midicc serverpath="/midi1" types="f" channel="0" param="0" argnum="0"/>
+    <midicc serverpath="/midi2" types="f" channel="0" param="1" argnum="0"/>
+    <midicc serverpath="/midi3" types="ff" channel="0" param="2" argnum="0"/>
+    <midicc serverpath="/midi3" types="ff" channel="0" param="3" argnum="1"/>
+  </oscserver>
+  -->
+  <oscserver port="8000">
+    <!-- xy to filter settings: -->
+    <osc dest="osc.udp://localhost:6978/" path="/f" serverpath="/4/xy" types="ff" argmap="2"/>
+    <osc dest="osc.udp://localhost:6978/" path="/q" serverpath="/4/xy" types="ff" argmap="1" valmap="0.01,0.95"/>
+  </oscserver>
+</ommo>

@@ -71,12 +71,14 @@ resfilt_t::resfilt_t(double fs, double fragsize)
 
 void resfilt_t::update(double f0, double q)
 {
-  //DEBUG(f0);
-  //DEBUG(q*cos(PI2*f0/fs_));
-  dA1 = (2.0*q*cos(PI2*f0/fs_) - A1)*dt;
-  dA2 = (-q*q - A2)*dt;
-  dB1 = (-2.0*q - B1)*dt;
-  dB2 = (q*q - B2)*dt;
+  f0 /= fs_;
+  f0 *= 2.0;
+  double q_pole = pow(q,f0);
+  double q_zero = q_pole*q_pole;
+  dA1 = (2.0*q_pole*cos(M_PI*f0) - A1)*dt;
+  dA2 = (-q_pole*q_pole - A2)*dt;
+  dB1 = (-2.0*q_zero - B1)*dt;
+  dB2 = (q_zero*q_zero - B2)*dt;
 }
 
 cyclephase_t::cyclephase_t(const std::string& name)
@@ -111,6 +113,10 @@ int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBu
 void cyclephase_t::run()
 {
   jackc_t::activate();
+  connect_in(0,"japa:pink",true);
+  connect_in(1,"osc2jack:/f",true);
+  connect_in(2,"osc2jack:/q",true);
+  connect_out(0,"japa:in_1",true);
   while( !b_quit ){
     sleep( 1 );
   }
