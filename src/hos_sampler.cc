@@ -114,13 +114,15 @@ public:
   note_event_t(uint32_t note,double time,float gain);
   note_event_t();
   inline void process_time(double time) {
-    if( time < time_ )
-      t = -1;
+    if( (old_time <= time_) && (time > time_) )
+      t = 0;
     else
       t++;
+    old_time = time;
   };
   uint32_t note_;
   double time_;
+  double old_time;
   float gain_;
   int32_t t;
 };
@@ -128,6 +130,7 @@ public:
 note_event_t::note_event_t(uint32_t note,double time,float gain)
   : note_(note),
     time_(time),
+    old_time(0),
     gain_(gain),
     t(-1)
 {
@@ -136,6 +139,7 @@ note_event_t::note_event_t(uint32_t note,double time,float gain)
 note_event_t::note_event_t()
   : note_(0),
     time_(0),
+    old_time(0),
     gain_(1),
     t(-1)
 {
