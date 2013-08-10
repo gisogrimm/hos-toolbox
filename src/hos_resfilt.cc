@@ -50,7 +50,9 @@ namespace HoS {
   private:
     int process(jack_nframes_t nframes,const std::vector<float*>& inBuffer,const std::vector<float*>& outBuffer);
     bool b_quit;
-    resfilt_t flt;
+    resfilt_t flt_pre;
+    resfilt_t flt_post;
+    double rgain,drgain;
     double f_min, f_max;
   };
 
@@ -84,7 +86,9 @@ void resfilt_t::update(double f0, double q)
 cyclephase_t::cyclephase_t(const std::string& name)
   : jackc_t(name),
     b_quit(false),
-    flt(srate,fragsize),
+    flt_pre(srate,fragsize),
+    flt_post(srate,fragsize),
+    rgain(0.0),drgain(0.0),
     f_min(100.0), f_max(4000.0)
 {
   add_input_port("x");
@@ -97,11 +101,15 @@ cyclephase_t::~cyclephase_t()
 {
 }
 
-double limit(double x,double xmin,double xmax)
+inline double randd()
+{
+  return (double)rand()/(double)RAND_MAX;
+}
+
+inline double limit(double x,double xmin,double xmax)
 {
   return std::min(xmax,std::max(xmin,x));
 }
-
 
 int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBuffer,const std::vector<float*>& outBuffer)
 {
@@ -109,9 +117,12 @@ int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBu
   float* v_f(inBuffer[1]);
   float* v_q(inBuffer[2]);
   float* v_y(outBuffer[0]);
-  flt.update(f_min*pow(f_max/f_min,limit(v_f[0],0,1)),limit(v_q[0],0,0.999));
-  for (jack_nframes_t i = 0; i < nframes; ++i)
-    v_y[i] = flt.filter(v_x[i]);
+  flt_pre.update(f_min*pow(f_max/f_min,limit(v_f[0],0,1)),limit(0.5*v_q[0],0,0.999));
+  flt_post.update(f_min*pow(f_max/f_min,limit(v_f[0],0,1)),limit(v_q[0],0,0.999));
+  drgain = (v_q[0]-rgain)/nframes;
+  for (jack_nframes_t i = 0; i < nframes; ++i){
+    v_y[i] = flt_post.filter(flt_pre.filter(v_x[i])*(1.0-(rgain+=drgain)*randd()));
+  }
   return 0;
 }
 
