@@ -16,6 +16,7 @@ public:
   void configure_axes();
   void rfs();
   void run();
+  void mv(int32_t p);
   void relais_on();
   void relais_off();
   static int osc_move_to(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
@@ -27,7 +28,7 @@ private:
 int hos_spokes_t::osc_move_to(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
 {
   if( user_data && (argc == 1) && (types[0] == 'i') )
-    ((hos_spokes_t*)user_data)->mot_moveto(0,argv[0]->i);
+    ((hos_spokes_t*)user_data)->mv(argv[0]->i);
   return 0;
 }
 
@@ -36,6 +37,13 @@ int hos_spokes_t::osc_rfs(const char *path, const char *types, lo_arg **argv, in
   if( user_data )
     ((hos_spokes_t*)user_data)->rfs();
   return 0;
+}
+
+void hos_spokes_t::mv(int32_t p)
+{
+  mot_moveto(0,p);
+  // standby current
+  mot_sap(0,7,std::max(0.0,std::min(0.15*p,90.0)));
 }
 
 void hos_spokes_t::relais_on()
