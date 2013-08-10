@@ -97,6 +97,11 @@ cyclephase_t::~cyclephase_t()
 {
 }
 
+double limit(double x,double xmin,double xmax)
+{
+  return std::min(xmax,std::max(xmin,x));
+}
+
 
 int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBuffer,const std::vector<float*>& outBuffer)
 {
@@ -104,7 +109,7 @@ int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBu
   float* v_f(inBuffer[1]);
   float* v_q(inBuffer[2]);
   float* v_y(outBuffer[0]);
-  flt.update(f_min*pow(f_max/f_min,v_f[0]),v_q[0]);
+  flt.update(f_min*pow(f_max/f_min,limit(v_f[0],0,1)),limit(v_q[0],0,0.999));
   for (jack_nframes_t i = 0; i < nframes; ++i)
     v_y[i] = flt.filter(v_x[i]);
   return 0;

@@ -150,8 +150,10 @@ public:
   void open_sounds(const std::string& fname);
   void open_notes(const std::string& fname);
   void set_t0(double t0);
+  void set_loop_time(double tloop){ loop_time = tloop;};
   void quit() { b_quit = true;};
   static int osc_set_t0(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
+  static int osc_set_loop_time(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   static int osc_quit(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   static int osc_addloop(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   static int osc_stoploop(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
@@ -164,6 +166,7 @@ private:
   double last_phase;
   bool b_quit;
   double* vtime;
+  double loop_time;
 };
 
 sampler_t::sampler_t(const std::string& jname)
@@ -172,12 +175,14 @@ sampler_t::sampler_t(const std::string& jname)
     current_time(0),
     last_phase(0),
     b_quit(false),
-    vtime(new double[fragsize])
+    vtime(new double[fragsize]),
+    loop_time(0)
 {
   add_input_port("phase");
   add_output_port("out");
   set_prefix("/"+jname);
   add_method("/t0","f",sampler_t::osc_set_t0,this);
+  add_method("/loop","f",sampler_t::osc_set_loop_time,this);
   add_method("/quit","",sampler_t::osc_quit,this);
 }
 
@@ -185,6 +190,14 @@ int sampler_t::osc_set_t0(const char *path, const char *types, lo_arg **argv, in
 {
   if( (user_data) && (argc == 1) && (types[0]=='f') ){
     ((sampler_t*)user_data)->set_t0(argv[0]->f);
+  }
+  return 0;
+}
+
+int sampler_t::osc_set_loop_time(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
+{
+  if( (user_data) && (argc == 1) && (types[0]=='f') ){
+    ((sampler_t*)user_data)->set_loop_time(argv[0]->f);
   }
   return 0;
 }
@@ -248,6 +261,8 @@ int sampler_t::process(jack_nframes_t n, const std::vector<float*>& sIn, const s
     if( dphase > 0.5 )
       dphase -= 1.0;
     current_time += dphase;
+    if( (loop_time > 0) && (current_time >= loop_time) )
+      current_time = 0.0;
     last_phase = vPhase[k];
     vtime[k] = current_time;
   }

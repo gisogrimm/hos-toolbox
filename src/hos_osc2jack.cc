@@ -2,19 +2,6 @@
 #include "osc_helper.h"
 #include "errorhandling.h"
 
-static int osc_set_bool_true(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
-{
-  if( user_data )
-    *(bool*)(user_data) = true;
-  return 0;
-}
-
-static int osc_set_float(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
-{
-  if( user_data && (argc == 1) && (types[0] == 'f') )
-    *(float*)(user_data) = argv[0]->f;
-  return 0;
-}
 
 class osc2jack_t : public jackc_t, public TASCAR::osc_server_t {
 public:

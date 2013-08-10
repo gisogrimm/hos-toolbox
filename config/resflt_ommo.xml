@@ -18,7 +18,13 @@
   -->
   <oscserver port="8000">
     <!-- xy to filter settings: -->
-    <osc dest="osc.udp://localhost:6978/" path="/f" serverpath="/4/xy" types="ff" argmap="2"/>
-    <osc dest="osc.udp://localhost:6978/" path="/q" serverpath="/4/xy" types="ff" argmap="1" valmap="0.01,0.95"/>
+    <xosc dest="osc.udp://224.1.2.3:6978/" path="/f" serverpath="/4/xy" types="ff" argmap="2"/>
+    <xosc dest="osc.udp://224.1.2.3:6978/" path="/q" serverpath="/4/xy" types="ff" argmap="1" valmap="0.01,0.95"/>
+    <xosc dest="osc.udp://224.1.2.3:6978/" path="/f" serverpath="/accxyz" types="fff" argmap="2" valmap="0.5,0.55"/>
+    <xosc dest="osc.udp://224.1.2.3:6978/" path="/q" serverpath="/accxyz" types="fff" argmap="1" valmap="0.5,0.55"/>
   </oscserver>
+  <midireceiver>
+    <osc dest="osc.udp://224.1.2.3:6978/" path="/tmcm/mv" clientchannel="0" clientparam="1" valmap="0,1200" argmap="1"/>
+    <osc dest="osc.udp://224.1.2.3:6978/" path="/tmcm/rfs" clientchannel="0" clientparam="1" condition="0" argmap="0"/>
+  </midireceiver>
 </ommo>
