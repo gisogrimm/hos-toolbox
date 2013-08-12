@@ -111,28 +111,40 @@ void looped_sndfile_t::stop()
 
 class note_event_t {
 public:
-  note_event_t(uint32_t note,double time,float gain);
+  note_event_t(uint32_t note,double time,float gain, double duration);
   note_event_t();
   inline void process_time(double time) {
-    if( (old_time <= time_) && (time > time_) )
+    if( (old_time <= time_) && (time > time_) ){
       t = 0;
-    else
+      fade_gain = 1.0;
+    }else{
       t++;
+    }
+    if( time - time_ > duration_ )
+      fade_gain *= fade_rate;
+    if( fade_gain < 1e-10 )
+      fade_gain = 0.0;
     old_time = time;
   };
   uint32_t note_;
   double time_;
   double old_time;
   float gain_;
+  double duration_;
   int32_t t;
+  double fade_gain;
+  double fade_rate;
 };
 
-note_event_t::note_event_t(uint32_t note,double time,float gain)
+note_event_t::note_event_t(uint32_t note,double time,float gain, double duration)
   : note_(note),
     time_(time),
     old_time(0),
     gain_(gain),
-    t(-1)
+    duration_(duration),
+    t(-1),
+    fade_gain(1.0),
+    fade_rate(exp( -1.0/(0.25 * 44100)))
 {
 }
 
@@ -141,7 +153,10 @@ note_event_t::note_event_t()
     time_(0),
     old_time(0),
     gain_(1),
-    t(-1)
+    duration_(1.0),
+    t(-1),
+    fade_gain(8.0),
+    fade_rate(exp( -1.0/(0.25 * 44100)))
 {
 }
 
@@ -277,7 +292,7 @@ int sampler_t::process(jack_nframes_t n, const std::vector<float*>& sIn, const s
       for(uint32_t k=0;k<n;k++){
         notes[kn].process_time(vtime[k]);
         if( (notes[kn].t >= 0) && ((uint32_t)notes[kn].t < sounds[notes[kn].note_]->size()))
-          sOut[0][k] += (*sounds[notes[kn].note_])[notes[kn].t] * notes[kn].gain_;
+          sOut[0][k] += (*sounds[notes[kn].note_])[notes[kn].t] * notes[kn].gain_ * notes[kn].fade_gain;
       }
       //sounds[notes[kn].note_]->add_chunk(chunk_time,notes[kn].time_*samples_per_period,notes[k].gain_,out);
     }
@@ -310,7 +325,7 @@ void sampler_t::open_notes(const std::string& fname)
     memset(ctmp,0,1024);
     fh.getline(ctmp,1023);
     note_event_t n;
-    if( sscanf(ctmp,"%lf %d %f",&(n.time_),&(n.note_),&(n.gain_))>=2 )
+    if( sscanf(ctmp,"%lf %d %f %lf",&(n.time_),&(n.note_),&(n.gain_),&(n.duration_))>=2 )
       notes.push_back(n);
   }
 }
