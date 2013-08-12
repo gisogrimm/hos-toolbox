@@ -5,7 +5,8 @@ NAME=ggambed
 ../../../build/hos_sampler ${NAME}_v1.soundfont picforth_1.pitch v1&
 ../../../build/hos_sampler ${NAME}_v2.soundfont picforth_2.pitch v2&
 ../../../build/hos_sampler ${NAME}_v3.soundfont picforth_3.pitch v3&
-../../../build/hos_sampler ${NAME}_v4.soundfont picforth_4.pitch v4&
+#../../../build/hos_sampler ${NAME}_v4.soundfont picforth_4.pitch v4&
+../../../build/hos_sampler nggambed_v4.soundfont picforth_4.pitch v4&
 ../../../build/hos_sampler ${NAME}_v5.soundfont picforth_5.pitch v5&
 sleep 6
 jack_connect v1:out system:playback_1

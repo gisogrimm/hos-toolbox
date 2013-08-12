@@ -1,4 +1,4 @@
-function create_sounds( name, f0, d, vPitch, tag )
+function create_sounds( name, f0, d, vPitch, tag, bNoise )
   if nargin < 1
     name = 'picforth5';
   end
@@ -14,6 +14,9 @@ function create_sounds( name, f0, d, vPitch, tag )
   if nargin < 5
     tag = '';
   end
+  if nargin < 6
+    bNoise = false;
+  end
   [x,fs] = wavread([name,'.wav']);
   fh = fopen(sprintf('%s_%s.soundfont',name,tag),'w');
   for k=1:numel(vPitch)
@@ -23,7 +26,11 @@ function create_sounds( name, f0, d, vPitch, tag )
       x0 = x;
     end
     ofname = sprintf('%s_%s_%d.wav',name,tag,k);
-    pulsesound(x0,fs,ofname,d);
+    if bNoise
+      noisesound(x0,fs,ofname,d);
+    else
+      pulsesound(x0,fs,ofname,d);
+    end
     fprintf(fh,'%s\n',ofname);
   end
   fclose(fh);
