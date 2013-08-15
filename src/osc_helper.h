@@ -32,6 +32,7 @@
 
 int osc_set_bool_true(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
 int osc_set_float(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
+int osc_set_int32(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
 
 namespace TASCAR {
 

@@ -186,6 +186,7 @@ private:
   bool b_quit;
   double* vtime;
   double loop_time;
+  float mastergain;
 };
 
 sampler_t::sampler_t(const std::string& jname)
@@ -195,13 +196,15 @@ sampler_t::sampler_t(const std::string& jname)
     last_phase(0),
     b_quit(false),
     vtime(new double[fragsize]),
-    loop_time(0)
+    loop_time(0),
+    mastergain(0.0)
 {
   add_input_port("phase");
   add_output_port("out");
   set_prefix("/"+jname);
   add_method("/t0","f",sampler_t::osc_set_t0,this);
   add_method("/loop","f",sampler_t::osc_set_loop_time,this);
+  add_method("/gain","f",osc_set_float,&mastergain);
   add_method("/quit","",sampler_t::osc_quit,this);
 }
 
@@ -292,7 +295,7 @@ int sampler_t::process(jack_nframes_t n, const std::vector<float*>& sIn, const s
       for(uint32_t k=0;k<n;k++){
         notes[kn].process_time(vtime[k]);
         if( (notes[kn].t >= 0) && ((uint32_t)notes[kn].t < sounds[notes[kn].note_]->size()))
-          sOut[0][k] += (*sounds[notes[kn].note_])[notes[kn].t] * notes[kn].gain_ * notes[kn].fade_gain;
+          sOut[0][k] += (*sounds[notes[kn].note_])[notes[kn].t] * notes[kn].gain_ * notes[kn].fade_gain * mastergain;
       }
       //sounds[notes[kn].note_]->add_chunk(chunk_time,notes[kn].time_*samples_per_period,notes[k].gain_,out);
     }

@@ -48,6 +48,13 @@ int osc_set_float(const char *path, const char *types, lo_arg **argv, int argc, 
   return 0;
 }
 
+int osc_set_int32(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
+{
+  if( user_data && (argc == 1) && (types[0] == 'i') )
+    *(int32_t*)(user_data) = argv[0]->i;
+  return 0;
+}
+
 osc_server_t::osc_server_t(const std::string& multicast, const std::string& port,bool verbose_)
   : isactive(false),
     verbose(verbose_)

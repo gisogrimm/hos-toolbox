@@ -73,9 +73,9 @@ void hos_spokes_t::configure_axes()
 {
   for( uint8_t k=0;k<3;k++){
     // acceleration
-    mot_sap(k,5,2047);
+    mot_sap(k,5,100);
     // velocity
-    mot_sap(k,4,2047);
+    mot_sap(k,4,1800);
     // max current
     mot_sap(k,6,120);
     // standby current
