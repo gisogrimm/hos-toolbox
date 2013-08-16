@@ -24,7 +24,7 @@
     <xosc dest="osc.udp://224.1.2.3:6978/" path="/q" serverpath="/accxyz" types="fff" argmap="1" valmap="0.5,0.55"/>
   </oscserver>
   <midireceiver>
-    <osc dest="osc.udp://224.1.2.3:6978/" path="/tmcm/mv" clientchannel="0" clientparam="1" valmap="0,1200" argmap="1"/>
+    <osc dest="osc.udp://224.1.2.3:6978/" path="/tmcm/mv" clientchannel="0" clientparam="1" valmap="0,1600" argmap="1"/>
     <osc dest="osc.udp://224.1.2.3:6978/" path="/tmcm/rfs" clientchannel="0" clientparam="1" condition="0" argmap="0"/>
   </midireceiver>
 </ommo>
