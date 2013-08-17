@@ -1,3 +1,0 @@
-#!/bin/bash
-. /home/giso/Oldenburg/hoertech/mha/mha/mha_env.sh
-mha ?read:mha/house.cfg cmd=start

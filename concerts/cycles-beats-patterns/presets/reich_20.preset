@@ -1,8 +1,0 @@
-/simon/delay 0.9 0
-/simon/gain 1 2.7
-,2.7
-/simon/delay 0.855 0.1
-,13.5
-/simon/delay 0.9 0.1
-,2.7
-/simon/gain 0 2.7

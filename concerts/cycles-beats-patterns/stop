@@ -1,7 +1,0 @@
-#!/bin/bash
-send_osc osc.udp://224.1.2.3:6978/ /*/quit
-MIDI2BASH_PID=`ps |grep midi2bash|sed 's/[[:blank:]]*\([0-9]*\).*/\1/1'`
-test -z "$MIDI2BASH_PID" || kill "$MIDI2BASH_PID"
-echo cmd=quit | nc localhost 33337
-sleep 2
-killall hos_delay hos_sampler mha calfjackhost hos_scope

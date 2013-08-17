@@ -1,2 +1,0 @@
-Concert programme "beats & patterns"
-
