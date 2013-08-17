@@ -13,4 +13,7 @@ jack_connect "system:capture_4" cyclephase:2
 jack_connect "system:capture_3" cyclephase:3
 jack_connect "system:capture_2" cyclephase:4
 
+jack_connect "system:capture_9" "calf:phonoeq_in_l"
+jack_connect "system:capture_10" "calf:phonoeq_in_r"
+
 aconnect "Hammerfall DSP":0 mididings:0

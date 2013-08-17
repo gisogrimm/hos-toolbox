@@ -17,14 +17,18 @@ calfjackhost --load calf-phono.xml &
 
 hos_scope &
 
-sleep 1
+sleep 2
 
 hos_cyclephase &
 
-sleep 1
-
 # start parameter control/footswitch:
 ./midi2bash.py &
+
+sleep 1
+
+./start_mha &
+
+sleep 5
 
 # check all connections:
 ./connect
@@ -32,4 +36,3 @@ sleep 1
 # load default preset:
 ./loadpreset 40
 
-./start_mha &
