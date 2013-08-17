@@ -83,7 +83,7 @@ private:
 };
 
 osc2jack_t::osc2jack_t(const std::string& oscad,const std::vector<std::string>& names)
-  : jackc_t("osc2jack"),TASCAR::osc_server_t("","8000"),
+  : jackc_t("osc2jack"),TASCAR::osc_server_t("","8000",false),
     npar(names.size()),
     v(new float[std::max(1u,npar)]),
     bar(0),
@@ -103,12 +103,17 @@ osc2jack_t::osc2jack_t(const std::string& oscad,const std::vector<std::string>& 
   }
   vloop.resize(names.size());
   memset(matrix,0,sizeof(float)*96);
+  for(uint32_t ch=0;ch<3;ch++)
+    for(uint32_t t=0;t<16;t++){
+      matrix[ch+6*t] = 1.0;
+    }
   for(uint32_t ch=0;ch<6;ch++)
     for(uint32_t t=0;t<16;t++){
       char addr[1024];
       sprintf(addr,"/2/multitoggle/%d/%d",ch+1,t+1);
       lo_send( lo_addr, addr, "f", matrix[ch+6*t]);
       add_method(addr,"f",osc_set_float,&(matrix[ch+6*t]));
+      usleep(20000);
     }
   
 }
