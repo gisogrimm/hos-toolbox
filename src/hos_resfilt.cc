@@ -129,10 +129,10 @@ int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBu
 void cyclephase_t::run()
 {
   jackc_t::activate();
-  connect_in(0,"japa:pink",true);
-  connect_in(1,"osc2jack:/f",true);
-  connect_in(2,"osc2jack:/q",true);
-  connect_out(0,"japa:in_1",true);
+  //connect_in(0,"japa:pink",true);
+  //connect_in(1,"osc2jack:/f",true);
+  //connect_in(2,"osc2jack:/q",true);
+  //connect_out(0,"japa:in_1",true);
   while( !b_quit ){
     sleep( 1 );
   }
