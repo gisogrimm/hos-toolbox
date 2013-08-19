@@ -47,7 +47,6 @@ namespace HoSGUI {
     virtual ~scope_t();
     virtual int process(jack_nframes_t, const std::vector<float*>&, const std::vector<float*>&);
   protected:
-    //Override default signal handler:
     virtual bool on_expose_event(GdkEventExpose* event);
     bool on_timeout();
     uint32_t channels_;
@@ -101,7 +100,7 @@ scope_t::scope_t(const std::string& name,uint32_t channels,uint32_t period,uint3
     col_g[k] = 0.5+0.5*cos(k*M_PI*2.0/channels+2.0/3.0*M_PI);
     col_b[k] = 0.5+0.5*cos(k*M_PI*2.0/channels+4.0/3.0*M_PI);
   }
-  Glib::signal_timeout().connect( sigc::mem_fun(*this, &scope_t::on_timeout), 20 );
+  Glib::signal_timeout().connect( sigc::mem_fun(*this, &scope_t::on_timeout), 40 );
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
   //Connect the signal handler if it isn't already a virtual method override:
   signal_expose_event().connect(sigc::mem_fun(*this, &scope_t::on_expose_event), false);
@@ -113,38 +112,11 @@ scope_t::scope_t(const std::string& name,uint32_t channels,uint32_t period,uint3
   }
 }
 
-//void scope_t::activate()
-//{
-//  jackc_t::activate();
-//  try{
-//    connect_in(0,"phase:phase");
-//  }
-//  catch( const std::exception& e ){
-//    std::cerr << "Warning: " << e.what() << std::endl;
-//  };
-//}
-
-
-//void scope_t::deactivate()
-//{
-//  osc_server_t::deactivate();
-//  jackc_t::deactivate();
-//}
-
 scope_t::~scope_t()
 {
 //  for(unsigned int k=0;k<vCycle.size();k++)
 //    delete vCycle[k];
 }
-  
-//void scope_t::add_cycle(double x, double y, const std::string& name)
-//{
-//  std::string fmt(channels_,'f');
-//  cycle_t* ctmp(new cycle_t(x,y,channels_,name,fragsize,srate));
-//  vCycle.push_back(ctmp);
-//  add_method("/"+name,fmt.c_str(),cycle_t::osc_setval,ctmp);
-//  add_input_port(name);
-//}
 
 bool scope_t::on_expose_event(GdkEventExpose* event)
 {
@@ -212,20 +184,9 @@ int main(int argc, char** argv)
   Gtk::Main kit(argc, argv);
   Gtk::Window win;
   win.set_title("HoS oscilloscope");
-  HoSGUI::scope_t c("scope",2,600,300);
-  //c.add_cycle(0,1,"1");
-  //c.add_cycle(-0.866,-0.5,"2");
-  //c.add_cycle(0.866,-0.5,"3");
-  //c.add_cycle(0,0,"4");
-  //c.set_f0(0,116.46); // B
-  //c.set_f0(1,155.45); // e
-  //c.set_f0(2,174.49); // f#
-  //c.set_f0(3,184.86); // g
-  //c.set_f0(4,207.50); // a
-  //c.set_f0(5,276.98); // d'
+  HoSGUI::scope_t c("scope",2,300,600);
   win.add(c);
-  win.set_default_size(1200,400);
-  //win.fullscreen();
+  win.set_default_size(600,240);
   win.show_all();
   c.jackc_t::activate();
   Gtk::Main::run(win);
