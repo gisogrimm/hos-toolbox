@@ -48,6 +48,13 @@ int osc_set_float(const char *path, const char *types, lo_arg **argv, int argc, 
   return 0;
 }
 
+int osc_set_double(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
+{
+  if( user_data && (argc == 1) && (types[0] == 'f') )
+    *(double*)(user_data) = argv[0]->f;
+  return 0;
+}
+
 int osc_set_int32(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
 {
   if( user_data && (argc == 1) && (types[0] == 'i') )

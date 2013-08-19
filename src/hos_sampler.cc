@@ -170,6 +170,7 @@ public:
   void open_notes(const std::string& fname);
   void set_t0(double t0);
   void set_loop_time(double tloop){ loop_time = tloop;};
+  void set_gain(float newgain,double duration) { dgain = (newgain-mastergain)/(duration*srate);tfader = srate*duration;};
   void quit() { b_quit = true;};
   static int osc_set_t0(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   static int osc_set_loop_time(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
@@ -177,6 +178,7 @@ public:
   static int osc_addloop(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   static int osc_stoploop(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   static int osc_clearloop(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
+  static int osc_set_gain(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
 private:
   std::vector<looped_sndfile_t*> sounds;
   std::vector<std::string> soundnames;
@@ -185,8 +187,11 @@ private:
   double last_phase;
   bool b_quit;
   double* vtime;
+  float* vgain;
   double loop_time;
-  float mastergain;
+  double mastergain;
+  uint32_t tfader;
+  double dgain;
 };
 
 sampler_t::sampler_t(const std::string& jname)
@@ -196,15 +201,19 @@ sampler_t::sampler_t(const std::string& jname)
     last_phase(0),
     b_quit(false),
     vtime(new double[fragsize]),
+    vgain(new float[fragsize]),
     loop_time(0),
-    mastergain(0.0)
+    mastergain(0.0),
+    tfader(0),
+    dgain(0.0)
 {
   add_input_port("phase");
   add_output_port("out");
   set_prefix("/"+jname);
   add_method("/t0","f",sampler_t::osc_set_t0,this);
   add_method("/loop","f",sampler_t::osc_set_loop_time,this);
-  add_method("/gain","f",osc_set_float,&mastergain);
+  add_method("/gain","f",osc_set_double,&mastergain);
+  add_method("/gain","ff",osc_set_gain,this);
   add_method("/quit","",sampler_t::osc_quit,this);
 }
 
@@ -228,6 +237,14 @@ int sampler_t::osc_addloop(const char *path, const char *types, lo_arg **argv, i
 {
   if( (user_data) && (argc == 2) && (types[0]=='i') && (types[1]=='f') ){
     ((looped_sndfile_t*)user_data)->add(loop_event_t(argv[0]->i,argv[1]->f));
+  }
+  return 0;
+}
+
+int sampler_t::osc_set_gain(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
+{
+  if( (user_data) && (argc == 2) && (types[0]=='f') && (types[1]=='f') ){
+    ((sampler_t*)user_data)->set_gain(argv[0]->f,argv[1]->f);
   }
   return 0;
 }
@@ -265,16 +282,18 @@ sampler_t::~sampler_t()
   for( unsigned int k=0;k<sounds.size();k++)
     delete sounds[k];
   delete [] vtime;
+  delete [] vgain;
 }
 
 int sampler_t::process(jack_nframes_t n, const std::vector<float*>& sIn, const std::vector<float*>& sOut)
 {
+  //DEBUG(mastergain);
   for(uint32_t k=0;k<sOut.size();k++)
     memset(sOut[k],0,n*sizeof(float));
-  for(uint32_t k=0;k<sounds.size();k++){
-    wave_t wout(n,sOut[k+1]);
-    sounds[k]->loop(wout);
-  }
+  //for(uint32_t k=0;k<sounds.size();k++){
+  //  wave_t wout(n,sOut[k+1]);
+  //  sounds[k]->loop(wout);
+  //}
   float* vPhase(sIn[0]);
   for( uint32_t k=0;k<n;k++){
     double dphase(vPhase[k]-last_phase);
@@ -287,6 +306,11 @@ int sampler_t::process(jack_nframes_t n, const std::vector<float*>& sIn, const s
       current_time = 0.0;
     last_phase = vPhase[k];
     vtime[k] = current_time;
+    if( tfader ){
+      mastergain += dgain;
+      tfader--;
+    }
+    vgain[k] = mastergain;
   }
   //std::cerr << chunk_time << ",..." << std::endl;
   //  DEBUG(chunk_time);
@@ -295,7 +319,7 @@ int sampler_t::process(jack_nframes_t n, const std::vector<float*>& sIn, const s
       for(uint32_t k=0;k<n;k++){
         notes[kn].process_time(vtime[k]);
         if( (notes[kn].t >= 0) && ((uint32_t)notes[kn].t < sounds[notes[kn].note_]->size()))
-          sOut[0][k] += (*sounds[notes[kn].note_])[notes[kn].t] * notes[kn].gain_ * notes[kn].fade_gain * mastergain;
+          sOut[0][k] += (*sounds[notes[kn].note_])[notes[kn].t] * notes[kn].gain_ * notes[kn].fade_gain * vgain[k];
       }
       //sounds[notes[kn].note_]->add_chunk(chunk_time,notes[kn].time_*samples_per_period,notes[k].gain_,out);
     }
@@ -315,7 +339,7 @@ void sampler_t::open_sounds(const std::string& fname)
       looped_sndfile_t* sf(new looped_sndfile_t(fname,0));
       sounds.push_back(sf);
       soundnames.push_back(fname);
-      add_output_port(fname);
+      //add_output_port(fname);
     }
   }
 }
@@ -336,11 +360,11 @@ void sampler_t::open_notes(const std::string& fname)
 void sampler_t::run()
 {
   //DEBUG(1);
-  for(uint32_t k=0;k<sounds.size();k++){
-    add_method("/"+soundnames[k]+"/add","if",sampler_t::osc_addloop,sounds[k]);
-    add_method("/"+soundnames[k]+"/stop","",sampler_t::osc_stoploop,sounds[k]);
-    add_method("/"+soundnames[k]+"/clear","",sampler_t::osc_clearloop,sounds[k]);
-  }
+  //for(uint32_t k=0;k<sounds.size();k++){
+  //  add_method("/"+soundnames[k]+"/add","if",sampler_t::osc_addloop,sounds[k]);
+  //  add_method("/"+soundnames[k]+"/stop","",sampler_t::osc_stoploop,sounds[k]);
+  //  add_method("/"+soundnames[k]+"/clear","",sampler_t::osc_clearloop,sounds[k]);
+  //}
   //DEBUG(1);
   jackc_t::activate();
   //DEBUG(1);
