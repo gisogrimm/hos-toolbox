@@ -19,8 +19,10 @@ public:
   void mv(int32_t p);
   void relais_on();
   void relais_off();
+  void relais(uint8_t k,bool state);
   static int osc_move_to(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   static int osc_rfs(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
+  static int osc_relais(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
 private:
   bool b_quit;
 };
@@ -39,11 +41,23 @@ int hos_spokes_t::osc_rfs(const char *path, const char *types, lo_arg **argv, in
   return 0;
 }
 
+int hos_spokes_t::osc_relais(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
+{
+  if( user_data && (argc==2) && (types[0]=='i') && (types[1]=='i') )
+    ((hos_spokes_t*)user_data)->relais(argv[0]->i,argv[1]->i);
+  return 0;
+}
+
 void hos_spokes_t::mv(int32_t p)
 {
   mot_moveto(0,p);
   // standby current
-  mot_sap(0,7,std::max(0.0,std::min(0.15*p,90.0)));
+  mot_sap(0,7,std::max(0.0,std::min(0.15*p,100.0)));
+}
+
+void hos_spokes_t::relais(uint8_t k,bool state)
+{
+  write_cmd(14,k,2,state);
 }
 
 void hos_spokes_t::relais_on()
@@ -66,6 +80,7 @@ hos_spokes_t::hos_spokes_t(const std::string& devname)
   configure_axes();
   add_method("/mv","i",&hos_spokes_t::osc_move_to,this);
   add_method("/rfs","",&hos_spokes_t::osc_rfs,this);
+  add_method("/relais","ii",&hos_spokes_t::osc_relais,this);
   add_bool_true("/quit",&b_quit);
 }
 
@@ -79,7 +94,7 @@ void hos_spokes_t::configure_axes()
     // max current
     mot_sap(k,6,120);
     // standby current
-    mot_sap(k,7,40);
+    mot_sap(k,7,10);
     // micro steps:
     mot_sap(k,140,5);
   }

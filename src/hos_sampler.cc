@@ -7,6 +7,7 @@
 #include <iostream>
 #include "defs.h"
 #include <math.h>
+#include <getopt.h>
 
 using namespace HoS;
 
@@ -162,7 +163,7 @@ note_event_t::note_event_t()
 
 class sampler_t : public jackc_t, public TASCAR::osc_server_t {
 public:
-  sampler_t(const std::string& jname= "sampler");
+  sampler_t(const std::string& jname, const std::string& announce);
   ~sampler_t();
   void run();
   int process(jack_nframes_t n, const std::vector<float*>& sIn, const std::vector<float*>& sOut);
@@ -192,9 +193,12 @@ private:
   double mastergain;
   uint32_t tfader;
   double dgain;
+  lo_address lo_addr;
+  bool b_announce;
+  int32_t barno;
 };
 
-sampler_t::sampler_t(const std::string& jname)
+sampler_t::sampler_t(const std::string& jname,const std::string& announce)
   : jackc_t(jname),
     osc_server_t("224.1.2.3","6978"),
     current_time(0),
@@ -205,7 +209,9 @@ sampler_t::sampler_t(const std::string& jname)
     loop_time(0),
     mastergain(0.0),
     tfader(0),
-    dgain(0.0)
+    dgain(0.0),
+    b_announce(!announce.empty()),
+    barno(-100)
 {
   add_input_port("phase");
   add_output_port("out");
@@ -215,6 +221,8 @@ sampler_t::sampler_t(const std::string& jname)
   add_method("/gain","f",osc_set_double,&mastergain);
   add_method("/gain","ff",osc_set_gain,this);
   add_method("/quit","",sampler_t::osc_quit,this);
+  if( b_announce )
+    lo_addr = lo_address_new_from_url( announce.c_str() );
 }
 
 int sampler_t::osc_set_t0(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
@@ -306,6 +314,12 @@ int sampler_t::process(jack_nframes_t n, const std::vector<float*>& sIn, const s
       current_time = 0.0;
     last_phase = vPhase[k];
     vtime[k] = current_time;
+    int32_t newbarno(current_time);
+    if( newbarno != barno ){
+      if( b_announce )
+        lo_send(lo_addr,"/bar","i",newbarno);
+      barno = newbarno;
+    }
     if( tfader ){
       mastergain += dgain;
       tfader--;
@@ -383,18 +397,56 @@ void sampler_t::run()
   jackc_t::deactivate();
 }
 
+void usage(struct option * opt)
+{
+  std::cout << "Usage:\n\nhos_sampler [options] soundfont notesfile [ jackname ]\n\nOptions:\n\n";
+  while( opt->name ){
+    std::cout << "  -" << (char)(opt->val) << " " << (opt->has_arg?"#":"") <<
+      "\n  --" << opt->name << (opt->has_arg?"=#":"") << "\n\n";
+    opt++;
+  }
+}
+
 int main(int argc,char** argv)
 {
-  if( argc < 3 )
-    throw TASCAR::ErrMsg(std::string("Usage: ")+argv[0]+" soundfont notesfile");
   std::string jname("sampler");
-  if( argc > 3 )
-    jname = argv[3];
-  sampler_t s(jname);
+  std::string soundfont("");
+  std::string notefile("");
+  std::string announce("");
+  const char *options = "a:h";
+  struct option long_options[] = { 
+    { "announce",   1, 0, 'a' },
+    { "help",       0, 0, 'h' },
+    { 0, 0, 0, 0 }
+  };
+  int opt(0);
+  int option_index(0);
+  while( (opt = getopt_long(argc, argv, options,
+                            long_options, &option_index)) != -1){
+    switch(opt){
+    case 'a':
+      announce = optarg;
+      break;
+    case 'h':
+      usage(long_options);
+      return -1;
+    }
+  }
+  if( optind < argc )
+    soundfont = argv[optind++];
+  if( optind < argc )
+    notefile = argv[optind++];
+  if( optind < argc )
+    jname = argv[optind++];
+  if( notefile.empty() )
+    throw TASCAR::ErrMsg("notes filename is empty.");
+  if( soundfont.empty() )
+    throw TASCAR::ErrMsg("soundfont filename is empty.");
+  sampler_t s(jname,announce);
   //DEBUG(1);
-  s.open_sounds(argv[1]);
+  s.open_sounds(soundfont);
   //DEBUG(1);
-  s.open_notes(argv[2]);
+  s.open_notes(notefile);
   //DEBUG(1);
   s.run();
 }
