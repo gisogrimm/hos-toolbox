@@ -1,6 +1,6 @@
 PREFIX = /usr/local
 
-BINFILES = ommo_bridge hos_sphere_amb30 hos_sendosc hos_delay hos_cyclephase hos_visualize hos_visualize_sphere hos_cyclephasegui hos_sampler hos_scope hos_osc2jack hos_resfilt hos_tmcm
+BINFILES = ommo_bridge hos_sphere_amb30 hos_sendosc hos_delay hos_cyclephase hos_visualize hos_visualize_sphere hos_cyclephasegui hos_sampler hos_scope hos_osc2jack hos_resfilt hos_tmcm hos_osc_marais hos_osc_house
 
 
 #	hos_sphere_amb30 \

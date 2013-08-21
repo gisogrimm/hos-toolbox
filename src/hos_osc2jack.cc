@@ -157,8 +157,7 @@ void osc2jack_t::upload_touchosc()
       char addr[1024];
       sprintf(addr,"/2/multitoggle/%d/%d",ch+1,t+1);
       lo_send( lo_addr, addr, "f", matrix[ch+6*t]);
-      add_method(addr,"f",osc_set_float,&(matrix[ch+6*t]));
-      usleep(20000);
+      usleep(5000);
     }
   lo_send( lo_addr, "/4/toggle1", "f", xy1 );
   lo_send( lo_addr, "/4/toggle2", "f", xy2 );

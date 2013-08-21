@@ -117,8 +117,8 @@ int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBu
   float* v_f(inBuffer[1]);
   float* v_q(inBuffer[2]);
   float* v_y(outBuffer[0]);
-  flt_pre.update(f_min*pow(f_max/f_min,limit(v_f[0],0,1)),limit(0.5*v_q[0],0,0.999));
-  flt_post.update(f_min*pow(f_max/f_min,limit(v_f[0],0,1)),limit(v_q[0],0,0.999));
+  flt_pre.update(f_min*pow(f_max/f_min,limit(v_f[0],0,1)),limit(0.5*v_q[0],0,0.99));
+  flt_post.update(f_min*pow(f_max/f_min,limit(v_f[0],0,1)),limit(v_q[0],0,0.99));
   drgain = (v_q[0]-rgain)/nframes;
   for (jack_nframes_t i = 0; i < nframes; ++i){
     v_y[i] = flt_post.filter(flt_pre.filter(v_x[i])*(1.0-(rgain+=drgain)*randd()));
