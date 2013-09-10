@@ -65,6 +65,13 @@ public:
   int process(jack_nframes_t nframes,const std::vector<float*>& inBuffer,const std::vector<float*>& outBuffer);
   static int osc_reload(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   static int osc_select(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
+  static int osc_set_gain0(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
+  static int osc_set_gain1(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
+  static int osc_set_gain2(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
+  static int osc_set_gain3(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
+  static int osc_set_gain4(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
+  static int osc_set_gain5(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
+  void set_gain(float newgain,double duration,uint32_t k) { dgain[k] = (newgain-gain[k])/(duration*srate);tfader[k] = srate*duration;};
   void reload();
   void select(uint32_t p);
 private:
@@ -79,7 +86,59 @@ private:
   float v_q1[512];
   float v_f2[512];
   float v_q2[512];
+  double gain[6];
+  double dgain[6];
+  uint32_t tfader[6];
 };
+
+int osc_house_t::osc_set_gain0(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
+{
+  if( (user_data) && (argc == 2) && (types[0]=='f') && (types[1]=='f') ){
+    ((osc_house_t*)user_data)->set_gain(argv[0]->f,argv[1]->f,0);
+  }
+  return 0;
+}
+
+int osc_house_t::osc_set_gain1(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
+{
+  if( (user_data) && (argc == 2) && (types[0]=='f') && (types[1]=='f') ){
+    ((osc_house_t*)user_data)->set_gain(argv[0]->f,argv[1]->f,1);
+  }
+  return 0;
+}
+
+int osc_house_t::osc_set_gain2(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
+{
+  if( (user_data) && (argc == 2) && (types[0]=='f') && (types[1]=='f') ){
+    ((osc_house_t*)user_data)->set_gain(argv[0]->f,argv[1]->f,2);
+  }
+  return 0;
+}
+
+int osc_house_t::osc_set_gain3(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
+{
+  if( (user_data) && (argc == 2) && (types[0]=='f') && (types[1]=='f') ){
+    ((osc_house_t*)user_data)->set_gain(argv[0]->f,argv[1]->f,3);
+  }
+  return 0;
+}
+
+int osc_house_t::osc_set_gain4(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
+{
+  if( (user_data) && (argc == 2) && (types[0]=='f') && (types[1]=='f') ){
+    ((osc_house_t*)user_data)->set_gain(argv[0]->f,argv[1]->f,4);
+  }
+  return 0;
+}
+
+int osc_house_t::osc_set_gain5(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
+{
+  if( (user_data) && (argc == 2) && (types[0]=='f') && (types[1]=='f') ){
+    ((osc_house_t*)user_data)->set_gain(argv[0]->f,argv[1]->f,5);
+  }
+  return 0;
+}
+
 
 void osc_house_t::select(uint32_t p)
 {
@@ -113,6 +172,11 @@ osc_house_t::osc_house_t(const std::vector<std::string>& names,const std::string
     v_f2[k] = v_f1[k];
     v_q2[k] = v_q1[k];
   }
+  for(uint32_t k=0;k<6;k++){
+    gain[k] = 1.0;
+    dgain[k] = 0.0;
+    tfader[k] = 0;
+  }
   std::string prefix("/"+jackname+"/");
   add_input_port("time");
   add_output_port("cv_bass");
@@ -127,6 +191,18 @@ osc_house_t::osc_house_t(const std::vector<std::string>& names,const std::string
   add_method(prefix+"quit","",osc_set_bool_true,&b_quit);
   add_method(prefix+"reload","",osc_reload,this);
   add_method(prefix+"select","i",osc_select,this);
+  add_method(prefix+"gain1","f",osc_set_double,&(gain[0]));
+  add_method(prefix+"gain1","ff",osc_house_t::osc_set_gain0,this);
+  add_method(prefix+"gain2","f",osc_set_double,&(gain[1]));
+  add_method(prefix+"gain2","ff",osc_house_t::osc_set_gain1,this);
+  add_method(prefix+"gain3","f",osc_set_double,&(gain[2]));
+  add_method(prefix+"gain3","ff",osc_house_t::osc_set_gain2,this);
+  add_method(prefix+"gain4","f",osc_set_double,&(gain[3]));
+  add_method(prefix+"gain4","ff",osc_house_t::osc_set_gain3,this);
+  add_method(prefix+"gain5","f",osc_set_double,&(gain[4]));
+  add_method(prefix+"gain5","ff",osc_house_t::osc_set_gain4,this);
+  add_method(prefix+"gain6","f",osc_set_double,&(gain[5]));
+  add_method(prefix+"gain6","ff",osc_house_t::osc_set_gain5,this);
 }
 
 int osc_house_t::osc_reload(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
@@ -170,6 +246,11 @@ void osc_house_t::run()
 int osc_house_t::process(jack_nframes_t nframes,const std::vector<float*>& inBuffer,const std::vector<float*>& outBuffer)
 {
   for(uint32_t k=0;k<nframes;k++){
+    for(uint32_t ch=0;ch<6;ch++)
+      if( tfader[ch] ){
+        gain[ch] += dgain[ch];
+        tfader[ch]--;
+      }
     float time(0.25*inBuffer[0][k]);
     int32_t nbar(time);
     float phase(time-nbar);
@@ -194,11 +275,11 @@ int osc_house_t::process(jack_nframes_t nframes,const std::vector<float*>& inBuf
     // ("f2");
     // ("q2");
     for(uint32_t ch=0;ch<5;ch++)
-      outBuffer[ch][k] = current[ch];
+      outBuffer[ch][k] = current[ch]*gain[ch];
     outBuffer[5][k] = v_f1[iphase]*current[5];
-    outBuffer[6][k] = v_q1[iphase]*current[5];
+    outBuffer[6][k] = v_q1[iphase]*current[5]*gain[5];
     outBuffer[7][k] = v_f2[iphase]*current[5];
-    outBuffer[8][k] = v_q2[iphase]*current[5];
+    outBuffer[8][k] = v_q2[iphase]*current[5]*gain[5];
   }
   return 0;
 }

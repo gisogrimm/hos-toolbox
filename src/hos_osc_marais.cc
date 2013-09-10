@@ -129,7 +129,7 @@ int main(int argc,char** argv)
   signal(SIGTERM, &sighandler);
   signal(SIGINT, &sighandler);
   std::string jackname("osc_marais");
-  std::string touchosc("osc.udp://192.168.178.114:9000/");
+  std::string touchosc("osc.udp://192.168.178.31:9000/");
   std::string serverport("8000");
   std::string serveraddr("");
   const char *options = "d:hn:p:a:";

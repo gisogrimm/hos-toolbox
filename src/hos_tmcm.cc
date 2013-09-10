@@ -52,7 +52,7 @@ void hos_spokes_t::mv(int32_t p)
 {
   mot_moveto(0,p);
   // standby current
-  mot_sap(0,7,std::max(0.0,std::min(0.15*p,100.0)));
+  mot_sap(0,7,std::max(40.0,std::min(0.15*(p-300.0),100.0)));
 }
 
 void hos_spokes_t::relais(uint8_t k,bool state)
@@ -92,7 +92,7 @@ void hos_spokes_t::configure_axes()
     // velocity
     mot_sap(k,4,1800);
     // max current
-    mot_sap(k,6,120);
+    mot_sap(k,6,160);
     // standby current
     mot_sap(k,7,10);
     // micro steps:
@@ -103,10 +103,15 @@ void hos_spokes_t::configure_axes()
 void hos_spokes_t::rfs()
 {
   // reduce max current:
+  mot_sap(0,6,104);
+  // rotate left for 200 ms:
+  mot_rotate(0,120,left);
+  usleep(100000);
+  // reduce max current:
   mot_sap(0,6,44);
   // rotate left for 200 ms:
   mot_rotate(0,80,left);
-  usleep(200000);
+  usleep(100000);
   mot_rotate(0,0,left);
   // reset current position:
   mot_sap(0,1,0);

@@ -343,6 +343,12 @@ osc_destination_t* xml_oscdest_alloc(xmlpp::Element* TargetElem)
 
 int main(int argc, char** argv)
 {
+  std::string cfgfile;
+  if( argc > 1 )
+    cfgfile = argv[1];
+  std::string ctlport("9999");
+  if( argc > 2 )
+    ctlport = argv[2];
   TASCAR::osc_server_t controller("","9999");
   bool b_exit(false);
   controller.add_method("/quit","",exit_handler,&b_exit);
@@ -351,9 +357,6 @@ int main(int argc, char** argv)
   serverlist_t serverlist;
   destlist_t destlist;
   midilist_t midilist;
-  std::string cfgfile;
-  if( argc > 1 )
-    cfgfile = argv[1];
   xmlpp::DomParser parser(cfgfile);
   xmlpp::Element* root = parser.get_document()->get_root_node();
   if( root ){
