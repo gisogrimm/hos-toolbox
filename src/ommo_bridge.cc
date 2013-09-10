@@ -349,7 +349,7 @@ int main(int argc, char** argv)
   std::string ctlport("9999");
   if( argc > 2 )
     ctlport = argv[2];
-  TASCAR::osc_server_t controller("","9999");
+  TASCAR::osc_server_t controller("",ctlport);
   bool b_exit(false);
   controller.add_method("/quit","",exit_handler,&b_exit);
   controller.activate();
