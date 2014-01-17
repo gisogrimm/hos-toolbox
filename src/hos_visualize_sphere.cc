@@ -63,8 +63,8 @@ int main(int argc, char** argv)
   lo_address addr;
   addr = lo_address_new_from_url("osc.udp://localhost:9999/");
   lo_address_set_ttl( addr, 1 );
-  pAddr.push_back("/pos/claire");
-  pAddr.push_back("/pos/laura");
+  pAddr.push_back("/pos/hille");
+  pAddr.push_back("/pos/marthe");
   pAddr.push_back("/pos/claas");
   pAddr.push_back("/pos/julia");
   pAddr.push_back("/pos/giso");
@@ -72,8 +72,8 @@ int main(int argc, char** argv)
   visualize_t c(pAddr,lost);
   c.set_rotate( r*M_PI/180.0 );
   win.add(c);
-  //hbox.add(m_claire);
-  //hbox.add(m_laura);
+  //hbox.add(m_hille);
+  //hbox.add(m_marthe);
   //hbox.add(m_claas);
   //hbox.add(m_julia);
   //hbox.add(m_giso);
