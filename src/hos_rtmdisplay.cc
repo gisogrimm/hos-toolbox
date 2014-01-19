@@ -113,9 +113,9 @@ double graphical_note_t::xmax(Cairo::RefPtr<Cairo::Context> cr)
   if( sym_flag.size() ){
     cr->get_text_extents(sym_flag,extents);
     if( y > 0 )
-      x += extents.x_bearing+extents.width;
-    else
       x = std::max(x,x0+extents.x_bearing+extents.width);
+    else
+      x += extents.x_bearing+extents.width;
   }
   return x;
 }
@@ -174,31 +174,24 @@ public:
   void set_coords(double width,double y);
   clef_t clef;
   int key;
-  //double time;
-  //double timescale;
   void draw(Cairo::RefPtr<Cairo::Context> cr);
-  //void pitched_text(Cairo::RefPtr<Cairo::Context> cr,int pitch,double x,const std::string& t);
-  //void draw_note(Cairo::RefPtr<Cairo::Context> cr,const note_t&);
   void draw_keychange(Cairo::RefPtr<Cairo::Context> cr,int oldkey,int newkey,double y);
   void draw_music(Cairo::RefPtr<Cairo::Context> cr,double time,double x);
   double left_space(Cairo::RefPtr<Cairo::Context> cr,double time);
   double right_space(Cairo::RefPtr<Cairo::Context> cr,double time);
-  //void set_time(double t);
   void add_note(note_t n);
   void clean_music(double t0);
 private:
   double x_l;
   double x_r;
   double y_0;
-  //double history;
   std::map<double,graphical_note_t> notes;
 };
 
 staff_t::staff_t()
-  : clef(Symbols::alto),key(0),//time(0),//timescale(60),
-    x_l(-10),x_r(10),y_0(0)//,history(1.2)
+  : clef(Symbols::alto),key(0),
+    x_l(-10),x_r(10),y_0(0)
 {
-  //notes.resize(1024);
 }
 
 void staff_t::draw_music(Cairo::RefPtr<Cairo::Context> cr,double time,double x)
@@ -230,40 +223,10 @@ void staff_t::clean_music(double t0)
     notes.erase(notes.begin());
 }
 
-//void staff_t::set_time(double t)
-//{
-//  time = t;
-//}
-
 void staff_t::add_note(note_t n)
 {
   notes[n.time] = graphical_note_t(n,clef,key);
 }
-
-//void staff_t::pitched_text(Cairo::RefPtr<Cairo::Context> cr,int pitch,double x, const std::string& t)
-//{
-//  graphical_note_t gp(pitch,clef,key);
-//  cr->move_to(x,-(y_0+gp.y));
-//  cr->show_text(t);
-//  double lx(x-1);
-//  if( gp.alteration != 0 ){
-//    cr->move_to(x-2.4,-(y_0+gp.y));
-//    cr->show_text(Symbols::alteration[gp.alteration+2]);
-//  }
-//  cr->save();
-//  cr->set_line_width(0.4);
-//  for(int yl=6;yl<=gp.y;yl+=2){
-//    cr->move_to(lx,-(y_0+yl));
-//    cr->line_to(x+4.5,-(y_0+yl));
-//  }
-//  for(int yl=-6;yl>=gp.y;yl-=2){
-//    cr->move_to(lx,-(y_0+yl));
-//    cr->line_to(x+4.5,-(y_0+yl));
-//  }
-//  cr->stroke();
-//  cr->restore();
-//}
-
 
 void staff_t::draw_keychange(Cairo::RefPtr<Cairo::Context> cr,int oldkey,int newkey,double y)
 {
@@ -272,7 +235,7 @@ void staff_t::draw_keychange(Cairo::RefPtr<Cairo::Context> cr,int oldkey,int new
 void staff_t::set_coords(double width,double y)
 {
   x_l = -0.5*width;
-  x_r = 0.5*width;
+  x_r = 0.6*width;
   y_0 = y;
 }
 
@@ -284,13 +247,6 @@ void staff_t::draw(Cairo::RefPtr<Cairo::Context> cr)
   }
   cr->stroke();
   clef.draw_full(cr,x_l,y_0);
-  //draw_keychange(cr,0,key,y_0);
-  //std::cout << "time=" << time << std::endl;
-  //for( unsigned int k=0;k<notes.size();k++){
-  //  if( (notes[k].time > time-history) && (notes[k].time <= time+history+0.1) ){
-  //    notes[k].draw(cr,timescale*(notes[k].time-time),y_0);
-  //  }
-  //}
 }
 
 class score_t : public Gtk::DrawingArea, public TASCAR::osc_server_t
@@ -314,6 +270,8 @@ protected:
   double time;
   double x_left;
   double smoothed_tpos;
+  double smoothed_tempo;
+  double prev_tpos;
 };
 
 int score_t::set_time(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
@@ -333,8 +291,6 @@ int score_t::add_note(const char *path, const char *types, lo_arg **argv, int ar
 void score_t::set_time(double t)
 {
   time = t;
-  //for(unsigned int k=0;k<staves.size();k++)
-  //  staves[k].set_time(t);
 }
 
 void score_t::add_note(unsigned int voice,int pitch,unsigned int length,double time)
@@ -351,7 +307,7 @@ void score_t::add_note(unsigned int voice,int pitch,unsigned int length,double t
 }
 
 score_t::score_t()
-  : TASCAR::osc_server_t("239.255.1.7","9877"),timescale(30),history(1.2),time(0),x_left(-89),smoothed_tpos(0)
+  : TASCAR::osc_server_t("239.255.1.7","9877"),timescale(30),history(1.2),time(0),x_left(-85),smoothed_tpos(0),smoothed_tempo(0),prev_tpos(0)
 {
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &score_t::on_timeout), 20 );
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
@@ -360,7 +316,7 @@ score_t::score_t()
 #endif //GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
   staves.resize(5);
   for(unsigned int k=0;k<staves.size();k++){
-    staves[k].set_coords(-2*x_left+10,-20.0*(k-0.5*(staves.size()-1.0)));
+    staves[k].set_coords(-2*x_left+18,-20.0*(k-0.5*(staves.size()-1.0)));
     staves[k].key = 0;
   }
   staves[0].clef = Symbols::treble;
@@ -397,10 +353,33 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
   double tpos(0);
   if( xwidth.size())
     tpos = xwidth.begin()->first;
+  if( smoothed_tpos == 0 )
+    smoothed_tpos = tpos;
+  if( prev_tpos == 0 )
+    prev_tpos = tpos+history-time;
   //double xpos(x_left+(tpos-time+history)*timescale);
-  smoothed_tpos = 0.99*smoothed_tpos + 0.01*(tpos-time);
-  double xpos(x_left+(smoothed_tpos+history)*timescale);
+  //smoothed_tempo = 0.99*smoothed_tempo + 0.01*(tpos-prev_tpos);
+  //smoothed_tpos += smoothed_tempo;
+  //smoothed_tpos = 0.999*smoothed_tpos + 0.001*tpos;
+  //DEBUG(smoothed_tempo);
+  //DEBUG(smoothed_tpos);
+  //DEBUG(tpos);
+  smoothed_tempo = 0.99*smoothed_tempo + 0.01*(tpos+history-time - prev_tpos);
+  prev_tpos = tpos+history-time;
+  smoothed_tpos += smoothed_tempo;
+  DEBUG(smoothed_tempo);
+  //smoothed_tpos = 0.99*smoothed_tpos + 0.01*tpos;
+  //double xpos(x_left+(tpos-time+0.75*history)*timescale+0.25*history*smoothed_tempo);
+  //double xpos(x_left+(smoothed_tpos+history-time)*timescale);
+  double xpos(x_left+(tpos+history-time)*timescale);
+  //smoothed_tempo = 0.99*smoothed_tempo + 0.01*xpos;
+  //xpos = smoothed_tempo;
+  //double xpos(x_left+(tpos-time+history)*smoothed_tempo);
   //double xpos(x_left);
+  double xpos0(xpos);
+  double tpos0(tpos);
+  double xpos1(xpos);
+  double tpos1(tpos);
   for(std::map<double,double>::iterator xp=xwidth.begin();xp!=xwidth.end();++xp){
     double lspace(0);
     double rspace(0);
@@ -413,7 +392,22 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
       staff->draw_music(cr,xp->first,xpos);
     xpos += rspace;
     tpos = xp->first;
+    if( tpos-tpos0 <= 0.25 ){
+      xpos1 = xpos;
+      tpos1 = tpos;
+    }
   }
+  xpos0 = xpos1 - xpos0;
+  tpos0 = tpos1 - tpos0;
+  if( tpos0 > 0 ){
+    xpos0 = xpos0/tpos0;
+    //smoothed_tempo = 0.99*smoothed_tempo + 0.01*xpos0;
+  }
+  //smoothed_tempo = xpos0;
+  //DEBUG(xpos0);
+  //DEBUG(smoothed_tempo);
+  //if( xwidth.size())
+  //prev_tpos = xwidth.begin()->first;
 }
 
 bool score_t::on_expose_event(GdkEventExpose* event)

@@ -19,7 +19,7 @@ int main(int argc, char** argv)
     time += 0.005;
     lo_send(lo_addr,"/time","f",time);
     for(unsigned int k=0;k<5;k++){
-      if( n[k].end_time() <= time+2.0 ){
+      if( n[k].end_time() <= time+1.0 ){
         n[k].time = n[k].end_time();
         n[k].length = 7.0*rand()/RAND_MAX;
         n[k].pitch += (12.0*rand()/RAND_MAX-6.0);
