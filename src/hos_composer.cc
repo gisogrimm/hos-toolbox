@@ -14,6 +14,7 @@ int main(int argc, char** argv)
     n[k].time = 0;
   }
   int c_pitch[5] = {11,11,0,0,-11};
+  lo_send(lo_addr,"/clear","");
   while(true){
     usleep(20000);
     time += 0.005;

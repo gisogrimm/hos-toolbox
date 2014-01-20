@@ -180,11 +180,14 @@ public:
   double left_space(Cairo::RefPtr<Cairo::Context> cr,double time);
   double right_space(Cairo::RefPtr<Cairo::Context> cr,double time);
   void add_note(note_t n);
-  void clean_music(double t0);
+  void clear_music(double t0);
+  void clear_all();
 private:
   double x_l;
   double x_r;
+public:
   double y_0;
+private:
   std::map<double,graphical_note_t> notes;
 };
 
@@ -217,7 +220,12 @@ double staff_t::right_space(Cairo::RefPtr<Cairo::Context> cr,double time)
   return 0;
 }
 
-void staff_t::clean_music(double t0)
+void staff_t::clear_all()
+{
+  notes.clear();
+}
+
+void staff_t::clear_music(double t0)
 {
   while( notes.size() && (notes.begin()->first < t0) )
     notes.erase(notes.begin());
@@ -256,7 +264,9 @@ public:
   virtual ~score_t();
   static int set_time(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   static int add_note(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
+  static int clear_all(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   void set_time(double t);
+  void clear_all();
   void add_note(unsigned int voice,int pitch,unsigned int length,double time);
   void draw(Cairo::RefPtr<Cairo::Context> cr);
 protected:
@@ -270,10 +280,7 @@ protected:
   double time;
   double x_left;
   double prev_tpos;
-  double prev_xpos;
-  double xshift_rate;
   double xshift;
-  unsigned int frame_cnt;
 };
 
 int score_t::set_time(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
@@ -290,9 +297,22 @@ int score_t::add_note(const char *path, const char *types, lo_arg **argv, int ar
   return 0;
 }
 
+int score_t::clear_all(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
+{
+  if( user_data  )
+    ((score_t*)user_data)->clear_all();
+  return 0;
+}
+
 void score_t::set_time(double t)
 {
   time = t;
+}
+
+void score_t::clear_all()
+{
+  for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff)
+    staff->clear_all();
 }
 
 void score_t::add_note(unsigned int voice,int pitch,unsigned int length,double time)
@@ -309,12 +329,11 @@ void score_t::add_note(unsigned int voice,int pitch,unsigned int length,double t
 }
 
 score_t::score_t()
-  : TASCAR::osc_server_t("239.255.1.7","9877"),timescale(30),history(1.2),time(0),x_left(-85),prev_tpos(0),prev_xpos(1),xshift_rate(0),xshift(0),frame_cnt(0)
+  : TASCAR::osc_server_t("239.255.1.7","9877"),timescale(30),history(1.2),time(0),x_left(-85),prev_tpos(0),xshift(0)
 {
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &score_t::on_timeout), 20 );
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
-  //Connect the signal handler if it isn't already a virtual method override:
-  signal_expose_event().connect(sigc::mem_fun(*this, &score_t::on_expose_event), false);
+  //Connect the signal handler if it isn't already a virtual method override:  signal_expose_event().connect(sigc::mem_fun(*this, &score_t::on_expose_event), false);
 #endif //GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
   staves.resize(5);
   for(unsigned int k=0;k<staves.size();k++){
@@ -323,10 +342,11 @@ score_t::score_t()
   }
   staves[0].clef = Symbols::treble;
   staves[1].clef = Symbols::treble;
-  staves[3].clef = Symbols::tenor;
+  //staves[3].clef = Symbols::tenor;
   staves[4].clef = Symbols::bass;
   add_method("/time","f",score_t::set_time,this);
   add_method("/note","iiif",score_t::add_note,this);
+  add_method("/clear","",score_t::clear_all,this);
   osc_server_t::activate();
 }
 
@@ -346,8 +366,14 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
   while( xwidth.size() && (xwidth.begin()->first < t0) )
     xwidth.erase(xwidth.begin());
   for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff)
-    staff->clean_music(t0);
+    staff->clear_music(t0);
   // process graphical timing positions:
+  //cr->save();
+  //cr->set_source_rgb(0.5, 0, 0);
+  //cr->move_to(x_left+xshift,staves.begin()->y_0);
+  //cr->line_to(x_left+xshift,staves.rbegin()->y_0);
+  //cr->stroke();
+  //cr->restore();
   // draw empty staff:
   for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff)
     staff->draw(cr);
@@ -355,19 +381,11 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
   double tpos(0);
   if( xwidth.size())
     tpos = xwidth.begin()->first;
-  if( tpos != prev_tpos ){
-    DEBUG(tpos-prev_tpos);
-    DEBUG(prev_xpos);
-    DEBUG(prev_xpos/(tpos-prev_tpos));
-    if( tpos-prev_tpos > 0 ){
-      xshift_rate = prev_xpos/(tpos-prev_tpos);
-      xshift = prev_xpos;
-    }
+  if( (tpos != prev_tpos) && (prev_tpos != 0) ){
+    xshift = xwidth[tpos];
   }
-  xshift -= xshift_rate;
-  xshift = std::max(xshift,0.0);
-  xshift = 0;
-  double xpos(x_left);
+  xshift -= 0.03*xshift;
+  double xpos(0);
   for(std::map<double,double>::iterator xp=xwidth.begin();xp!=xwidth.end();++xp){
     double lspace(0);
     double rspace(0);
@@ -377,11 +395,11 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
     }
     xpos += lspace + (xp->first-tpos)*timescale;
     for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff)
-      staff->draw_music(cr,xp->first,xpos+xshift);
+      staff->draw_music(cr,xp->first,xpos+xshift+x_left);
+    xp->second = xpos+xshift-lspace;
     xpos += rspace;
     if( xp == xwidth.begin() ){
       prev_tpos = tpos;
-      prev_xpos = xpos-x_left;
     }
     tpos = xp->first;
   }
