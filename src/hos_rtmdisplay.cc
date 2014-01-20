@@ -269,9 +269,11 @@ protected:
   double history;
   double time;
   double x_left;
-  double smoothed_tpos;
-  double smoothed_tempo;
   double prev_tpos;
+  double prev_xpos;
+  double xshift_rate;
+  double xshift;
+  unsigned int frame_cnt;
 };
 
 int score_t::set_time(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
@@ -307,7 +309,7 @@ void score_t::add_note(unsigned int voice,int pitch,unsigned int length,double t
 }
 
 score_t::score_t()
-  : TASCAR::osc_server_t("239.255.1.7","9877"),timescale(30),history(1.2),time(0),x_left(-85),smoothed_tpos(0),smoothed_tempo(0),prev_tpos(0)
+  : TASCAR::osc_server_t("239.255.1.7","9877"),timescale(30),history(1.2),time(0),x_left(-85),prev_tpos(0),prev_xpos(1),xshift_rate(0),xshift(0),frame_cnt(0)
 {
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &score_t::on_timeout), 20 );
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
@@ -353,33 +355,19 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
   double tpos(0);
   if( xwidth.size())
     tpos = xwidth.begin()->first;
-  if( smoothed_tpos == 0 )
-    smoothed_tpos = tpos;
-  if( prev_tpos == 0 )
-    prev_tpos = tpos+history-time;
-  //double xpos(x_left+(tpos-time+history)*timescale);
-  //smoothed_tempo = 0.99*smoothed_tempo + 0.01*(tpos-prev_tpos);
-  //smoothed_tpos += smoothed_tempo;
-  //smoothed_tpos = 0.999*smoothed_tpos + 0.001*tpos;
-  //DEBUG(smoothed_tempo);
-  //DEBUG(smoothed_tpos);
-  //DEBUG(tpos);
-  smoothed_tempo = 0.99*smoothed_tempo + 0.01*(tpos+history-time - prev_tpos);
-  prev_tpos = tpos+history-time;
-  smoothed_tpos += smoothed_tempo;
-  DEBUG(smoothed_tempo);
-  //smoothed_tpos = 0.99*smoothed_tpos + 0.01*tpos;
-  //double xpos(x_left+(tpos-time+0.75*history)*timescale+0.25*history*smoothed_tempo);
-  //double xpos(x_left+(smoothed_tpos+history-time)*timescale);
-  double xpos(x_left+(tpos+history-time)*timescale);
-  //smoothed_tempo = 0.99*smoothed_tempo + 0.01*xpos;
-  //xpos = smoothed_tempo;
-  //double xpos(x_left+(tpos-time+history)*smoothed_tempo);
-  //double xpos(x_left);
-  double xpos0(xpos);
-  double tpos0(tpos);
-  double xpos1(xpos);
-  double tpos1(tpos);
+  if( tpos != prev_tpos ){
+    DEBUG(tpos-prev_tpos);
+    DEBUG(prev_xpos);
+    DEBUG(prev_xpos/(tpos-prev_tpos));
+    if( tpos-prev_tpos > 0 ){
+      xshift_rate = prev_xpos/(tpos-prev_tpos);
+      xshift = prev_xpos;
+    }
+  }
+  xshift -= xshift_rate;
+  xshift = std::max(xshift,0.0);
+  xshift = 0;
+  double xpos(x_left);
   for(std::map<double,double>::iterator xp=xwidth.begin();xp!=xwidth.end();++xp){
     double lspace(0);
     double rspace(0);
@@ -389,25 +377,14 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
     }
     xpos += lspace + (xp->first-tpos)*timescale;
     for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff)
-      staff->draw_music(cr,xp->first,xpos);
+      staff->draw_music(cr,xp->first,xpos+xshift);
     xpos += rspace;
-    tpos = xp->first;
-    if( tpos-tpos0 <= 0.25 ){
-      xpos1 = xpos;
-      tpos1 = tpos;
+    if( xp == xwidth.begin() ){
+      prev_tpos = tpos;
+      prev_xpos = xpos-x_left;
     }
+    tpos = xp->first;
   }
-  xpos0 = xpos1 - xpos0;
-  tpos0 = tpos1 - tpos0;
-  if( tpos0 > 0 ){
-    xpos0 = xpos0/tpos0;
-    //smoothed_tempo = 0.99*smoothed_tempo + 0.01*xpos0;
-  }
-  //smoothed_tempo = xpos0;
-  //DEBUG(xpos0);
-  //DEBUG(smoothed_tempo);
-  //if( xwidth.size())
-  //prev_tpos = xwidth.begin()->first;
 }
 
 bool score_t::on_expose_event(GdkEventExpose* event)
@@ -463,7 +440,7 @@ int main(int argc, char** argv)
   win.add(n);
   win.set_title("music");
   win.set_default_size(1280,720);
-  win.fullscreen();
+  //win.fullscreen();
   win.show_all();
   Gtk::Main::run(win);
   return 0;
