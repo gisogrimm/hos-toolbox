@@ -22,7 +22,8 @@ int main(int argc, char** argv)
     for(unsigned int k=0;k<5;k++){
       if( n[k].end_time() <= time+1.0 ){
         n[k].time = n[k].end_time();
-        n[k].length = 7.0*rand()/RAND_MAX;
+        //n[k].length = 7.0*rand()/RAND_MAX;
+        n[k].length = 1+3.0*rand()/RAND_MAX;
         n[k].pitch += (12.0*rand()/RAND_MAX-6.0);
         n[k].pitch += 0.3*(c_pitch[k]-n[k].pitch)*rand()/RAND_MAX;
         lo_send(lo_addr,"/note","iiif",k,n[k].pitch,n[k].length,n[k].time);

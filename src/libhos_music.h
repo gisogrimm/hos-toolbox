@@ -14,6 +14,15 @@ public:
   friend std::ostream& operator<<(std::ostream& o, const note_t& p){  o << "[" << p.pitch << ":"<<p.length << "@" << p.time << "]"; return o;};
 };
 
+class time_signature_t {
+public:
+  time_signature_t();
+  double nominator;
+  double denominator;
+  double bar(double time);
+  double time(double bar);
+};
+
 int wrapped_pitch(int pitch);
 bool is_in_scale(int pitch, int key);
 int closest_key(int pitch, int key);

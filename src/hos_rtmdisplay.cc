@@ -282,6 +282,7 @@ public:
   void clear_all();
   void add_note(unsigned int voice,int pitch,unsigned int length,double time);
   void draw(Cairo::RefPtr<Cairo::Context> cr);
+  double get_xpos(double time);
 protected:
   //Override default signal handler:
   virtual bool on_expose_event(GdkEventExpose* event);
@@ -294,7 +295,31 @@ protected:
   double x_left;
   double prev_tpos;
   double xshift;
+  time_signature_t timesig;
 };
+
+double score_t::get_xpos(double time)
+{
+  if( xwidth.empty() )
+    return 0;
+  std::map<double,double>::const_iterator xp1(xwidth.lower_bound(time));
+  if( xp1 == xwidth.end() ){
+    // time is larger than all stored positions, extrapolate:
+    xp1--;
+    return xp1->second+(time-xp1->first)*timescale;
+  }
+  if( xp1->first == time )
+    // exact match, return second:
+    return xp1->second;
+  if( xp1 == xwidth.begin() )
+    // time is less than all stored positions, extrapolate:
+    return xp1->second+(time-xp1->first)*timescale;
+  // interpolate:
+  //return xp1->second + xshift;
+  std::map<double,double>::const_iterator xp0(xp1);
+  xp0--;
+  return (time-xp0->first)/(xp1->first-xp0->first)*(xp1->second-xp0->second)+xp0->second;
+}
 
 int score_t::set_time(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
 {
@@ -326,6 +351,8 @@ void score_t::clear_all()
 {
   for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff)
     staff->clear_all();
+  xwidth.clear();
+  xshift = 0;
 }
 
 void score_t::add_note(unsigned int voice,int pitch,unsigned int length,double time)
@@ -381,23 +408,23 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
   for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff)
     staff->clear_music(t0);
   // process graphical timing positions:
-  //cr->save();
-  //cr->set_source_rgb(0.5, 0, 0);
-  //cr->move_to(x_left+xshift,staves.begin()->y_0);
-  //cr->line_to(x_left+xshift,staves.rbegin()->y_0);
-  //cr->stroke();
-  //cr->restore();
   // draw empty staff:
   for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff)
     staff->draw(cr);
   // draw music:
   double tpos(0);
-  if( xwidth.size())
+  double tpos_start(0);
+  double tpos_end(1);
+  if( xwidth.size()){
     tpos = xwidth.begin()->first;
+    tpos_start = tpos;
+    tpos_end = xwidth.rbegin()->first;
+  }
   if( (tpos != prev_tpos) && (prev_tpos != 0) ){
     xshift = xwidth[tpos];
   }
   xshift -= 0.03*xshift;
+  //
   double xpos(0);
   for(std::map<double,double>::iterator xp=xwidth.begin();xp!=xwidth.end();++xp){
     double lspace(0);
@@ -416,6 +443,37 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
     }
     tpos = xp->first;
   }
+  
+  // bar lines:
+  for(double bar=ceil(timesig.bar(tpos_start));bar<=floor(timesig.bar(tpos_end));bar+=1.0){
+    double xbar(get_xpos(timesig.time(bar))-1.0);
+    for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff){
+      std::vector<staff_t>::iterator nstaff(staff);
+      nstaff++;
+      if( nstaff != staves.end() ){
+        cr->move_to(x_left+xbar,-(staff->y_0-4));
+        cr->line_to(x_left+xbar,-(nstaff->y_0+4));
+        cr->stroke();
+      }
+      cr->save();
+      cr->move_to(x_left+xbar,-(staves.begin()->y_0+8));
+      cr->select_font_face("URW Palladio L",Cairo::FONT_SLANT_NORMAL,Cairo::FONT_WEIGHT_NORMAL);
+      cr->set_font_size(3);
+      char cbar[32];
+      sprintf(cbar,"%g",bar);
+      cr->show_text(cbar);
+      cr->restore();
+    }
+  }
+////
+//double xpos_marker(get_xpos(time-0.8*history));
+//cr->save();
+//cr->set_source_rgb(0.5, 0, 0);
+//cr->move_to(x_left+xpos_marker,staves.begin()->y_0+8);
+//cr->line_to(x_left+xpos_marker,staves.rbegin()->y_0-8);
+//cr->stroke();
+//cr->restore();
+//
 }
 
 bool score_t::on_expose_event(GdkEventExpose* event)

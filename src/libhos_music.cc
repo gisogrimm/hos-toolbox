@@ -47,6 +47,26 @@ int closest_key(int pitch, int key)
   }
 }
 
+time_signature_t::time_signature_t()
+  : nominator(4),denominator(4)
+{
+}
+
+double time_signature_t::bar(double time)
+{
+  if( nominator == 0 )
+    return 0;
+  return 2.0*time*denominator/nominator;
+}
+
+
+double time_signature_t::time(double bar)
+{
+  if( denominator == 0 )
+    return 0;
+  return 0.5*bar*nominator/denominator;
+}
+
 /*
  * Local Variables:
  * mode: c++
