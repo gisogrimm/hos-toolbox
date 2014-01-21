@@ -38,7 +38,7 @@ namespace Symbols {
 
 class graphical_note_t : public note_t {
 public:
-  graphical_note_t(const note_t& note, const clef_t& clef, int key);
+  graphical_note_t(const note_t& note, const clef_t& clef, int key,const graphical_note_t& prev=graphical_note_t());
   graphical_note_t();
   int y;
   int alteration;
@@ -58,7 +58,7 @@ graphical_note_t::graphical_note_t()
 {
 }
 
-graphical_note_t::graphical_note_t(const note_t& note, const clef_t& clef, int key)
+graphical_note_t::graphical_note_t(const note_t& note, const clef_t& clef, int key,const graphical_note_t& prev)
   : note_t(note),
     sym_head(Symbols::notehead[length])
 {
@@ -86,8 +86,16 @@ graphical_note_t::graphical_note_t(const note_t& note, const clef_t& clef, int k
   }
   y += 7*octave;
   y += clef.c1pos;
-  if( alteration != 0 )
-    sym_alteration = Symbols::alteration[alteration+2];
+  if( prev.y == y ){
+    if( prev.alteration == alteration ){
+      sym_alteration = "";
+    }else{
+      sym_alteration = Symbols::alteration[alteration+2];
+    }
+  }else{
+    if( alteration != 0 )
+      sym_alteration = Symbols::alteration[alteration+2];
+  }
   if( y > 0 )
     sym_flag = Symbols::flag_down[length];
   else
@@ -234,6 +242,11 @@ void staff_t::clear_music(double t0)
 void staff_t::add_note(note_t n)
 {
   notes[n.time] = graphical_note_t(n,clef,key);
+  std::map<double,graphical_note_t>::iterator prev=notes.find(n.time);
+  if( prev != notes.begin() ){
+    prev--;
+    notes[n.time] = graphical_note_t(n,clef,key,prev->second);
+  }
 }
 
 void staff_t::draw_keychange(Cairo::RefPtr<Cairo::Context> cr,int oldkey,int newkey,double y)
