@@ -1,12 +1,28 @@
 function noisesound( sInput, sOutput, dur )
+% NOISESOUND - create a random-phase noise signal with input spectrum
+%
+% Usage:
+% noisesound( sInput, sOutput, dur )
+%
+% sInput : name of input sound file
+% sOutput: name of output sound file
+% dur    : duration (and fft length) of the output sound file
+%
+% Only the first channel of the input signal is used. The absolute
+% level of the output signal is not matched with the input
+% signal. If the output duration is longer than the input signal,
+% then the input signal is zero-padded. If the input signal is
+% longer than the output duration, then the average power spectrum
+% of non-overlapping fragments of length duration is used.
+%
+% Author: Giso Grimm
+% Date: 1/2014
+  ;
   [x,fs] = wavread(sInput);
   dur = round(dur*fs);
   x(:,2:end) = [];
   x = buffer(x,dur);
-  X = mean(abs(realfft(x)),2);
-  %x(dur+1:end) = [];
-  %x(end+1:dur) = 0;
-  %X = realfft(x);
+  X = sqrt(mean(abs(realfft(x)).^2,2));
   X = X .* exp(2*pi*i*rand(size(X)));
   x = realifft(X);
   x = 0.9*x / max(abs(x(:)));
