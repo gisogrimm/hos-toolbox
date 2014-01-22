@@ -283,6 +283,7 @@ public:
   void add_note(unsigned int voice,int pitch,unsigned int length,double time);
   void draw(Cairo::RefPtr<Cairo::Context> cr);
   double get_xpos(double time);
+  void set_time_signator(double denom,double nom,double starttime);
 protected:
   //Override default signal handler:
   virtual bool on_expose_event(GdkEventExpose* event);
@@ -295,7 +296,7 @@ protected:
   double x_left;
   double prev_tpos;
   double xshift;
-  time_signature_t timesig;
+  std::map<double,time_signature_t> timesig;
 };
 
 double score_t::get_xpos(double time)
@@ -371,6 +372,7 @@ void score_t::add_note(unsigned int voice,int pitch,unsigned int length,double t
 score_t::score_t()
   : TASCAR::osc_server_t("239.255.1.7","9877"),timescale(30),history(1.2),time(0),x_left(-85),prev_tpos(0),xshift(0)
 {
+  timesig[0] = time_signature_t(4,2,0);
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &score_t::on_timeout), 20 );
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
   //Connect the signal handler if it isn't already a virtual method override:  signal_expose_event().connect(sigc::mem_fun(*this, &score_t::on_expose_event), false);
@@ -445,35 +447,23 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
   }
   
   // bar lines:
-  for(double bar=ceil(timesig.bar(tpos_start));bar<=floor(timesig.bar(tpos_end));bar+=1.0){
-    double xbar(get_xpos(timesig.time(bar))-1.0);
-    for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff){
-      std::vector<staff_t>::iterator nstaff(staff);
-      nstaff++;
-      if( nstaff != staves.end() ){
-        cr->move_to(x_left+xbar,-(staff->y_0-4));
-        cr->line_to(x_left+xbar,-(nstaff->y_0+4));
-        cr->stroke();
+  if( !timesig.empty() ){
+    // merge this block with main draw block
+    // find matching time signature:
+    // draw bar lines until end or next time signature
+    for(double bar=ceil(timesig.begin()->second.bar(tpos_start));bar<=floor(timesig.begin()->second.bar(tpos_end));bar+=1.0){
+      double xbar(get_xpos(timesig.begin()->second.time(bar))-1.0);
+      for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff){
+        std::vector<staff_t>::iterator nstaff(staff);
+        nstaff++;
+        if( nstaff != staves.end() ){
+          cr->move_to(x_left+xbar,-(staff->y_0-4));
+          cr->line_to(x_left+xbar,-(nstaff->y_0+4));
+          cr->stroke();
+        }
       }
-      cr->save();
-      cr->move_to(x_left+xbar,-(staves.begin()->y_0+8));
-      cr->select_font_face("URW Palladio L",Cairo::FONT_SLANT_NORMAL,Cairo::FONT_WEIGHT_NORMAL);
-      cr->set_font_size(3);
-      char cbar[32];
-      sprintf(cbar,"%g",bar);
-      cr->show_text(cbar);
-      cr->restore();
     }
   }
-////
-//double xpos_marker(get_xpos(time-0.8*history));
-//cr->save();
-//cr->set_source_rgb(0.5, 0, 0);
-//cr->move_to(x_left+xpos_marker,staves.begin()->y_0+8);
-//cr->line_to(x_left+xpos_marker,staves.rbegin()->y_0-8);
-//cr->stroke();
-//cr->restore();
-//
 }
 
 bool score_t::on_expose_event(GdkEventExpose* event)

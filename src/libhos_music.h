@@ -17,8 +17,10 @@ public:
 class time_signature_t {
 public:
   time_signature_t();
+  time_signature_t(double nom,double denom,double startt);
   double nominator;
   double denominator;
+  double starttime;
   double bar(double time);
   double time(double bar);
 };

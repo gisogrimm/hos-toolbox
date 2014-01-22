@@ -48,23 +48,29 @@ int closest_key(int pitch, int key)
 }
 
 time_signature_t::time_signature_t()
-  : nominator(4),denominator(4)
+  : nominator(4),denominator(4),starttime(0)
 {
 }
+
+time_signature_t::time_signature_t(double nom,double denom,double startt)
+  : nominator(nom),denominator(denom),starttime(startt)
+{
+}
+
 
 double time_signature_t::bar(double time)
 {
   if( nominator == 0 )
     return 0;
-  return 2.0*time*denominator/nominator;
+  return 2.0*(time-starttime)*denominator/nominator;
 }
 
 
 double time_signature_t::time(double bar)
 {
   if( denominator == 0 )
-    return 0;
-  return 0.5*bar*nominator/denominator;
+    return starttime;
+  return 0.5*bar*nominator/denominator+starttime;
 }
 
 /*
