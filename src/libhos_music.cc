@@ -5,12 +5,12 @@ note_t::note_t()
 {
 }
 
-double note_t::end_time()
+double note_t::end_time() const
 {
   return time+duration();
 }
 
-double note_t::duration()
+double note_t::duration() const
 {
   return 1.0/(double)(1<<length);
 }

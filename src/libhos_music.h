@@ -9,8 +9,8 @@ public:
   int pitch;
   unsigned int length;
   double time;
-  double end_time();
-  double duration();
+  double end_time() const;
+  double duration() const;
   friend std::ostream& operator<<(std::ostream& o, const note_t& p){  o << "[" << p.pitch << ":"<<p.length << "@" << p.time << "]"; return o;};
 };
 
