@@ -2,59 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "libhos_music.h"
-#include <map>
-
-double drand()
-{
-  return (double)random()/(double)(RAND_MAX+1.0);
-}
-
-class pdf_t {
-public:
-  pdf_t();
-  void update();
-  double rand();
-  void add(double v,double p);
-private:
-  std::map<double,double> pdf;
-  std::map<double,double> icdf;
-};
-
-pdf_t::pdf_t()
-{
-}
-
-void pdf_t::update()
-{
-  icdf.clear();
-  double psum(0);
-  for( std::map<double,double>::iterator it=pdf.begin();it!=pdf.end();++it)
-    psum += it->second;
-  for( std::map<double,double>::iterator it=pdf.begin();it!=pdf.end();++it)
-    it->second /= psum;
-  double p(0);
-  for( std::map<double,double>::iterator it=pdf.begin();it!=pdf.end();++it){
-    p+=it->second;
-    icdf[p] = it->first;
-  }
-}
-
-double pdf_t::rand()
-{
-  if( icdf.empty() )
-    return 0;
-  std::map<double,double>::iterator it(icdf.lower_bound(drand()));
-  if( it == icdf.end() )
-    return icdf.rbegin()->second;
-  return it->second;
-}
-
-void pdf_t::add(double v,double p)
-{
-  pdf[v] = p;
-}
-
-
+#include "libhos_random.h"
 
 int main(int argc, char** argv)
 {
@@ -98,7 +46,7 @@ int main(int argc, char** argv)
       if( n[k].end_time() <= time+1.0 ){
         n[k].time = n[k].end_time();
         //n[k].length = 7.0*rand()/RAND_MAX;
-        n[k].length = 1+3.0*rand()/RAND_MAX;
+        n[k].length = 1+5.0*rand()/RAND_MAX;
         n[k].pitch += (12.0*rand()/RAND_MAX-6.0);
         n[k].pitch += 0.3*(c_pitch[k]-n[k].pitch)*rand()/RAND_MAX;
         lo_send(lo_addr,"/note","iiif",k,n[k].pitch,n[k].length,n[k].time);
