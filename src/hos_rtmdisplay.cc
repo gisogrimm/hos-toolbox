@@ -283,7 +283,7 @@ public:
   void add_note(unsigned int voice,int pitch,unsigned int length,double time);
   void draw(Cairo::RefPtr<Cairo::Context> cr);
   double get_xpos(double time);
-  void set_time_signator(double denom,double nom,double starttime);
+  void set_time_signature(double denom,double nom,double starttime);
 protected:
   //Override default signal handler:
   virtual bool on_expose_event(GdkEventExpose* event);
