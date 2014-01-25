@@ -73,6 +73,77 @@ double time_signature_t::time(double bar)
   return 0.5*bar*nominator/denominator+starttime;
 }
 
+keysig_t::keysig_t()
+  : fifths(0),
+    mode(major)
+{
+}
+
+int keysig_t::pitch() const
+{
+  int p(fifths*7);
+  if( mode == minor )
+    p -= 3;
+  return wrapped_pitch(p);
+}
+
+void keysig_t::setpitch(int p,mode_t m)
+{
+  if( m == minor )
+    p += 3;
+  p = wrapped_pitch(p);
+  int p0(0);
+  while(wrapped_pitch(p0*7) != p)
+    p0++;
+  if( p0 >= 6 )
+    p0 -= 12;
+  fifths = p0;
+  mode = m;
+}
+
+std::string notename(int pitch)
+{
+  pitch = wrapped_pitch(pitch);
+  switch( pitch ){
+  case 0 : 
+    return "c";
+  case 1 :
+    return "c#";
+  case 2 :
+    return "d";
+  case 3 : 
+    return  "d#"; 
+  case 4 : 
+    return  "e"; 
+  case 5 : 
+    return  "f"; 
+  case 6 : 
+    return  "f#"; 
+  case 7 : 
+    return  "g"; 
+  case 8 : 
+    return  "g#"; 
+  case 9 : 
+    return  "a"; 
+  case 10 : 
+    return  "bb"; 
+  case 11 : 
+    return  "b";
+  }
+  return "bug";
+}
+
+std::string keysig_t::name() const
+{
+  std::string n(notename(pitch()));
+  if( mode == major )
+    n[0] -= 32;
+  else
+    n += "m";
+  return n;
+}
+
+
 /*
  * Local Variables:
  * mode: c++
