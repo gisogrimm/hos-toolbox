@@ -1,5 +1,15 @@
 #include "libhos_music.h"
 
+uint32_t closest_length(double len)
+{
+  uint32_t l2(0);
+  while( len < (1.0/(double)(1<<l2)) )
+    l2++;
+  if( l2 > 6 )
+    l2 = 6;
+  return l2;
+}
+
 note_t::note_t()
  :pitch(0),length(0),time(-1000)
 {
@@ -15,9 +25,9 @@ double note_t::duration() const
   return 1.0/(double)(1<<length);
 }
 
-int major[7] = {0,2,4,5,7,9,11};
+int32_t major[7] = {0,2,4,5,7,9,11};
 
-int wrapped_pitch(int pitch)
+int32_t wrapped_pitch(int32_t pitch)
 {
   pitch = pitch % 12;
   while( pitch < 0 )
@@ -25,19 +35,19 @@ int wrapped_pitch(int pitch)
   return pitch;
 }
 
-bool is_in_scale(int pitch, int key)
+bool is_in_scale(int32_t pitch, int32_t key)
 {
   pitch = wrapped_pitch(pitch);
-  for(unsigned int k=0;k<7;k++){
+  for(uint32_t k=0;k<7;k++){
     if( wrapped_pitch(major[k]+7*key) == pitch )
       return true;
   }
   return false;
 }
 
-int closest_key(int pitch, int key)
+int32_t closest_key(int32_t pitch, int32_t key)
 {
-  int dkey(0);
+  int32_t dkey(0);
   while( true ){
     if( is_in_scale( pitch, key-dkey ) )
       return key-dkey;
@@ -48,12 +58,12 @@ int closest_key(int pitch, int key)
 }
 
 time_signature_t::time_signature_t()
-  : nominator(4),denominator(4),starttime(0)
+  : nominator(4),denominator(4),starttime(0),addbar(0)
 {
 }
 
-time_signature_t::time_signature_t(double nom,double denom,double startt)
-  : nominator(nom),denominator(denom),starttime(startt)
+time_signature_t::time_signature_t(double nom,double denom,double startt,uint32_t addb)
+  : nominator(nom),denominator(denom),starttime(startt),addbar(addb)
 {
 }
 
@@ -62,7 +72,7 @@ double time_signature_t::bar(double time)
 {
   if( nominator == 0 )
     return 0;
-  return 2.0*(time-starttime)*denominator/nominator;
+  return 2.0*(time-starttime)*denominator/nominator + (double)addbar;
 }
 
 
@@ -70,7 +80,7 @@ double time_signature_t::time(double bar)
 {
   if( denominator == 0 )
     return starttime;
-  return 0.5*bar*nominator/denominator+starttime;
+  return 0.5*(bar-(double)addbar)*nominator/denominator+starttime;
 }
 
 keysig_t::keysig_t()
@@ -79,20 +89,20 @@ keysig_t::keysig_t()
 {
 }
 
-int keysig_t::pitch() const
+int32_t keysig_t::pitch() const
 {
-  int p(fifths*7);
+  int32_t p(fifths*7);
   if( mode == minor )
     p -= 3;
   return wrapped_pitch(p);
 }
 
-void keysig_t::setpitch(int p,mode_t m)
+void keysig_t::setpitch(int32_t p,mode_t m)
 {
   if( m == minor )
     p += 3;
   p = wrapped_pitch(p);
-  int p0(0);
+  int32_t p0(0);
   while(wrapped_pitch(p0*7) != p)
     p0++;
   if( p0 >= 6 )
@@ -101,7 +111,7 @@ void keysig_t::setpitch(int p,mode_t m)
   mode = m;
 }
 
-std::string notename(int pitch)
+std::string notename(int32_t pitch)
 {
   pitch = wrapped_pitch(pitch);
   switch( pitch ){

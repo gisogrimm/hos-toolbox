@@ -17,6 +17,13 @@ public:
   void draw_full(Cairo::RefPtr<Cairo::Context> cr,double x, double y);
 };
 
+std::string text(uint32_t n)
+{
+  char ctmp[1024];
+  sprintf(ctmp,"%d",n);
+  return ctmp;
+}
+
 void clef_t::draw_full(Cairo::RefPtr<Cairo::Context> cr,double x, double y)
 {
   cr->move_to(x, -(y+position) );
@@ -190,8 +197,8 @@ public:
   void set_coords(double width,double y);
   clef_t clef;
   int key;
-  void draw(Cairo::RefPtr<Cairo::Context> cr);
-  void draw_keychange(Cairo::RefPtr<Cairo::Context> cr,int oldkey,int newkey,double y);
+  void draw_empty(Cairo::RefPtr<Cairo::Context> cr);
+  //void draw_keychange(Cairo::RefPtr<Cairo::Context> cr,int oldkey,int newkey,double y);
   void draw_music(Cairo::RefPtr<Cairo::Context> cr,double time,double x);
   double left_space(Cairo::RefPtr<Cairo::Context> cr,double time);
   double right_space(Cairo::RefPtr<Cairo::Context> cr,double time);
@@ -257,9 +264,9 @@ void staff_t::add_note(note_t n)
   }
 }
 
-void staff_t::draw_keychange(Cairo::RefPtr<Cairo::Context> cr,int oldkey,int newkey,double y)
-{
-}
+//void staff_t::draw_keychange(Cairo::RefPtr<Cairo::Context> cr,int oldkey,int newkey,double y)
+//{
+//}
 
 void staff_t::set_coords(double width,double y)
 {
@@ -268,7 +275,7 @@ void staff_t::set_coords(double width,double y)
   y_0 = y;
 }
 
-void staff_t::draw(Cairo::RefPtr<Cairo::Context> cr)
+void staff_t::draw_empty(Cairo::RefPtr<Cairo::Context> cr)
 {
   for(int i=-2;i<3;i++){
     cr->move_to( x_l, -(y_0 + 2*i) );
@@ -276,6 +283,51 @@ void staff_t::draw(Cairo::RefPtr<Cairo::Context> cr)
   }
   cr->stroke();
   clef.draw_full(cr,x_l,y_0);
+}
+
+class graphical_time_signature_t : public time_signature_t {
+public:
+  graphical_time_signature_t();
+  graphical_time_signature_t(double nom,double denom,double startt,uint32_t addb);
+  void draw(Cairo::RefPtr<Cairo::Context> cr,double x,double y);
+  double space(Cairo::RefPtr<Cairo::Context> cr);
+private:
+  std::string s_denom;
+  std::string s_nom;
+  double l_denom;
+  double l_nom;
+};
+
+graphical_time_signature_t::graphical_time_signature_t()
+  : time_signature_t(),l_denom(0),l_nom(0)
+{
+}
+
+graphical_time_signature_t::graphical_time_signature_t(double nom,double denom,double startt,uint32_t addb)
+  : time_signature_t(nom,denom,startt,addb),
+    s_denom(text(denom)),s_nom(text(nom)),
+    l_denom(0),l_nom(0)
+{
+}
+
+void graphical_time_signature_t::draw(Cairo::RefPtr<Cairo::Context> cr,double x,double y)
+{
+  double xl(space(cr));
+  //+0.5*(l_nom-std::min(l_nom,l_denom))
+  cr->move_to(x-xl+0.5*(l_denom-std::min(l_nom,l_denom)),-y);
+  cr->show_text(text(nominator));
+  cr->move_to(x-xl+0.5*(l_nom-std::min(l_nom,l_denom)),-y+4);
+  cr->show_text(text(denominator));
+}
+
+double graphical_time_signature_t::space(Cairo::RefPtr<Cairo::Context> cr)
+{
+  Cairo::TextExtents extents;
+  cr->get_text_extents(s_denom,extents);
+  l_denom = extents.x_bearing+extents.width;
+  cr->get_text_extents(s_nom,extents);
+  l_nom = extents.x_bearing+extents.width;
+  return std::max(l_denom,l_nom)+1;
 }
 
 class score_t : public Gtk::DrawingArea, public TASCAR::osc_server_t
@@ -286,33 +338,50 @@ public:
   static int set_time(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   static int add_note(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   static int clear_all(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
+  static int set_timesig(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   void set_time(double t);
   void clear_all();
   void add_note(unsigned int voice,int pitch,unsigned int length,double time);
   void draw(Cairo::RefPtr<Cairo::Context> cr);
   double get_xpos(double time);
   void set_time_signature(double denom,double nom,double starttime);
+  double bar(double time);
 protected:
   //Override default signal handler:
   virtual bool on_expose_event(GdkEventExpose* event);
   bool on_timeout();
   std::vector<staff_t> staves;
-  std::map<double,double> xwidth;
+  std::map<double,double> xpositions;
   double timescale;
   double history;
   double time;
   double x_left;
   double prev_tpos;
   double xshift;
-  std::map<double,time_signature_t> timesig;
+  std::map<double,graphical_time_signature_t> timesig;
 };
+
+double score_t::bar(double time)
+{
+  // no time signature, thus no bar number:
+  if( timesig.empty() )
+    return 0;
+  // find next time signature which is after given time:
+  std::map<double,graphical_time_signature_t>::iterator ts(timesig.lower_bound(time));
+  // if time signature is not the first one decrease by one to find
+  // current time signature:
+  if( ts != timesig.begin() )
+    ts--;
+  // return bar number of appropriate time signature:
+  return ts->second.bar(time);
+}
 
 double score_t::get_xpos(double time)
 {
-  if( xwidth.empty() )
+  if( xpositions.empty() )
     return 0;
-  std::map<double,double>::const_iterator xp1(xwidth.lower_bound(time));
-  if( xp1 == xwidth.end() ){
+  std::map<double,double>::const_iterator xp1(xpositions.lower_bound(time));
+  if( xp1 == xpositions.end() ){
     // time is larger than all stored positions, extrapolate:
     xp1--;
     return xp1->second+(time-xp1->first)*timescale;
@@ -320,7 +389,7 @@ double score_t::get_xpos(double time)
   if( xp1->first == time )
     // exact match, return second:
     return xp1->second;
-  if( xp1 == xwidth.begin() )
+  if( xp1 == xpositions.begin() )
     // time is less than all stored positions, extrapolate:
     return xp1->second+(time-xp1->first)*timescale;
   // interpolate:
@@ -334,6 +403,13 @@ int score_t::set_time(const char *path, const char *types, lo_arg **argv, int ar
 {
   if( user_data && (argc == 1) && (types[0] == 'f') )
     ((score_t*)user_data)->set_time(argv[0]->f);
+  return 0;
+}
+
+int score_t::set_timesig(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
+{
+  if( user_data && (argc == 3) )
+    ((score_t*)user_data)->set_time_signature(argv[1]->i,argv[2]->i,argv[0]->f);
   return 0;
 }
 
@@ -360,7 +436,8 @@ void score_t::clear_all()
 {
   for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff)
     staff->clear_all();
-  xwidth.clear();
+  xpositions.clear();
+  timesig.clear();
   xshift = 0;
 }
 
@@ -374,13 +451,26 @@ void score_t::add_note(unsigned int voice,int pitch,unsigned int length,double t
   // get maximum x-position:
   double xmax(0);
   xmax = n.duration()*timescale;
-  xwidth[time] = xmax;
+  xpositions[time] = xmax;
+}
+
+void score_t::set_time_signature(double denom,double nom,double starttime)
+{
+  timesig[starttime] = graphical_time_signature_t(denom,nom,starttime,0);
+  std::map<double,graphical_time_signature_t>::iterator ts(timesig.find(starttime));
+  // if time signature is not the first one decrease by one to find
+  // current time signature:
+  if( ts != timesig.begin() )
+    ts--;
+  timesig[starttime].addbar = ts->second.bar(starttime);
+  xpositions[starttime] = 0;
 }
 
 score_t::score_t()
-  : TASCAR::osc_server_t("239.255.1.7","9877"),timescale(30),history(1.2),time(0),x_left(-85),prev_tpos(0),xshift(0)
+  : TASCAR::osc_server_t("239.255.1.7","9877"),timescale(30),history(0.5),time(0),x_left(-85),prev_tpos(0),xshift(0)
 {
-  timesig[0] = time_signature_t(4,2,0);
+  set_time_signature(4,2,0);
+  set_time_signature(3,4,8);
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &score_t::on_timeout), 20 );
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
   //Connect the signal handler if it isn't already a virtual method override:  signal_expose_event().connect(sigc::mem_fun(*this, &score_t::on_expose_event), false);
@@ -397,6 +487,7 @@ score_t::score_t()
   add_method("/time","f",score_t::set_time,this);
   add_method("/note","iiif",score_t::add_note,this);
   add_method("/clear","",score_t::clear_all,this);
+  add_method("/timesig","fii",score_t::set_timesig,this);
   osc_server_t::activate();
 }
 
@@ -413,63 +504,89 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
   cr->set_font_size(8);
   // clean time database:
   double t0(time-history);
-  while( xwidth.size() && (xwidth.begin()->first < t0) )
-    xwidth.erase(xwidth.begin());
+  while( xpositions.size() && (xpositions.begin()->first < t0) )
+    xpositions.erase(xpositions.begin());
   for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff)
     staff->clear_music(t0);
   // process graphical timing positions:
   // draw empty staff:
   for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff)
-    staff->draw(cr);
+    staff->draw_empty(cr);
   // draw music:
   double tpos(0);
-  double tpos_start(0);
-  double tpos_end(1);
-  if( xwidth.size()){
-    tpos = xwidth.begin()->first;
-    tpos_start = tpos;
-    tpos_end = xwidth.rbegin()->first;
+  if( xpositions.size()){
+    tpos = xpositions.begin()->first;
   }
   if( (tpos != prev_tpos) && (prev_tpos != 0) ){
-    xshift = xwidth[tpos];
+    xshift = xpositions[tpos];
   }
   xshift -= 0.03*xshift;
-  //
+  // main music draw section:
   double xpos(0);
-  for(std::map<double,double>::iterator xp=xwidth.begin();xp!=xwidth.end();++xp){
+  for(std::map<double,double>::iterator xp=xpositions.begin();xp!=xpositions.end();++xp){
     double lspace(0);
     double rspace(0);
+    double tsspace(0);
+    // get graphical extension of music and non-music:
+    std::map<double,graphical_time_signature_t>::iterator ts(timesig.find(xp->first));
+    if( ts != timesig.end() ){
+      tsspace = ts->second.space(cr);
+    }
     for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff){
       lspace = std::max(lspace,staff->left_space(cr,xp->first));
       rspace = std::max(rspace,staff->right_space(cr,xp->first));
     }
-    xpos += lspace + (xp->first-tpos)*timescale;
+    // increase x-position by left space
+    xpos += tsspace + lspace + (xp->first-tpos)*timescale;
+    // draw time signature and music
+    if( ts != timesig.end() ){
+      for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff)
+        ts->second.draw(cr,xpos+xshift+x_left-lspace,staff->y_0);
+    }
     for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff)
       staff->draw_music(cr,xp->first,xpos+xshift+x_left);
-    xp->second = xpos+xshift-lspace;
+    xp->second = xpos+xshift-lspace-tsspace;
     xpos += rspace;
-    if( xp == xwidth.begin() ){
+    if( xp == xpositions.begin() ){
       prev_tpos = tpos;
     }
     tpos = xp->first;
   }
-  
-  // bar lines:
+  // draw bar lines here:
   if( !timesig.empty() ){
-    // merge this block with main draw block
-    // find matching time signature:
-    // draw bar lines until end or next time signature
-    for(double bar=ceil(timesig.begin()->second.bar(tpos_start));bar<=floor(timesig.begin()->second.bar(tpos_end));bar+=1.0){
-      double xbar(get_xpos(timesig.begin()->second.time(bar))-1.0);
-      for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff){
-        std::vector<staff_t>::iterator nstaff(staff);
-        nstaff++;
-        if( nstaff != staves.end() ){
-          cr->move_to(x_left+xbar,-(staff->y_0-4));
-          cr->line_to(x_left+xbar,-(nstaff->y_0+4));
-          cr->stroke();
+    double bar_endtime(tpos);
+    for(std::map<double,graphical_time_signature_t>::reverse_iterator it=timesig.rbegin();it!=timesig.rend();++it){
+      if( bar_endtime > prev_tpos ){
+        double bar_starttime(std::max(prev_tpos,it->second.starttime));
+        if( bar_starttime > 0 ){
+          // draw bar lines from ... to bar_endtime
+          for(double bar=ceil(it->second.bar(bar_starttime));bar<ceil(it->second.bar(bar_endtime));bar+=1){
+            double xbar(get_xpos(it->second.time(bar))-1.0);
+            if( it->second.time(bar) == it->first )
+              xbar += it->second.space(cr);
+            // bar numbers for debugging:
+            cr->save();
+            cr->select_font_face("Arial",Cairo::FONT_SLANT_NORMAL,Cairo::FONT_WEIGHT_NORMAL);
+            cr->set_font_size(3);
+            char ctmp[40];
+            cr->move_to(x_left+xbar,-(staves.begin()->y_0+10));
+            sprintf(ctmp,"%g (%g)",bar,it->second.time(bar));
+            cr->show_text(ctmp);
+            cr->restore();
+            // end bar numbers.
+            for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff){
+              std::vector<staff_t>::iterator nstaff(staff);
+              nstaff++;
+              if( nstaff != staves.end() ){
+                cr->move_to(x_left+xbar,-(staff->y_0-4));
+                cr->line_to(x_left+xbar,-(nstaff->y_0+4));
+                cr->stroke();
+              }
+            }
+          }
         }
       }
+      bar_endtime = std::min(it->second.starttime,tpos);
     }
   }
 }

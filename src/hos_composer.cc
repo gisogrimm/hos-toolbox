@@ -6,6 +6,16 @@
 #include "defs.h"
 #include <math.h>
 
+class simple_timesig_t {
+public:
+  uint32_t nom;
+  uint32_t denom;
+};
+
+#define GOODTIMESIG 4
+
+simple_timesig_t good_timesig[GOODTIMESIG] = { {4,2}, {11,4}, {5,2}, {3,4} };
+
 double gauss(double x, double sigma )
 {
   return 1.0/sqrt(2.0*M_PI*sigma*sigma)*exp(-(x*x)/(2*sigma*sigma));
@@ -153,12 +163,24 @@ public:
   composer_t(uint32_t num_voices=5);
   void select_key();
   int emit_pitch(uint32_t voice);
+  int32_t get_key() const;
+  int32_t get_mode() const;
 private:
   std::vector<pdf_t> ambitus;
   std::vector<int32_t> pitch;
   keysig_t key;
   keysig_t next_key;
 };
+
+int32_t composer_t::get_key() const
+{
+  return key.fifths;
+}
+
+int32_t composer_t::get_mode() const
+{
+  return key.mode;
+}
 
 composer_t::composer_t(uint32_t num_voices)
 {
@@ -250,7 +272,6 @@ int main(int argc, char** argv)
   for(unsigned int k=0;k<5;k++){
     n[k].time = 0;
   }
-  int c_pitch[5] = {11,11,0,0,-11};
   lo_send(lo_addr,"/clear","");
   std::vector<pdf_t> lenpdf;
   lenpdf.resize(5);
@@ -264,15 +285,34 @@ int main(int argc, char** argv)
   lenpdf[4].set(3,1);
   for(uint32_t k=0;k<lenpdf.size();k++)
     lenpdf[k].update();
+  pdf_t timesig;
+  for(uint32_t t=0;t<GOODTIMESIG;t++)
+    timesig.set(t,gauss(t,4));
+  timesig.update();
+  pdf_t timesigchange;
+  timesigchange.set(0,2);
+  timesigchange.set(1,1);
+  timesigchange.update();
+  uint32_t otsidx(-1);
   while(true){
-    usleep(20000);
-    time += 0.005;
-    if( fabsf(2.0*time - floor(2.0*time)) < 0.001 )
-      c.select_key();
+    usleep(15625);
+    time += 1.0/256.0;
     lo_send(lo_addr,"/time","f",time);
+    if( fabsf(2.0*time - floor(2.0*time)) < 0.001 ){
+      c.select_key();
+      lo_send(lo_addr,"/key","fii",time+1,c.get_key(),c.get_mode());
+      if( timesigchange.rand() ){
+        uint32_t tsidx(timesig.rand());
+        if( otsidx != tsidx )
+          lo_send(lo_addr,"/timesig","fii",time+1,good_timesig[tsidx].nom,good_timesig[tsidx].denom);
+        otsidx = tsidx;
+      }
+    }
     for(unsigned int k=0;k<5;k++){
       if( n[k].end_time() <= time+1.0 ){
         n[k].time = n[k].end_time();
+        //DEBUG(n[k].time);
+        //DEBUG(n[k].time-floor(n[k].time));
         //n[k].length = 7.0*rand()/RAND_MAX;
         n[k].length = lenpdf[k].rand();
         n[k].pitch = c.emit_pitch(k);
