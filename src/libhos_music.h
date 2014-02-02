@@ -4,11 +4,14 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <stdint.h>
 
 int wrapped_pitch(int pitch);
 bool is_in_scale(int pitch, int key);
 int closest_key(int pitch, int key);
 std::string notename(int pitch);
+
+#define PITCH_REST 1000
 
 class note_t {
 public:

@@ -33,7 +33,7 @@ namespace Symbols {
   std::string flag_up[7] = {"","","","","","",""};
   std::string flag_down[7] = {"","","","","","",""};
   std::string alteration[5] = {"","","","",""};
-
+  std::string rest[7] = {"","","","","","",""};
 }
 
 class graphical_note_t : public note_t {
@@ -62,44 +62,52 @@ graphical_note_t::graphical_note_t(const note_t& note, const clef_t& clef, int k
   : note_t(note),
     sym_head(Symbols::notehead[length])
 {
-  int octave(floor((double)pitch/12.0));
-  int p_c = pitch-12*octave;
-  y = floor(7.0/12.0*p_c)+(p_c==5);
-  int nonaltered_pitch = floor((y+0.5)*12.0/7.0)-(y==3);
-  alteration = p_c - nonaltered_pitch;
-  key = closest_key( p_c, key );
-  if( (key < 0) && (alteration > 0) ){
-    y++;
-    alteration-=2;
-  }
-  if( (key > 0) && (alteration < 0) ){
-    y--;
-    alteration+=2;
-  }
-  if( (key < -6) && (alteration == 0) ){
-    y++;
-    alteration-=2;
-  }
-  if( (key > 6) && (alteration == 0) ){
-    y--;
-    alteration+=2;
-  }
-  y += 7*octave;
-  y += clef.c1pos;
-  if( prev.y == y ){
-    if( prev.alteration == alteration ){
-      sym_alteration = "";
-    }else{
-      sym_alteration = Symbols::alteration[alteration+2];
+  if( pitch != PITCH_REST ){
+    int octave(floor((double)pitch/12.0));
+    int p_c = pitch-12*octave;
+    y = floor(7.0/12.0*p_c)+(p_c==5);
+    int nonaltered_pitch = floor((y+0.5)*12.0/7.0)-(y==3);
+    alteration = p_c - nonaltered_pitch;
+    key = closest_key( p_c, key );
+    if( (key < 0) && (alteration > 0) ){
+      y++;
+      alteration-=2;
     }
+    if( (key > 0) && (alteration < 0) ){
+      y--;
+      alteration+=2;
+    }
+    if( (key < -6) && (alteration == 0) ){
+      y++;
+      alteration-=2;
+    }
+    if( (key > 6) && (alteration == 0) ){
+      y--;
+      alteration+=2;
+    }
+    y += 7*octave;
+    y += clef.c1pos;
+    if( prev.y == y ){
+      if( prev.alteration == alteration ){
+        sym_alteration = "";
+      }else{
+        sym_alteration = Symbols::alteration[alteration+2];
+      }
+    }else{
+      if( alteration != 0 )
+        sym_alteration = Symbols::alteration[alteration+2];
+    }
+    if( y > 0 )
+      sym_flag = Symbols::flag_down[length];
+    else
+      sym_flag = Symbols::flag_up[length];
   }else{
-    if( alteration != 0 )
-      sym_alteration = Symbols::alteration[alteration+2];
+    y = 2*(length == 1);
+    alteration = 0;
+    sym_head = Symbols::rest[length];
+    sym_alteration = "";
+    sym_flag = "";
   }
-  if( y > 0 )
-    sym_flag = Symbols::flag_down[length];
-  else
-    sym_flag = Symbols::flag_up[length];
 }
 
 double graphical_note_t::xmin(Cairo::RefPtr<Cairo::Context> cr)
@@ -151,7 +159,7 @@ void graphical_note_t::draw(Cairo::RefPtr<Cairo::Context> cr,double x,double y_0
     flag_y = std::max(6.0,3.0+length);
   }
   // draw stem:
-  if( length > 1 ){
+  if( (length > 1) && (pitch != PITCH_REST) ){
     cr->save();
     cr->set_line_width(0.3);
     cr->move_to(x+flag_x,-(y_0+y));

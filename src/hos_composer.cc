@@ -193,6 +193,12 @@ int composer_t::emit_pitch(uint32_t voice)
   note_change.update();
   scale = scale * ambitus[voice] * note_change;
   pitch[voice] = scale.rand();
+  pdf_t rest;
+  rest.set(0,1);
+  rest.set(1,1);
+  rest.update();
+  if( rest.rand() )
+    pitch[voice] = PITCH_REST;
   return pitch[voice];
 }
 
