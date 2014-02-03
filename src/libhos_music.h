@@ -31,6 +31,7 @@ public:
     major, minor
   };
   keysig_t();
+  keysig_t(int p, mode_t m);
   int32_t pitch() const;
   void setpitch(int p,mode_t m);
   int32_t fifths;

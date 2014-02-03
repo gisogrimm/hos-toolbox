@@ -174,7 +174,7 @@ private:
 
 int32_t composer_t::get_key() const
 {
-  return key.fifths;
+  return key.pitch();
 }
 
 int32_t composer_t::get_mode() const
@@ -203,7 +203,11 @@ int composer_t::emit_pitch(uint32_t voice)
   }else{
     scale = (Scales::minor_triad*triad_w) + (Scales::minor_scale*(1.0-triad_w));
   }
-  //scale = Scales::major_triad;
+  if( key.mode == keysig_t::major ){
+    scale = Scales::major_triad;
+  }else{
+    scale = Scales::minor_triad;
+  }
   //DEBUG(key.pitch());
   scale = scale.vadd(key.pitch());
   scale.update();
@@ -216,7 +220,7 @@ int composer_t::emit_pitch(uint32_t voice)
   scale = scale * ambitus[voice] * note_change;
   pitch[voice] = scale.rand();
   pdf_t rest;
-  rest.set(0,1);
+  rest.set(0,8);
   rest.set(1,1);
   rest.update();
   if( rest.rand() )
@@ -315,6 +319,7 @@ int main(int argc, char** argv)
         //DEBUG(n[k].time-floor(n[k].time));
         //n[k].length = 7.0*rand()/RAND_MAX;
         n[k].length = lenpdf[k].rand();
+        n[k].length = 3;
         n[k].pitch = c.emit_pitch(k);
         //(12.0*rand()/RAND_MAX-6.0);
         //n[k].pitch += 0.3*(c_pitch[k]-n[k].pitch)*rand()/RAND_MAX;

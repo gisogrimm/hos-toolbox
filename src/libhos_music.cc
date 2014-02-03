@@ -89,6 +89,11 @@ keysig_t::keysig_t()
 {
 }
 
+keysig_t::keysig_t(int p, mode_t m)
+{
+  setpitch(p,m);
+}
+
 int32_t keysig_t::pitch() const
 {
   int32_t p(fifths*7);

@@ -339,6 +339,7 @@ public:
   static int add_note(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   static int clear_all(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   static int set_timesig(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
+  static int set_keysig(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   void set_time(double t);
   void clear_all();
   void add_note(unsigned int voice,int pitch,unsigned int length,double time);
@@ -346,6 +347,7 @@ public:
   double get_xpos(double time);
   void set_time_signature(double denom,double nom,double starttime);
   double bar(double time);
+  void set_keysig(double time,int32_t pitch,keysig_t::mode_t mode);
 protected:
   //Override default signal handler:
   virtual bool on_expose_event(GdkEventExpose* event);
@@ -359,7 +361,13 @@ protected:
   double prev_tpos;
   double xshift;
   std::map<double,graphical_time_signature_t> timesig;
+  std::map<double,keysig_t> keysig;
 };
+
+void score_t::set_keysig(double time,int32_t pitch,keysig_t::mode_t mode)
+{
+  keysig[time] = keysig_t(pitch,mode);
+}
 
 double score_t::bar(double time)
 {
@@ -397,6 +405,13 @@ double score_t::get_xpos(double time)
   std::map<double,double>::const_iterator xp0(xp1);
   xp0--;
   return (time-xp0->first)/(xp1->first-xp0->first)*(xp1->second-xp0->second)+xp0->second;
+}
+
+int score_t::set_keysig(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
+{
+  if( user_data && (argc == 3) )
+    ((score_t*)user_data)->set_keysig(argv[0]->f,argv[1]->i,(keysig_t::mode_t)(argv[2]->i));
+  return 0;
 }
 
 int score_t::set_time(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
@@ -469,8 +484,6 @@ void score_t::set_time_signature(double denom,double nom,double starttime)
 score_t::score_t()
   : TASCAR::osc_server_t("239.255.1.7","9877"),timescale(30),history(0.5),time(0),x_left(-85),prev_tpos(0),xshift(0)
 {
-  set_time_signature(4,2,0);
-  set_time_signature(3,4,8);
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &score_t::on_timeout), 20 );
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
   //Connect the signal handler if it isn't already a virtual method override:  signal_expose_event().connect(sigc::mem_fun(*this, &score_t::on_expose_event), false);
@@ -488,6 +501,7 @@ score_t::score_t()
   add_method("/note","iiif",score_t::add_note,this);
   add_method("/clear","",score_t::clear_all,this);
   add_method("/timesig","fii",score_t::set_timesig,this);
+  add_method("/key","fii",score_t::set_keysig,this);
   osc_server_t::activate();
 }
 
@@ -587,6 +601,21 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
         }
       }
       bar_endtime = std::min(it->second.starttime,tpos);
+    }
+  }
+  // draw key signature here:
+  for( std::map<double,keysig_t>::iterator ks=keysig.begin();ks!=keysig.end();++ks){
+    if( (ks->first >= prev_tpos) && (ks->first <= tpos) ){
+      double xpos(get_xpos(ks->first));
+      std::map<double,graphical_time_signature_t>::iterator ts(timesig.find(ks->first));
+      if( ts != timesig.end() )
+        xpos += ts->second.space(cr);
+      cr->save();
+      cr->move_to(x_left+xpos,-staves.rbegin()->y_0+12);
+      cr->select_font_face("Arial",Cairo::FONT_SLANT_NORMAL,Cairo::FONT_WEIGHT_BOLD);
+      cr->set_font_size(6);
+      cr->show_text(ks->second.name().c_str());
+      cr->restore();
     }
   }
 }
