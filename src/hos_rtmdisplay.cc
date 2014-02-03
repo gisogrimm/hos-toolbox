@@ -196,13 +196,13 @@ public:
   staff_t();
   void set_coords(double width,double y);
   clef_t clef;
-  int key;
+  //int key;
   void draw_empty(Cairo::RefPtr<Cairo::Context> cr);
   //void draw_keychange(Cairo::RefPtr<Cairo::Context> cr,int oldkey,int newkey,double y);
   void draw_music(Cairo::RefPtr<Cairo::Context> cr,double time,double x);
   double left_space(Cairo::RefPtr<Cairo::Context> cr,double time);
   double right_space(Cairo::RefPtr<Cairo::Context> cr,double time);
-  void add_note(note_t n);
+  void add_note(note_t n,int32_t fifths);
   void clear_music(double t0);
   void clear_all();
 private:
@@ -215,7 +215,7 @@ private:
 };
 
 staff_t::staff_t()
-  : clef(Symbols::alto),key(0),
+  : clef(Symbols::alto),//key(0),
     x_l(-10),x_r(10),y_0(0)
 {
 }
@@ -254,13 +254,13 @@ void staff_t::clear_music(double t0)
     notes.erase(notes.begin());
 }
 
-void staff_t::add_note(note_t n)
+void staff_t::add_note(note_t n,int32_t fifths)
 {
-  notes[n.time] = graphical_note_t(n,clef,key);
+  notes[n.time] = graphical_note_t(n,clef,fifths);
   std::map<double,graphical_note_t>::iterator prev=notes.find(n.time);
   if( prev != notes.begin() ){
     prev--;
-    notes[n.time] = graphical_note_t(n,clef,key,prev->second);
+    notes[n.time] = graphical_note_t(n,clef,fifths,prev->second);
   }
 }
 
@@ -462,7 +462,14 @@ void score_t::add_note(unsigned int voice,int pitch,unsigned int length,double t
   n.pitch = pitch;
   n.length = length;
   n.time = time;
-  staves[voice].add_note(n);
+  int fifths(0);
+  if( !keysig.empty()){
+    std::map<double,keysig_t>::iterator ks(keysig.upper_bound(time));
+    if( ks != keysig.begin() )
+      ks--;
+    fifths = ks->second.fifths;
+  }
+  staves[voice].add_note(n,fifths);
   // get maximum x-position:
   double xmax(0);
   xmax = n.duration()*timescale;
@@ -491,7 +498,7 @@ score_t::score_t()
   staves.resize(5);
   for(unsigned int k=0;k<staves.size();k++){
     staves[k].set_coords(-2*x_left+18,-20.0*(k-0.5*(staves.size()-1.0)));
-    staves[k].key = 0;
+    //staves[k].key = 0;
   }
   staves[0].clef = Symbols::treble;
   staves[1].clef = Symbols::treble;

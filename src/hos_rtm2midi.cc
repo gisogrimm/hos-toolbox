@@ -87,7 +87,7 @@ void midi_t::set_time(double t)
 {
   if( (t-time > 0.5) && (timecnt > 16000) ){
     samples_per_brevis = 0.8*(double)timecnt/(t-time);
-    DEBUG(samples_per_brevis);
+    //DEBUG(samples_per_brevis);
     timecnt = 0;
     time = t;
   }
@@ -105,11 +105,13 @@ void midi_t::add_note(unsigned int voice,int pitch,unsigned int length,double ti
 
 void midi_t::add_note(const note_t& n)
 {
+  if( n.pitch == PITCH_REST )
+    return;
   for(std::vector<midi_note_t>::iterator note=notes.begin();note!=notes.end();++note)
     if( !(note->process) ){
       note->startcnt = 192000;
       note->lengthcnt = n.duration()*samples_per_brevis;
-      note->pitch = n.pitch+48;
+      note->pitch = n.pitch+64;
       note->velocity = 32;
       note->process = true;
       std::cout << n << std::endl;

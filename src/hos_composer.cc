@@ -196,29 +196,37 @@ composer_t::composer_t(uint32_t num_voices)
 int composer_t::emit_pitch(uint32_t voice)
 {
   pdf_t scale;
-  double triad_w((voice==4)*0.8);
+  double triad_w((voice>1)*0.8);
   //triad_w = 0.8;
   if( key.mode == keysig_t::major ){
     scale = (Scales::major_triad*triad_w) + (Scales::major_scale*(1.0-triad_w));
   }else{
     scale = (Scales::minor_triad*triad_w) + (Scales::minor_scale*(1.0-triad_w));
   }
-  if( key.mode == keysig_t::major ){
-    scale = Scales::major_triad;
-  }else{
-    scale = Scales::minor_triad;
-  }
+  //if( key.mode == keysig_t::major ){
+  //  scale = Scales::major_triad;
+  //}else{
+  //  scale = Scales::minor_triad;
+  //}
   //DEBUG(key.pitch());
   scale = scale.vadd(key.pitch());
   scale.update();
   //DEBUG(key.name());
   pdf_t note_change;
-  for(int32_t n=-80;n<81;n++)
-    note_change.set(n,gauss(n,4));
-  note_change = note_change.vadd(pitch[voice]);
+  if( pitch[voice] != PITCH_REST ){
+    for(int32_t n=-80;n<81;n++)
+      note_change.set(n,gauss(n,4));
+    note_change = note_change.vadd(pitch[voice]);
+  }else{
+    for(int32_t n=-100;n<100;n++)
+      note_change.set(n,1);
+  }
   note_change.update();
   scale = scale * ambitus[voice] * note_change;
-  pitch[voice] = scale.rand();
+  if( scale.empty() )
+    pitch[voice] = PITCH_REST;
+  else
+    pitch[voice] = scale.rand();
   pdf_t rest;
   rest.set(0,8);
   rest.set(1,1);
@@ -286,7 +294,13 @@ int main(int argc, char** argv)
     lenpdf[3].set(k,gauss(k-1,1));
     lenpdf[4].set(k,gauss(k-1,2));
   }
-  lenpdf[4].set(3,1);
+  //lenpdf[0].set(4,4);
+  //lenpdf[1].set(4,4);
+  //lenpdf[0].set(3,1);
+  //lenpdf[1].set(3,1);
+  //lenpdf[2].set(2,1);
+  //lenpdf[3].set(2,1);
+  //lenpdf[4].set(3,1);
   for(uint32_t k=0;k<lenpdf.size();k++)
     lenpdf[k].update();
   pdf_t timesig;
@@ -319,7 +333,7 @@ int main(int argc, char** argv)
         //DEBUG(n[k].time-floor(n[k].time));
         //n[k].length = 7.0*rand()/RAND_MAX;
         n[k].length = lenpdf[k].rand();
-        n[k].length = 3;
+        //n[k].length = 3;
         n[k].pitch = c.emit_pitch(k);
         //(12.0*rand()/RAND_MAX-6.0);
         //n[k].pitch += 0.3*(c_pitch[k]-n[k].pitch)*rand()/RAND_MAX;

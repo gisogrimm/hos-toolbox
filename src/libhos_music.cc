@@ -49,10 +49,10 @@ int32_t closest_key(int32_t pitch, int32_t key)
 {
   int32_t dkey(0);
   while( true ){
-    if( is_in_scale( pitch, key-dkey ) )
-      return key-dkey;
     if( is_in_scale( pitch, key+dkey ) )
       return key+dkey;
+    if( is_in_scale( pitch, key-dkey ) )
+      return key-dkey;
     dkey++;
   }
 }
@@ -150,12 +150,12 @@ std::string notename(int32_t pitch)
 
 std::string keysig_t::name() const
 {
-  std::string n(notename(pitch()));
+  std::string major_name[] = {"error (b)","Gb","Db","Ab","Eb","Bb","F","C","G","D","A","E","B","F#","error (#)"};
+  std::string minor_name[] = {"error (b)","ebm","bbm","fm","cm","gm","dm","am","em","bm","f#m","c#m","g#m","d#m","error (#)"};
   if( mode == major )
-    n[0] -= 32;
+    return major_name[std::max(0,std::min(fifths+7,14))];
   else
-    n += "m";
-  return n;
+    return minor_name[std::max(0,std::min(fifths+7,14))];
 }
 
 
