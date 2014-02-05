@@ -1,6 +1,19 @@
+ARCH = $(shell uname -m)
+
 PREFIX = /usr/local
 
+ifeq "$(ARCH)" "x86_64"
 BINFILES = ommo_bridge hos_sphere_amb30 hos_sendosc hos_delay hos_cyclephase hos_visualize hos_visualize_sphere hos_cyclephasegui hos_sampler hos_scope hos_osc2jack hos_resfilt hos_tmcm hos_osc_marais hos_osc_house debug_midi hos_rtmdisplay hos_composer hos_rtm2midi
+
+OBJECTS = jackclient.o osc_helper.o libhos_midi_ctl.o errorhandling.o libhos_gainmatrix.o audiochunks.o tmcm.o libhos_music.o libhos_random.o
+
+GUIOBJ = hosgui_meter.o hosgui_mixer.o hosgui_sphere.o 
+
+else
+BINFILES = hos_rtmdisplay
+OBJECTS = osc_helper.o errorhandling.o libhos_music.o libhos_random.o
+
+endif
 
 
 #	hos_sphere_amb30 \
@@ -17,12 +30,6 @@ BINFILES = ommo_bridge hos_sphere_amb30 hos_sendosc hos_delay hos_cyclephase hos
 #	hos_sendosc \
 #	mplayer_jack_transport \
 
-ARCH = $(shell uname -m)
-
-
-OBJECTS = jackclient.o osc_helper.o libhos_midi_ctl.o errorhandling.o libhos_gainmatrix.o audiochunks.o tmcm.o libhos_music.o libhos_random.o
-
-GUIOBJ = hosgui_meter.o hosgui_mixer.o hosgui_sphere.o 
 
 INSTBIN = $(patsubst %,$(PREFIX)/bin/%,$(BINFILES))
 
