@@ -203,11 +203,11 @@ int composer_t::emit_pitch(uint32_t voice)
   }else{
     scale = (Scales::minor_triad*triad_w) + (Scales::minor_scale*(1.0-triad_w));
   }
-  //if( key.mode == keysig_t::major ){
-  //  scale = Scales::major_triad;
-  //}else{
-  //  scale = Scales::minor_triad;
-  //}
+  if( key.mode == keysig_t::major ){
+    scale = Scales::major_triad;
+  }else{
+    scale = Scales::minor_triad;
+  }
   //DEBUG(key.pitch());
   scale = scale.vadd(key.pitch());
   scale.update();

@@ -489,7 +489,7 @@ void score_t::set_time_signature(double denom,double nom,double starttime)
 }
 
 score_t::score_t()
-  : TASCAR::osc_server_t("239.255.1.7","9877"),timescale(30),history(0.5),time(0),x_left(-85),prev_tpos(0),xshift(0)
+  : TASCAR::osc_server_t("239.255.1.7","9877"),timescale(30),history(0.5),time(0),x_left(-105),prev_tpos(0),xshift(0)
 {
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &score_t::on_timeout), 20 );
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
@@ -646,7 +646,7 @@ bool score_t::on_expose_event(GdkEventExpose* event)
 	  cr->clip();
 	}
       cr->translate(0.5*width, 0.5*height);
-      cr->scale(0.005*width, 0.005*width);
+      cr->scale(0.004*width, 0.004*width);
       //cr->set_line_width(0.1);
       cr->set_line_width(0.2);
       cr->save();
@@ -679,8 +679,8 @@ int main(int argc, char** argv)
   score_t n;
   win.add(n);
   win.set_title("music");
-  win.set_default_size(1280,720);
-  //win.fullscreen();
+  win.set_default_size(1024,600);
+  win.fullscreen();
   win.show_all();
   Gtk::Main::run(win);
   return 0;

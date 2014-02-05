@@ -17,6 +17,8 @@ BINFILES = ommo_bridge hos_sphere_amb30 hos_sendosc hos_delay hos_cyclephase hos
 #	hos_sendosc \
 #	mplayer_jack_transport \
 
+ARCH = $(shell uname -m)
+
 
 OBJECTS = jackclient.o osc_helper.o libhos_midi_ctl.o errorhandling.o libhos_gainmatrix.o audiochunks.o tmcm.o libhos_music.o libhos_random.o
 
@@ -36,7 +38,11 @@ ALSABIN = mm_midicc mm_hdsp
 
 GTKMMBIN = hos_oscrmsmeter hos_visualize mm_gui hos_visualize_sphere tascar_draw hos_cyclephasegui hos_scope hos_rtmdisplay
 
-CXXFLAGS += -Wall -O3 -msse -msse2 -mfpmath=sse -ffast-math -fomit-frame-pointer -fno-finite-math-only -L./
+ifeq "$(ARCH)" "x86_64"
+CXXFLAGS += -msse -msse2 -mfpmath=sse -ffast-math -fomit-frame-pointer -fno-finite-math-only
+endif
+
+CXXFLAGS += -Wall -O3 -Wall -O3 -L./
 
 EXTERNALS = alsa jack libxml++-2.6 liblo fftw3f sndfile
 
