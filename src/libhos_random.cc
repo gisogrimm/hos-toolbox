@@ -1,5 +1,6 @@
 #include "libhos_random.h"
 #include <stdlib.h>
+#include <math.h>
 
 double drand()
 {
@@ -97,6 +98,11 @@ double pdf_t::vmax() const
   if( !empty() )
     return rbegin()->first;
   return 0;
+}
+
+double gauss(double x, double sigma )
+{
+  return 1.0/sqrt(2.0*M_PI*sigma*sigma)*exp(-(x*x)/(2*sigma*sigma));
 }
 
 /*

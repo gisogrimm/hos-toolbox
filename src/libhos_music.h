@@ -11,6 +11,7 @@ bool is_in_scale(int32_t pitch, int32_t key);
 int32_t closest_key(int32_t pitch, int32_t key);
 std::string notename(int32_t pitch);
 uint32_t closest_length(double len);
+double frac(double x);
 
 #define PITCH_REST 1000
 
@@ -38,19 +39,22 @@ public:
   mode_t mode;
   std::string name() const;
   friend std::ostream& operator<<(std::ostream& o, const keysig_t& p){  o << p.name(); return o;};
+  bool operator==(const keysig_t& o) const { return (fifths==o.fifths) && (mode==o.mode);};
 };
 
 class time_signature_t {
 public:
   time_signature_t();
-  time_signature_t(double nom,double denom,double startt,uint32_t addb);
-  double nominator;
-  double denominator;
+  time_signature_t(uint32_t num,uint32_t denom,double startt,uint32_t addb);
+  uint32_t numerator;
+  uint32_t denominator;
   double starttime;
   uint32_t addbar;
   double bar(double time);
+  double beat(double time);
   double time(double bar);
-  friend std::ostream& operator<<(std::ostream& o, const time_signature_t& p){  o << "[time " << p.nominator << "/"<<p.denominator << "@" << p.starttime << "+" << p.addbar << "]"; return o;};
+  friend std::ostream& operator<<(std::ostream& o, const time_signature_t& p){  o << "[time " << p.numerator << "/"<<p.denominator << "@" << p.starttime << "+" << p.addbar << "]"; return o;};
+  bool operator==(const time_signature_t& o) const { return (numerator==o.numerator) && (denominator==o.denominator);};
 };
 
 #endif

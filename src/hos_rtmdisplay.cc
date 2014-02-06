@@ -315,7 +315,7 @@ void graphical_time_signature_t::draw(Cairo::RefPtr<Cairo::Context> cr,double x,
   double xl(space(cr));
   //+0.5*(l_nom-std::min(l_nom,l_denom))
   cr->move_to(x-xl+0.5*(l_denom-std::min(l_nom,l_denom)),-y);
-  cr->show_text(text(nominator));
+  cr->show_text(text(numerator));
   cr->move_to(x-xl+0.5*(l_nom-std::min(l_nom,l_denom)),-y+4);
   cr->show_text(text(denominator));
 }
@@ -345,7 +345,7 @@ public:
   void add_note(unsigned int voice,int pitch,unsigned int length,double time);
   void draw(Cairo::RefPtr<Cairo::Context> cr);
   double get_xpos(double time);
-  void set_time_signature(double denom,double nom,double starttime);
+  void set_time_signature(uint32_t numerator,uint32_t deominator,double starttime);
   double bar(double time);
   void set_keysig(double time,int32_t pitch,keysig_t::mode_t mode);
 protected:
@@ -453,6 +453,7 @@ void score_t::clear_all()
     staff->clear_all();
   xpositions.clear();
   timesig.clear();
+  keysig.clear();
   xshift = 0;
 }
 
@@ -476,9 +477,9 @@ void score_t::add_note(unsigned int voice,int pitch,unsigned int length,double t
   xpositions[time] = xmax;
 }
 
-void score_t::set_time_signature(double denom,double nom,double starttime)
+void score_t::set_time_signature(uint32_t numerator,uint32_t denominator,double starttime)
 {
-  timesig[starttime] = graphical_time_signature_t(denom,nom,starttime,0);
+  timesig[starttime] = graphical_time_signature_t(numerator,denominator,starttime,0);
   std::map<double,graphical_time_signature_t>::iterator ts(timesig.find(starttime));
   // if time signature is not the first one decrease by one to find
   // current time signature:
@@ -489,7 +490,7 @@ void score_t::set_time_signature(double denom,double nom,double starttime)
 }
 
 score_t::score_t()
-  : TASCAR::osc_server_t("239.255.1.7","9877"),timescale(30),history(0.5),time(0),x_left(-105),prev_tpos(0),xshift(0)
+  : TASCAR::osc_server_t("239.255.1.7","9877"),timescale(30),history(0.75),time(0),x_left(-105),prev_tpos(0),xshift(0)
 {
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &score_t::on_timeout), 20 );
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
@@ -502,7 +503,7 @@ score_t::score_t()
   }
   staves[0].clef = Symbols::treble;
   staves[1].clef = Symbols::treble;
-  //staves[3].clef = Symbols::tenor;
+  staves[3].clef = Symbols::bass;
   staves[4].clef = Symbols::bass;
   add_method("/time","f",score_t::set_time,this);
   add_method("/note","iiif",score_t::add_note,this);
@@ -679,8 +680,8 @@ int main(int argc, char** argv)
   score_t n;
   win.add(n);
   win.set_title("music");
-  win.set_default_size(1024,600);
-  win.fullscreen();
+  win.set_default_size(1024,480);
+  //win.fullscreen();
   win.show_all();
   Gtk::Main::run(win);
   return 0;

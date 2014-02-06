@@ -4,6 +4,7 @@
 #include <map>
 
 double drand();
+double gauss(double x, double sigma);
 
 class pdf_t : public std::map<double,double> {
 public:

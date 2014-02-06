@@ -1,4 +1,5 @@
 #include "libhos_music.h"
+#include <math.h>
 
 uint32_t closest_length(double len)
 {
@@ -58,21 +59,28 @@ int32_t closest_key(int32_t pitch, int32_t key)
 }
 
 time_signature_t::time_signature_t()
-  : nominator(4),denominator(4),starttime(0),addbar(0)
+  : numerator(4),denominator(4),starttime(0),addbar(0)
 {
 }
 
-time_signature_t::time_signature_t(double nom,double denom,double startt,uint32_t addb)
-  : nominator(nom),denominator(denom),starttime(startt),addbar(addb)
+time_signature_t::time_signature_t(uint32_t num,uint32_t denom,double startt,uint32_t addb)
+  : numerator(num),denominator(denom),starttime(startt),addbar(addb)
 {
 }
 
+
+double time_signature_t::beat(double time)
+{
+  if( numerator == 0 )
+    return 2.0*(time-starttime)*denominator;
+  return frac(bar(time))*numerator;
+}
 
 double time_signature_t::bar(double time)
 {
-  if( nominator == 0 )
+  if( numerator == 0 )
     return 0;
-  return 2.0*(time-starttime)*denominator/nominator + (double)addbar;
+  return 2.0*(time-starttime)*(double)denominator/(double)numerator + (double)addbar;
 }
 
 
@@ -80,7 +88,7 @@ double time_signature_t::time(double bar)
 {
   if( denominator == 0 )
     return starttime;
-  return 0.5*(bar-(double)addbar)*nominator/denominator+starttime;
+  return 0.5*(bar-(double)addbar)*(double)numerator/(double)denominator+starttime;
 }
 
 keysig_t::keysig_t()
@@ -156,6 +164,11 @@ std::string keysig_t::name() const
     return major_name[std::max(0,std::min(fifths+7,14))];
   else
     return minor_name[std::max(0,std::min(fifths+7,14))];
+}
+
+double frac(double x)
+{
+  return x-floor(x);
 }
 
 

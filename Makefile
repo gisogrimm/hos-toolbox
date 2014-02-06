@@ -5,7 +5,7 @@ PREFIX = /usr/local
 ifeq "$(ARCH)" "x86_64"
 BINFILES = ommo_bridge hos_sphere_amb30 hos_sendosc hos_delay hos_cyclephase hos_visualize hos_visualize_sphere hos_cyclephasegui hos_sampler hos_scope hos_osc2jack hos_resfilt hos_tmcm hos_osc_marais hos_osc_house debug_midi hos_rtmdisplay hos_composer hos_rtm2midi
 
-OBJECTS = jackclient.o osc_helper.o libhos_midi_ctl.o errorhandling.o libhos_gainmatrix.o audiochunks.o tmcm.o libhos_music.o libhos_random.o
+OBJECTS = jackclient.o osc_helper.o libhos_midi_ctl.o errorhandling.o libhos_gainmatrix.o audiochunks.o tmcm.o
 
 GUIOBJ = hosgui_meter.o hosgui_mixer.o hosgui_sphere.o 
 
@@ -100,6 +100,10 @@ hos_sphere_amb30: libhos_sphereparam.o
 $(GTKMMBIN): $(GUIOBJ)
 
 $(GTKMMBIN): EXTERNALS += gtkmm-2.4
+
+hos_composer: libhos_music.o libhos_random.o libhos_harmony.o
+hos_rtmdisplay: libhos_music.o
+hos_rtm2midi: libhos_music.o
 
 # Local Variables:
 # compile-command: "make"
