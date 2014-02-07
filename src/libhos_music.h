@@ -11,9 +11,11 @@ bool is_in_scale(int32_t pitch, int32_t key);
 int32_t closest_key(int32_t pitch, int32_t key);
 std::string notename(int32_t pitch);
 uint32_t closest_length(double len);
+double duration(uint32_t len);
 double frac(double x);
 
 #define PITCH_REST 1000
+#define MAXLEN 4
 
 class note_t {
 public:
@@ -50,9 +52,10 @@ public:
   uint32_t denominator;
   double starttime;
   uint32_t addbar;
-  double bar(double time);
-  double beat(double time);
-  double time(double bar);
+  double bar(double time) const;
+  double beat(double time) const;
+  double time(double bar) const;
+  bool unmeasured() const {return numerator==0;};
   friend std::ostream& operator<<(std::ostream& o, const time_signature_t& p){  o << "[time " << p.numerator << "/"<<p.denominator << "@" << p.starttime << "+" << p.addbar << "]"; return o;};
   bool operator==(const time_signature_t& o) const { return (numerator==o.numerator) && (denominator==o.denominator);};
 };

@@ -7,6 +7,7 @@
 #include "osc_helper.h"
 #include "libhos_music.h"
 #include "defs.h"
+#include "errorhandling.h"
 
 class clef_t {
 public:
@@ -16,6 +17,13 @@ public:
   int c1pos;
   void draw_full(Cairo::RefPtr<Cairo::Context> cr,double x, double y);
 };
+
+uint32_t checklen(uint32_t l)
+{
+  if( l > MAXLEN )
+    throw TASCAR::ErrMsg("Invalid length.");
+  return l;
+}
 
 std::string text(uint32_t n)
 {
@@ -67,7 +75,7 @@ graphical_note_t::graphical_note_t()
 
 graphical_note_t::graphical_note_t(const note_t& note, const clef_t& clef, int key,const graphical_note_t& prev)
   : note_t(note),
-    sym_head(Symbols::notehead[length])
+    sym_head(Symbols::notehead[checklen(length)])
 {
   if( pitch != PITCH_REST ){
     int octave(floor((double)pitch/12.0));
@@ -105,13 +113,13 @@ graphical_note_t::graphical_note_t(const note_t& note, const clef_t& clef, int k
         sym_alteration = Symbols::alteration[alteration+2];
     }
     if( y > 0 )
-      sym_flag = Symbols::flag_down[length];
+      sym_flag = Symbols::flag_down[checklen(length)];
     else
-      sym_flag = Symbols::flag_up[length];
+      sym_flag = Symbols::flag_up[checklen(length)];
   }else{
     y = 2*(length == 1);
     alteration = 0;
-    sym_head = Symbols::rest[length];
+    sym_head = Symbols::rest[checklen(length)];
     sym_alteration = "";
     sym_flag = "";
   }
@@ -362,11 +370,14 @@ protected:
   double xshift;
   std::map<double,graphical_time_signature_t> timesig;
   std::map<double,keysig_t> keysig;
+  pthread_mutex_t mutex;
 };
 
 void score_t::set_keysig(double time,int32_t pitch,keysig_t::mode_t mode)
 {
+  pthread_mutex_lock( &mutex );
   keysig[time] = keysig_t(pitch,mode);
+  pthread_mutex_unlock( &mutex );
 }
 
 double score_t::bar(double time)
@@ -444,21 +455,26 @@ int score_t::clear_all(const char *path, const char *types, lo_arg **argv, int a
 
 void score_t::set_time(double t)
 {
+  pthread_mutex_lock( &mutex );
   time = t;
+  pthread_mutex_unlock( &mutex );
 }
 
 void score_t::clear_all()
 {
+  pthread_mutex_lock( &mutex );
   for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff)
     staff->clear_all();
   xpositions.clear();
   timesig.clear();
   keysig.clear();
   xshift = 0;
+  pthread_mutex_unlock( &mutex );
 }
 
 void score_t::add_note(unsigned int voice,int pitch,unsigned int length,double time)
 {
+  pthread_mutex_lock( &mutex );
   note_t n;
   n.pitch = pitch;
   n.length = length;
@@ -475,10 +491,12 @@ void score_t::add_note(unsigned int voice,int pitch,unsigned int length,double t
   double xmax(0);
   xmax = n.duration()*timescale;
   xpositions[time] = xmax;
+  pthread_mutex_unlock( &mutex );
 }
 
 void score_t::set_time_signature(uint32_t numerator,uint32_t denominator,double starttime)
 {
+  pthread_mutex_lock( &mutex );
   timesig[starttime] = graphical_time_signature_t(numerator,denominator,starttime,0);
   std::map<double,graphical_time_signature_t>::iterator ts(timesig.find(starttime));
   // if time signature is not the first one decrease by one to find
@@ -487,11 +505,13 @@ void score_t::set_time_signature(uint32_t numerator,uint32_t denominator,double 
     ts--;
   timesig[starttime].addbar = ts->second.bar(starttime);
   xpositions[starttime] = 0;
+  pthread_mutex_unlock( &mutex );
 }
 
 score_t::score_t()
-  : TASCAR::osc_server_t("239.255.1.7","9877"),timescale(30),history(0.75),time(0),x_left(-105),prev_tpos(0),xshift(0)
+  : TASCAR::osc_server_t("239.255.1.7","9877"),timescale(20),history(6),time(0),x_left(-105),prev_tpos(0),xshift(0)
 {
+  pthread_mutex_init( &mutex, NULL );
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &score_t::on_timeout), 20 );
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
   //Connect the signal handler if it isn't already a virtual method override:  signal_expose_event().connect(sigc::mem_fun(*this, &score_t::on_expose_event), false);
@@ -516,6 +536,9 @@ score_t::score_t()
 score_t::~score_t()
 {
   osc_server_t::deactivate();
+  pthread_mutex_trylock( &mutex );
+  pthread_mutex_unlock(  &mutex );
+  pthread_mutex_destroy( &mutex );
 }
 
 void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
@@ -524,6 +547,8 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
   cr->set_source_rgb(0, 0, 0);
   cr->select_font_face("Emmentaler-16",Cairo::FONT_SLANT_NORMAL,Cairo::FONT_WEIGHT_NORMAL);
   cr->set_font_size(8);
+  // start access to data:
+  pthread_mutex_lock( &mutex );
   // clean time database:
   double t0(time-history);
   while( xpositions.size() && (xpositions.begin()->first < t0) )
@@ -626,6 +651,7 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
       cr->restore();
     }
   }
+  pthread_mutex_unlock( &mutex );
 }
 
 bool score_t::on_expose_event(GdkEventExpose* event)

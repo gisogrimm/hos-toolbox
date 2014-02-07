@@ -3,17 +3,25 @@
 
 uint32_t closest_length(double len)
 {
+  if( len <= 0 )
+    return MAXLEN;
   uint32_t l2(0);
-  while( len < (1.0/(double)(1<<l2)) )
+  while( len < (2.0/(double)(1<<l2)) )
     l2++;
-  if( l2 > 6 )
-    l2 = 6;
+  if( l2 > MAXLEN )
+    l2 = MAXLEN;
   return l2;
 }
 
 note_t::note_t()
  :pitch(0),length(0),time(-1000)
 {
+}
+
+
+double duration(uint32_t length)
+{
+  return 2.0/(double)(1<<length);
 }
 
 double note_t::end_time() const
@@ -23,7 +31,7 @@ double note_t::end_time() const
 
 double note_t::duration() const
 {
-  return 1.0/(double)(1<<length);
+  return ::duration(length);
 }
 
 int32_t major[7] = {0,2,4,5,7,9,11};
@@ -69,26 +77,26 @@ time_signature_t::time_signature_t(uint32_t num,uint32_t denom,double startt,uin
 }
 
 
-double time_signature_t::beat(double time)
+double time_signature_t::beat(double time) const
 {
   if( numerator == 0 )
-    return 2.0*(time-starttime)*denominator;
+    return 1.0*(time-starttime)*denominator;
   return frac(bar(time))*numerator;
 }
 
-double time_signature_t::bar(double time)
+double time_signature_t::bar(double time) const
 {
   if( numerator == 0 )
     return 0;
-  return 2.0*(time-starttime)*(double)denominator/(double)numerator + (double)addbar;
+  return 1.0*(time-starttime)*(double)denominator/(double)numerator + (double)addbar;
 }
 
 
-double time_signature_t::time(double bar)
+double time_signature_t::time(double bar) const
 {
   if( denominator == 0 )
     return starttime;
-  return 0.5*(bar-(double)addbar)*(double)numerator/(double)denominator+starttime;
+  return 1.0*(bar-(double)addbar)*(double)numerator/(double)denominator+starttime;
 }
 
 keysig_t::keysig_t()

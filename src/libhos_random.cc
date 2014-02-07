@@ -21,8 +21,10 @@ void pdf_t::update()
     it->second /= psum;
   double p(0);
   for( iterator it=begin();it!=end();++it){
-    p+=it->second;
-    icdf[p] = it->first;
+    if( it->second != 0 ){
+      p+=it->second;
+      icdf[p] = it->first;
+    }
   }
 }
 
