@@ -32,6 +32,8 @@ class keysigchange_t {
 public:
   keysigchange_t();
   keysigchange_t(int32_t f,bool p);
+  keysigchange_t(uint32_t hash);
+  uint32_t hash() const;
   int32_t fifths;
   bool parallel;
 };
@@ -42,6 +44,7 @@ public:
     major, minor
   };
   keysig_t();
+  keysig_t(uint32_t hash);
   keysig_t(int p, mode_t m);
   int32_t pitch() const;
   void setpitch(int p,mode_t m);
@@ -51,6 +54,7 @@ public:
   friend std::ostream& operator<<(std::ostream& o, const keysig_t& p){  o << p.name(); return o;};
   bool operator==(const keysig_t& o) const { return (fifths==o.fifths) && (mode==o.mode);};
   keysig_t& operator+=(const keysigchange_t&);
+  uint32_t hash() const;
 };
 
 class time_signature_t {

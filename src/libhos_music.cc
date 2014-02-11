@@ -105,6 +105,17 @@ keysig_t::keysig_t()
 {
 }
 
+keysig_t::keysig_t(uint32_t hash)
+  : fifths((int32_t)(hash & 15) - 7),
+    mode((hash & 64)?minor:major)
+{
+}
+
+uint32_t keysig_t::hash() const
+{
+  return 64*(mode==minor) + (fifths+7);
+}
+
 keysig_t::keysig_t(int p, mode_t m)
 {
   setpitch(p,m);
@@ -116,6 +127,18 @@ int32_t keysig_t::pitch() const
   if( mode == minor )
     p -= 3;
   return wrapped_pitch(p);
+}
+
+keysig_t& keysig_t::operator+=(const keysigchange_t& kc)
+{
+  fifths += kc.fifths;
+  if( kc.parallel ){
+    if( mode == major )
+      mode = minor;
+    else
+      mode = major;
+  }
+  return *this;
 }
 
 void keysig_t::setpitch(int32_t p,mode_t m)
@@ -179,6 +202,28 @@ double frac(double x)
   return x-floor(x);
 }
 
+
+keysigchange_t::keysigchange_t()
+  : fifths(0),
+    parallel(false)
+{
+}
+
+keysigchange_t::keysigchange_t(int32_t f,bool p)
+  : fifths(f),parallel(p)
+{
+}
+
+keysigchange_t::keysigchange_t(uint32_t hash)
+  : fifths((int32_t)(hash & 15) - 7),
+    parallel(hash & 64)
+{
+}
+
+uint32_t keysigchange_t::hash() const
+{
+  return 64*parallel + (fifths+7);
+}
 
 /*
  * Local Variables:

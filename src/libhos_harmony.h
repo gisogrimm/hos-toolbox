@@ -3,6 +3,7 @@
 
 #include "libhos_music.h"
 #include "libhos_random.h"
+#include <libxml++/libxml++.h>
 
 class ambitus_t {
 public:
@@ -36,11 +37,17 @@ const triad_t Triad;
 class harmony_model_t {
 public:
   bool process(double beat);
+  void update_tables();
   const keysig_t& current() const;
   const keysig_t& next() const;
+  void read_xml(xmlpp::Element* e);
 private:
   keysig_t key_current;
   keysig_t key_next;
+  pmf_t pkey;
+  pmf_t pchange;
+  pmf_t pbeat;
+  std::map<uint32_t,pmf_t> pkeyrel;
 };
 
 #endif

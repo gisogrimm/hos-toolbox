@@ -1,18 +1,21 @@
 #include "libhos_random.h"
 #include <stdlib.h>
 #include <math.h>
+#include "errorhandling.h"
 
 double drand()
 {
   return (double)random()/(double)(RAND_MAX+1.0);
 }
 
-pdf_t::pdf_t()
+pmf_t::pmf_t()
 {
 }
 
-void pdf_t::update()
+void pmf_t::update()
 {
+  if( empty() )
+    throw TASCAR::ErrMsg("The probability mass function is empty.");
   icdf.clear();
   double psum(0);
   for( iterator it=begin();it!=end();++it)
@@ -28,24 +31,24 @@ void pdf_t::update()
   }
 }
 
-double pdf_t::rand() const
+double pmf_t::rand() const
 {
   if( icdf.empty() )
-    return 0;
+    throw TASCAR::ErrMsg("The cumulative distribution function is empty.");
   std::map<double,double>::const_iterator it(icdf.lower_bound(drand()));
   if( it == icdf.end() )
     return icdf.rbegin()->second;
   return it->second;
 }
 
-void pdf_t::set(double v,double p)
+void pmf_t::set(double v,double p)
 {
   operator[](v) = p;
 }
 
-pdf_t pdf_t::operator+(const pdf_t& p2) const
+pmf_t pmf_t::operator+(const pmf_t& p2) const
 {
-  pdf_t retv;
+  pmf_t retv;
   for(const_iterator it=begin();it!=end();++it)
     retv[it->first] = it->second;
   for(const_iterator it=p2.begin();it!=p2.end();++it)
@@ -54,18 +57,18 @@ pdf_t pdf_t::operator+(const pdf_t& p2) const
   return retv;
 }
 
-pdf_t pdf_t::vadd(double dp) const
+pmf_t pmf_t::vadd(double dp) const
 {
-  pdf_t retv;
+  pmf_t retv;
   for(const_iterator it=begin();it!=end();++it)
     retv[it->first+dp] = it->second;
   retv.update();
   return retv;
 }
 
-pdf_t pdf_t::operator*(const pdf_t& p2) const
+pmf_t pmf_t::operator*(const pmf_t& p2) const
 {
-  pdf_t retv;
+  pmf_t retv;
   for(const_iterator it=begin();it!=end();++it){
     const_iterator it2(p2.find(it->first));
     if( it2 != p2.end() )
@@ -75,27 +78,27 @@ pdf_t pdf_t::operator*(const pdf_t& p2) const
   return retv;
 }
 
-pdf_t pdf_t::operator*(double a) const
+pmf_t pmf_t::operator*(double a) const
 {
-  pdf_t retv;
+  pmf_t retv;
   for(const_iterator it=begin();it!=end();++it)
     retv[it->first] = it->second * a;
   return retv;
 }
 
-pdf_t operator*(double a,const pdf_t& p)
+pmf_t operator*(double a,const pmf_t& p)
 { 
   return p*a;
 }
 
-double pdf_t::vmin() const
+double pmf_t::vmin() const
 {
   if( !empty() )
     return begin()->first;
   return 0;
 }
 
-double pdf_t::vmax() const
+double pmf_t::vmax() const
 {
   if( !empty() )
     return rbegin()->first;

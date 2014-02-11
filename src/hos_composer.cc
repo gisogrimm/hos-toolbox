@@ -32,7 +32,7 @@ voice_t::voice_t()
 class composer_t {
 public:
   composer_t(const std::string& url);
-  bool process_key();
+  //bool process_key();
   bool process_timesig();
   void process_timing();
   int emit_pitch(uint32_t voice,double triad_w);
@@ -41,8 +41,9 @@ public:
   void process_time();
 private:
   std::vector<voice_t> voice;
-  keysig_t key;
-  keysig_t next_key;
+  harmony_model_t harmony;
+  //keysig_t key;
+  //keysig_t next_key;
 public:
   time_signature_t timesig;
   double time;
@@ -55,12 +56,12 @@ private:
 
 int32_t composer_t::get_key() const
 {
-  return key.pitch();
+  return harmony.current().pitch();
 }
 
 int32_t composer_t::get_mode() const
 {
-  return key.mode;
+  return harmony.current().mode;
 }
 
 composer_t::composer_t(const std::string& url)
@@ -79,6 +80,7 @@ composer_t::composer_t(const std::string& url)
   ptimesigchange.set(0,4);
   ptimesigchange.set(1,1);
   ptimesigchange.update();
+  harmony.update_tables();
   lo_send(lo_addr,"/clear","");
   process_timing();
 }
@@ -87,10 +89,10 @@ int composer_t::emit_pitch(uint32_t v,double triad_w)
 {
   pmf_t scale;
   //triad_w = 0.8;
-  scale = (Triad[key.mode]*triad_w) + (Scale[key.mode]*(1.0-triad_w));
+  scale = (Triad[harmony.current().mode]*triad_w) + (Scale[harmony.current().mode]*(1.0-triad_w));
   //scale = Triad[key.mode];
   //DEBUG(key.pitch());
-  scale = scale.vadd(key.pitch());
+  scale = scale.vadd(harmony.current().pitch());
   scale.update();
   //DEBUG(key.name());
   pmf_t note_change;
@@ -115,35 +117,6 @@ int composer_t::emit_pitch(uint32_t v,double triad_w)
   return voice[v].pitch;
 }
 
-bool composer_t::process_key()
-{
-  keysig_t old_key(key);
-  key = next_key;
-  pmf_t keychange;
-  for(int k=1;k<=6;k++){
-    keychange.set(k,1.0/(k*k));
-    keychange.set(-k,1.0/(k*k));
-  }
-  keychange.set(0,0.5);
-  keychange = keychange.vadd(old_key.fifths);
-  pmf_t keysig_taste;
-  for(int k=-5;k<6;k++)
-    keysig_taste.set(k,gauss(k+1,6));
-  keysig_taste.update();
-  keychange = keychange * keysig_taste;
-  pmf_t major;
-  major.set(0,3);
-  major.set(1,2);
-  major.update();
-  next_key.fifths = keychange.rand();
-  if( major.rand() == 0 )
-    next_key.mode = keysig_t::major;
-  else
-    next_key.mode = keysig_t::minor;
-  //next_key.fifths = 1;
-  //next_key.mode = keysig_t::major;
-  return !(key == next_key);
-}
 
 void composer_t::process_timing()
 {
@@ -184,10 +157,10 @@ void composer_t::process_time()
 {
   time += 1.0/128.0;
   lo_send(lo_addr,"/time","f",time);
+  if( harmony.process(timesig.beat(time)) )
+    lo_send(lo_addr,"/key","fii",time,get_key(),get_mode());
   if( (timesig.beat(time) == 0) || ((timesig.numerator==0)&&(frac(timesig.beat(time))==0)) ){
-    // new bar, optionally update key or time signature:
-    if( process_key() )
-      lo_send(lo_addr,"/key","fii",time,get_key(),get_mode());
+    // new bar, optionally update time signature:
     if( process_timesig() ){
       lo_send(lo_addr,"/timesig","fii",time,timesig.numerator,timesig.denominator);
       process_timing();

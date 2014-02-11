@@ -79,6 +79,44 @@ const pmf_t& triad_t::operator[](keysig_t::mode_t m) const
   return major;
 }
 
+void harmony_model_t::update_tables()
+{
+  pkeyrel.clear();
+  for( pmf_t::const_iterator kit=pkey.begin();kit!=pkey.end();++kit){
+    pmf_t ptab;
+    for( pmf_t::const_iterator kcit=pchange.begin();kcit!=pchange.end();++kcit){
+      keysig_t key(kit->first);
+      key+= keysigchange_t(kcit->first);
+      double p(kit->second * kcit->second);
+      if( p > 0 )
+        ptab.set(key.hash(),p);
+      ptab.update();
+      pkeyrel[kit->first] = ptab;
+    }
+  }
+}
+
+bool harmony_model_t::process(double beat)
+{
+  if( pbeat.rand() == beat ){
+    keysig_t old_key(key_current);
+    key_current = key_next;
+    key_next = keysig_t(pkeyrel[old_key.hash()].rand());
+    return !(key_current == key_next);
+  }
+  return false;
+}
+
+const keysig_t& harmony_model_t::current() const
+{
+  return key_current;
+}
+
+const keysig_t& harmony_model_t::next() const
+{
+  return key_next;
+}
+
 /*
  * Local Variables:
  * mode: c++

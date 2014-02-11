@@ -1,0 +1,90 @@
+<?xml version="1.0"?>
+<hos_composer name="Picforth">
+  <keys>
+    <key v="cm" p="1"/>
+    <key v="gm" p="1"/>
+    <key v="Bb" p="1"/>
+  </keys>
+  <keychanges>
+    <change v="0" p="1"/>
+    <change v="0p" p="1"/>
+    <change v="1" p="1"/>
+    <change v="-1" p="1"/>
+  </keychanges>
+  <keychangebeats>
+    <time v="0" p="1"/>
+  </keychangebeats>
+  <timesigs>
+    <timesig v="3/1" p="1"/>
+  </timesigs>
+  <voices>
+    <voice id="4" name="bass" lowest="F" highest="bb">
+      <durations>
+	<length v="0.75" p="1"/>
+      </durations>
+      <beats>
+	<beat v="0" p="1"/>
+	<beat v="0.75" p="1"/>
+	<beat v="1.5" p="1"/>
+	<beat v="2.25" p="1"/>
+      </beats>
+    </voice>
+    <voice id="3" name="tenor2" lowest="f" highest="g'">
+      <durations>
+	<length v="1" p="1"/>
+      </durations>
+      <beats>
+	<beat v="0" p="1"/>
+	<beat v="1" p="1"/>
+	<beat v="2" p="1"/>
+      </beats>
+    </voice>
+    <voice id="2" name="tenor1" lowest="b" highest="c''">
+      <durations>
+	<length v="0.5" p="1"/>
+      </durations>
+      <beats>
+	<beat v="0" p="1"/>
+	<beat v="0.5" p="1"/>
+	<beat v="1" p="1"/>
+	<beat v="1.5" p="1"/>
+	<beat v="2" p="1"/>
+	<beat v="2.5" p="1"/>
+      </beats>
+    </voice>
+    <voice id="1" name="alto" lowest="a" highest="c''">
+      <durations>
+	<length v="0.375" p="1"/>
+      </durations>
+      <beats>
+	<beat v="0.000" p="1"/>
+	<beat v="0.375" p="1"/>
+	<beat v="0.750" p="1"/>
+	<beat v="1.125" p="1"/>
+	<beat v="1.500" p="1"/>
+	<beat v="1.875" p="1"/>
+	<beat v="2.250" p="1"/>
+	<beat v="2.625" p="1"/>
+      </beats>
+    </voice>
+    <voice id="0" name="treble" lowest="d'" highest="g''">
+      <durations>
+	<length v="0.25" p="1"/>
+      </durations>
+      <beats>
+	<beat v="0.00" p="1"/>
+	<beat v="0.25" p="1"/>
+	<beat v="0.50" p="1"/>
+	<beat v="0.75" p="1"/>
+	<beat v="1.00" p="1"/>
+	<beat v="1.25" p="1"/>
+	<beat v="1.50" p="1"/>
+	<beat v="1.75" p="1"/>
+	<beat v="2.00" p="1"/>
+	<beat v="2.25" p="1"/>
+	<beat v="2.50" p="1"/>
+	<beat v="2.75" p="1"/>
+      </beats>
+    </voice>
+  </voices>
+</hos_composer>
