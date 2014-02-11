@@ -7,31 +7,41 @@
 class ambitus_t {
 public:
   ambitus_t();
-  pdf_t treble;
-  pdf_t tenor;
-  pdf_t bass;
-  pdf_t fezzo;
+  pmf_t treble;
+  pmf_t tenor;
+  pmf_t bass;
+  pmf_t fezzo;
 };
 
 class scale_t {
 public:
   scale_t();
-  const pdf_t& operator[](keysig_t::mode_t m) const;
-  pdf_t major;
-  pdf_t minor;
+  const pmf_t& operator[](keysig_t::mode_t m) const;
+  pmf_t major;
+  pmf_t minor;
 };
 
 class triad_t {
 public:
   triad_t();
-  const pdf_t& operator[](keysig_t::mode_t m) const;
-  pdf_t major;
-  pdf_t minor;
+  const pmf_t& operator[](keysig_t::mode_t m) const;
+  pmf_t major;
+  pmf_t minor;
 };
 
 const ambitus_t Ambitus;
 const scale_t Scale;
 const triad_t Triad;
+
+class harmony_model_t {
+public:
+  bool process(double beat);
+  const keysig_t& current() const;
+  const keysig_t& next() const;
+private:
+  keysig_t key_current;
+  keysig_t key_next;
+};
 
 #endif
 

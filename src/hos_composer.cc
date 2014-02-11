@@ -18,7 +18,7 @@ simple_timesig_t good_timesig[GOODTIMESIG] = { {4,2}, {7,4}, {5,2}, {3,4} };
 class voice_t {
 public:
   voice_t();
-  pdf_t ambitus;
+  pmf_t ambitus;
   int32_t pitch;
   note_t note;
 };
@@ -47,9 +47,9 @@ public:
   time_signature_t timesig;
   double time;
 private:
-  pdf_t ptimesig;
-  pdf_t ptimesigchange;
-  pdf_t timing;
+  pmf_t ptimesig;
+  pmf_t ptimesigchange;
+  pmf_t timing;
   lo_address lo_addr;
 };
 
@@ -85,7 +85,7 @@ composer_t::composer_t(const std::string& url)
 
 int composer_t::emit_pitch(uint32_t v,double triad_w)
 {
-  pdf_t scale;
+  pmf_t scale;
   //triad_w = 0.8;
   scale = (Triad[key.mode]*triad_w) + (Scale[key.mode]*(1.0-triad_w));
   //scale = Triad[key.mode];
@@ -93,7 +93,7 @@ int composer_t::emit_pitch(uint32_t v,double triad_w)
   scale = scale.vadd(key.pitch());
   scale.update();
   //DEBUG(key.name());
-  pdf_t note_change;
+  pmf_t note_change;
   if( voice[v].pitch != PITCH_REST ){
     for(int32_t n=-80;n<81;n++)
       note_change.set(n,gauss(n,4));
@@ -106,7 +106,7 @@ int composer_t::emit_pitch(uint32_t v,double triad_w)
   scale = scale * voice[v].ambitus * note_change;
   if( !scale.empty() )
     voice[v].pitch = scale.rand();
-  pdf_t rest;
+  pmf_t rest;
   rest.set(0,8);
   rest.set(1,1);
   rest.update();
@@ -119,19 +119,19 @@ bool composer_t::process_key()
 {
   keysig_t old_key(key);
   key = next_key;
-  pdf_t keychange;
+  pmf_t keychange;
   for(int k=1;k<=6;k++){
     keychange.set(k,1.0/(k*k));
     keychange.set(-k,1.0/(k*k));
   }
   keychange.set(0,0.5);
   keychange = keychange.vadd(old_key.fifths);
-  pdf_t keysig_taste;
+  pmf_t keysig_taste;
   for(int k=-5;k<6;k++)
     keysig_taste.set(k,gauss(k+1,6));
   keysig_taste.update();
   keychange = keychange * keysig_taste;
-  pdf_t major;
+  pmf_t major;
   major.set(0,3);
   major.set(1,2);
   major.update();
@@ -203,7 +203,7 @@ void composer_t::process_time()
         //DEBUG(timesig);
         //DEBUG(voice[k].note.time);
         //DEBUG(timesig.beat(voice[k].note.time));
-        pdf_t pbeatw(timing);
+        pmf_t pbeatw(timing);
         for(double t=0;t<=timesig.beat(voice[k].note.time);t+=1.0/64.0)
           pbeatw.set(t,0);
         pbeatw.update();

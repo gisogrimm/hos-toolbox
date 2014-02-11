@@ -57,7 +57,7 @@ triad_t::triad_t()
   minor.update();
 }
 
-const pdf_t& scale_t::operator[](keysig_t::mode_t m) const
+const pmf_t& scale_t::operator[](keysig_t::mode_t m) const
 {
   switch( m ){
   case keysig_t::major:
@@ -68,7 +68,7 @@ const pdf_t& scale_t::operator[](keysig_t::mode_t m) const
   return major;
 }
 
-const pdf_t& triad_t::operator[](keysig_t::mode_t m) const
+const pmf_t& triad_t::operator[](keysig_t::mode_t m) const
 {
   switch( m ){
   case keysig_t::major:

@@ -28,6 +28,14 @@ public:
   friend std::ostream& operator<<(std::ostream& o, const note_t& p){  o << "[" << p.pitch << ":"<<p.length << "@" << p.time << "]"; return o;};
 };
 
+class keysigchange_t {
+public:
+  keysigchange_t();
+  keysigchange_t(int32_t f,bool p);
+  int32_t fifths;
+  bool parallel;
+};
+
 class keysig_t {
 public:
   enum mode_t {
@@ -42,6 +50,7 @@ public:
   std::string name() const;
   friend std::ostream& operator<<(std::ostream& o, const keysig_t& p){  o << p.name(); return o;};
   bool operator==(const keysig_t& o) const { return (fifths==o.fifths) && (mode==o.mode);};
+  keysig_t& operator+=(const keysigchange_t&);
 };
 
 class time_signature_t {
