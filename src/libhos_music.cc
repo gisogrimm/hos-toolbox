@@ -1,5 +1,7 @@
 #include "libhos_music.h"
 #include <math.h>
+#include "errorhandling.h"
+#include "defs.h"
 
 uint32_t closest_length(double len)
 {
@@ -103,6 +105,31 @@ keysig_t::keysig_t()
   : fifths(0),
     mode(major)
 {
+}
+
+keysig_t::keysig_t(const std::string& name)
+{
+  if( name.size() == 0 )
+    throw TASCAR::ErrMsg("key signature name is empty");
+  uint32_t fc(0);
+  if( name[name.size()-1] == 'm' ){
+    mode = minor;
+    std::string names[] = {"ebm","bbm","fm","cm","gm","dm","am","em","bm","f#m","c#m","g#m","d#m",""};
+    while( names[fc].size() && (names[fc] != name) )
+      fc++;
+    if( !names[fc].size() )
+      throw TASCAR::ErrMsg("Unknown key signature name \""+name+"\".");
+    fifths = (int32_t)fc-6;
+  }else{
+    mode = major;
+    std::string names[] = {"Gb","Db","Ab","Eb","Bb","F","C","G","D","A","E","B","F#",""};
+    while( names[fc].size() && (names[fc] != name) )
+      fc++;
+    if( !names[fc].size() )
+      throw TASCAR::ErrMsg("Unknown key signature name \""+name+"\".");
+    fifths = (int32_t)fc-6;
+  }
+  DEBUG(*this);
 }
 
 keysig_t::keysig_t(uint32_t hash)

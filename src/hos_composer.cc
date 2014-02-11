@@ -31,7 +31,7 @@ voice_t::voice_t()
 
 class composer_t {
 public:
-  composer_t(const std::string& url);
+  composer_t(const std::string& url,const std::string& fname);
   //bool process_key();
   bool process_timesig();
   void process_timing();
@@ -39,6 +39,7 @@ public:
   int32_t get_key() const;
   int32_t get_mode() const;
   void process_time();
+  void read_xml(const std::string& fname);
 private:
   std::vector<voice_t> voice;
   harmony_model_t harmony;
@@ -64,7 +65,7 @@ int32_t composer_t::get_mode() const
   return harmony.current().mode;
 }
 
-composer_t::composer_t(const std::string& url)
+composer_t::composer_t(const std::string& url,const std::string& fname)
   : timesig(0,2,0,0), time(0), lo_addr(lo_address_new_from_url(url.c_str()))
 {
   lo_address_set_ttl( lo_addr, 1 );
@@ -80,7 +81,7 @@ composer_t::composer_t(const std::string& url)
   ptimesigchange.set(0,4);
   ptimesigchange.set(1,1);
   ptimesigchange.update();
-  harmony.update_tables();
+  read_xml(fname);
   lo_send(lo_addr,"/clear","");
   process_timing();
 }
@@ -116,6 +117,29 @@ int composer_t::emit_pitch(uint32_t v,double triad_w)
     voice[v].pitch = PITCH_REST;
   return voice[v].pitch;
 }
+
+void composer_t::read_xml(const std::string& fname)
+{
+  xmlpp::DomParser parser(fname);
+  xmlpp::Element* root(parser.get_document()->get_root_node());
+  if( root ){
+    harmony.read_xml(root);
+  }
+  //  //xmlpp::Node::NodeList nodesPiece = root->get_children("Location");
+  //  xmlpp::NodeSet nodesPiece = root->find("//Location");
+  //  for(xmlpp::NodeSet::iterator nit=nodesPiece.begin();nit!=nodesPiece.end();++nit){
+  //    xmlpp::Element* loc = dynamic_cast<xmlpp::Element*>(*nit);
+  //    if( loc ){
+  //      marker_t m(atol(loc->get_attribute_value("start").c_str()),loc->get_attribute_value("name"));
+  //      if( b_markerpath )
+  //        m.name = path + m.name;
+  //      db.push_back(m);
+  //    }
+  //  }
+  //}
+  ////dump_db();
+}
+
 
 
 void composer_t::process_timing()
@@ -197,7 +221,7 @@ void composer_t::process_time()
 int main(int argc, char** argv)
 {
   srandom(time(NULL));
-  composer_t c("osc.udp://239.255.1.7:9877/");
+  composer_t c("osc.udp://239.255.1.7:9877/","picforth.prob");
   while(true){
     usleep(15625);
     c.process_time();

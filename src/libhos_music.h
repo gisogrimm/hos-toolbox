@@ -44,6 +44,7 @@ public:
     major, minor
   };
   keysig_t();
+  keysig_t(const std::string& name);
   keysig_t(uint32_t hash);
   keysig_t(int p, mode_t m);
   int32_t pitch() const;

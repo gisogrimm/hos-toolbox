@@ -1,19 +1,17 @@
 <?xml version="1.0"?>
 <hos_composer name="Picforth">
-  <keys>
+  <harmony>
     <key v="cm" p="1"/>
     <key v="gm" p="1"/>
     <key v="Bb" p="1"/>
-  </keys>
-  <keychanges>
+    <key v="am" p="0.5"/>
+    <key v="C" p="0.5"/>
     <change v="0" p="1"/>
-    <change v="0p" p="1"/>
+    <change v="0:p" p="1"/>
     <change v="1" p="1"/>
     <change v="-1" p="1"/>
-  </keychanges>
-  <keychangebeats>
-    <time v="0" p="1"/>
-  </keychangebeats>
+    <beat v="0" p="1"/>
+  </harmony>
   <timesigs>
     <timesig v="3/1" p="1"/>
   </timesigs>

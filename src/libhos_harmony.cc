@@ -1,4 +1,6 @@
 #include "libhos_harmony.h"
+#include <stdlib.h>
+#include "defs.h"
 
 ambitus_t::ambitus_t()
 {
@@ -115,6 +117,61 @@ const keysig_t& harmony_model_t::current() const
 const keysig_t& harmony_model_t::next() const
 {
   return key_next;
+}
+
+void harmony_model_t::read_xml(xmlpp::Element* e)
+{
+  pkey.clear();
+  pchange.clear();
+  pbeat.clear();
+  xmlpp::NodeSet nHarmony(e->find("//harmony"));
+  if( !nHarmony.empty() ){
+    xmlpp::Element* eHarmony(dynamic_cast<xmlpp::Element*>(*(nHarmony.begin())));
+    if( eHarmony ){
+      // first scan absolute keys:
+      xmlpp::Node::NodeList nKey(eHarmony->get_children("key"));
+      for(xmlpp::Node::NodeList::iterator nKeyIt=nKey.begin(); nKeyIt != nKey.end(); ++nKeyIt){
+        xmlpp::Element* eKey(dynamic_cast<xmlpp::Element*>(*nKeyIt));
+        if( eKey ){
+          std::string s_val(eKey->get_attribute_value("v"));
+          std::string s_prob(eKey->get_attribute_value("p"));
+          keysig_t key(s_val);
+          pkey.set(key.hash(),atof(s_prob.c_str()));
+        }
+      }
+      // second relative key changes:
+      xmlpp::Node::NodeList nChange(eHarmony->get_children("change"));
+      for(xmlpp::Node::NodeList::iterator nChangeIt=nChange.begin(); nChangeIt != nChange.end(); ++nChangeIt){
+        xmlpp::Element* eKey(dynamic_cast<xmlpp::Element*>(*nChangeIt));
+        if( eKey ){
+          std::string s_val(eKey->get_attribute_value("v"));
+          std::string s_par;
+          size_t cp(0);
+          if( (cp=s_val.find(":")) != std::string::npos ){
+            s_par = s_val.substr(cp+1);
+            s_val.erase(cp);
+          }
+          std::string s_prob(eKey->get_attribute_value("p"));
+          keysigchange_t ksc(atoi(s_val.c_str()),s_par == "p" );
+          pchange.set(ksc.hash(),atof(s_prob.c_str()));
+        }
+      }
+      // last key change beats:
+      xmlpp::Node::NodeList nBeat(eHarmony->get_children("beat"));
+      for(xmlpp::Node::NodeList::iterator nBeatIt=nBeat.begin(); nBeatIt != nBeat.end(); ++nBeatIt){
+        xmlpp::Element* eKey(dynamic_cast<xmlpp::Element*>(*nBeatIt));
+        if( eKey ){
+          std::string s_val(eKey->get_attribute_value("v"));
+          std::string s_prob(eKey->get_attribute_value("p"));
+          pbeat.set(atof(s_val.c_str()),atof(s_prob.c_str()));
+        }
+      }
+    }
+  }
+  pkey.update();
+  pchange.update();
+  pbeat.update();
+  update_tables();
 }
 
 /*
