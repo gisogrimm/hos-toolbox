@@ -14,8 +14,6 @@ pmf_t::pmf_t()
 
 void pmf_t::update()
 {
-  if( empty() )
-    throw TASCAR::ErrMsg("The probability mass function is empty.");
   icdf.clear();
   double psum(0);
   for( iterator it=begin();it!=end();++it)
@@ -50,9 +48,9 @@ pmf_t pmf_t::operator+(const pmf_t& p2) const
 {
   pmf_t retv;
   for(const_iterator it=begin();it!=end();++it)
-    retv[it->first] = it->second;
+    retv[it->first] = it->second*size();
   for(const_iterator it=p2.begin();it!=p2.end();++it)
-    retv[it->first] += it->second;
+    retv[it->first] += it->second*p2.size();
   retv.update();
   return retv;
 }
@@ -62,6 +60,15 @@ pmf_t pmf_t::vadd(double dp) const
   pmf_t retv;
   for(const_iterator it=begin();it!=end();++it)
     retv[it->first+dp] = it->second;
+  retv.update();
+  return retv;
+}
+
+pmf_t pmf_t::vscale(double dp) const
+{
+  pmf_t retv;
+  for(const_iterator it=begin();it!=end();++it)
+    retv[it->first*dp] = it->second;
   retv.update();
   return retv;
 }
@@ -76,6 +83,12 @@ pmf_t pmf_t::operator*(const pmf_t& p2) const
   }
   retv.update();
   return retv;
+}
+
+pmf_t& pmf_t::operator*=(const pmf_t& p2)
+{
+  *this = operator*(p2);
+  return *this;
 }
 
 pmf_t pmf_t::operator*(double a) const
@@ -104,6 +117,22 @@ double pmf_t::vmax() const
     return rbegin()->first;
   return 0;
 }
+
+double pmf_t::vpmax() const
+{
+  if( empty() )
+    return 0;
+  double vm(begin()->first);
+  double pm(begin()->second);
+  for(const_iterator v=begin();v!=end();++v){
+    if( v->second > pm ){
+      vm = v->first;
+      pm = v->second;
+    }
+  }
+  return vm;
+}
+
 
 double gauss(double x, double sigma )
 {

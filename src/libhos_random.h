@@ -14,10 +14,13 @@ public:
   void set(double v,double p);
   pmf_t operator+(const pmf_t& p2) const;
   pmf_t vadd(double dp) const;
+  pmf_t vscale(double dp) const;
   pmf_t operator*(const pmf_t& p2) const;
   pmf_t operator*(double a) const;
   double vmin() const;
   double vmax() const;
+  double vpmax() const;
+  pmf_t& operator*=(const pmf_t& p2);
 private:
   std::map<double,double> icdf;
 };

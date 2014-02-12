@@ -20,6 +20,7 @@ double frac(double x);
 class note_t {
 public:
   note_t();
+  note_t(int32_t p,uint32_t len, double time = 0);
   int32_t pitch;
   uint32_t length;
   double time;

@@ -1,13 +1,16 @@
 <?xml version="1.0"?>
 <hos_composer name="Picforth">
   <harmony>
-    <key v="cm" p="1"/>
+    <key v="cm" p="2"/>
     <key v="gm" p="1"/>
     <key v="Bb" p="1"/>
-    <key v="am" p="0.5"/>
-    <key v="C" p="0.5"/>
+    <key v="F" p="1"/>
+    <key v="Eb" p="1"/>
+    <key v="dm" p="1"/>
+    <key v="am" p="1"/>
     <change v="0" p="1"/>
     <change v="0:p" p="1"/>
+    <change v="-1:p" p="1"/>
     <change v="1" p="1"/>
     <change v="-1" p="1"/>
     <beat v="0" p="1"/>
@@ -15,74 +18,137 @@
   <timesigs>
     <timesig v="3/1" p="1"/>
   </timesigs>
-  <voices>
-    <voice id="4" name="bass" lowest="F" highest="bb">
-      <durations>
-	<length v="0.75" p="1"/>
-      </durations>
-      <beats>
-	<beat v="0" p="1"/>
-	<beat v="0.75" p="1"/>
-	<beat v="1.5" p="1"/>
-	<beat v="2.25" p="1"/>
-      </beats>
-    </voice>
-    <voice id="3" name="tenor2" lowest="f" highest="g'">
-      <durations>
-	<length v="1" p="1"/>
-      </durations>
-      <beats>
-	<beat v="0" p="1"/>
-	<beat v="1" p="1"/>
-	<beat v="2" p="1"/>
-      </beats>
-    </voice>
-    <voice id="2" name="tenor1" lowest="b" highest="c''">
-      <durations>
-	<length v="0.5" p="1"/>
-      </durations>
-      <beats>
-	<beat v="0" p="1"/>
-	<beat v="0.5" p="1"/>
-	<beat v="1" p="1"/>
-	<beat v="1.5" p="1"/>
-	<beat v="2" p="1"/>
-	<beat v="2.5" p="1"/>
-      </beats>
-    </voice>
-    <voice id="1" name="alto" lowest="a" highest="c''">
-      <durations>
-	<length v="0.375" p="1"/>
-      </durations>
-      <beats>
-	<beat v="0.000" p="1"/>
-	<beat v="0.375" p="1"/>
-	<beat v="0.750" p="1"/>
-	<beat v="1.125" p="1"/>
-	<beat v="1.500" p="1"/>
-	<beat v="1.875" p="1"/>
-	<beat v="2.250" p="1"/>
-	<beat v="2.625" p="1"/>
-      </beats>
-    </voice>
-    <voice id="0" name="treble" lowest="d'" highest="g''">
-      <durations>
-	<length v="0.25" p="1"/>
-      </durations>
-      <beats>
-	<beat v="0.00" p="1"/>
-	<beat v="0.25" p="1"/>
-	<beat v="0.50" p="1"/>
-	<beat v="0.75" p="1"/>
-	<beat v="1.00" p="1"/>
-	<beat v="1.25" p="1"/>
-	<beat v="1.50" p="1"/>
-	<beat v="1.75" p="1"/>
-	<beat v="2.00" p="1"/>
-	<beat v="2.25" p="1"/>
-	<beat v="2.50" p="1"/>
-	<beat v="2.75" p="1"/>
-      </beats>
-    </voice>
-  </voices>
+  <voice id="4" name="bass" lowest="-19" highest="-2" central="-5" dev="8">
+    <step v="-1" p="1"/>
+    <step v="-12" p="1"/>
+    <step v="-2" p="1"/>
+    <step v="-3" p="1"/>
+    <step v="-4" p="1"/>
+    <step v="-5" p="1"/>
+    <step v="-6" p="1"/>
+    <step v="-7" p="1"/>
+    <step v="0" p="1"/>
+    <step v="1" p="1"/>
+    <step v="12" p="1"/>
+    <step v="2" p="1"/>
+    <step v="3" p="1"/>
+    <step v="4" p="1"/>
+    <step v="5" p="1"/>
+    <step v="6" p="1"/>
+    <step v="7" p="1"/>
+    <notelength v="0.75" p="1"/>
+    <beat v="0" p="1"/>
+    <beat v="0.75" p="1"/>
+    <beat v="1.5" p="1"/>
+    <beat v="2.25" p="1"/>
+  </voice>
+  <voice id="3" name="tenor2" lowest="-7" highest="7" central="0" dev="8">
+    <step v="-1" p="1"/>
+    <step v="-12" p="1"/>
+    <step v="-2" p="1"/>
+    <step v="-3" p="1"/>
+    <step v="-4" p="1"/>
+    <step v="-5" p="1"/>
+    <step v="-6" p="1"/>
+    <step v="-7" p="1"/>
+    <step v="0" p="1"/>
+    <step v="1" p="1"/>
+    <step v="12" p="1"/>
+    <step v="2" p="1"/>
+    <step v="3" p="1"/>
+    <step v="4" p="1"/>
+    <step v="5" p="1"/>
+    <step v="6" p="1"/>
+    <step v="7" p="1"/>
+    <notelength v="1" p="1"/>
+    <beat v="0" p="1"/>
+    <beat v="1" p="1"/>
+    <beat v="2" p="1"/>
+  </voice>
+  <voice id="2" name="tenor1" lowest="-2" highest="12" central="7" dev="8">
+    <step v="-1" p="1"/>
+    <step v="-12" p="1"/>
+    <step v="-2" p="1"/>
+    <step v="-3" p="1"/>
+    <step v="-4" p="1"/>
+    <step v="-5" p="1"/>
+    <step v="-6" p="1"/>
+    <step v="-7" p="1"/>
+    <step v="0" p="1"/>
+    <step v="1" p="1"/>
+    <step v="12" p="1"/>
+    <step v="2" p="1"/>
+    <step v="3" p="1"/>
+    <step v="4" p="1"/>
+    <step v="5" p="1"/>
+    <step v="6" p="1"/>
+    <step v="7" p="1"/>
+    <notelength v="0.5" p="1"/>
+    <beat v="0" p="1"/>
+    <beat v="0.5" p="1"/>
+    <beat v="1" p="1"/>
+    <beat v="1.5" p="1"/>
+    <beat v="2" p="1"/>
+    <beat v="2.5" p="1"/>
+  </voice>
+  <voice id="1" name="alto" lowest="-3" highest="12" central="7" dev="8">
+    <step v="-1" p="1"/>
+    <step v="-12" p="1"/>
+    <step v="-2" p="1"/>
+    <step v="-3" p="1"/>
+    <step v="-4" p="1"/>
+    <step v="-5" p="1"/>
+    <step v="-6" p="1"/>
+    <step v="-7" p="1"/>
+    <step v="0" p="1"/>
+    <step v="1" p="1"/>
+    <step v="12" p="1"/>
+    <step v="2" p="1"/>
+    <step v="3" p="1"/>
+    <step v="4" p="1"/>
+    <step v="5" p="1"/>
+    <step v="6" p="1"/>
+    <step v="7" p="1"/>
+    <notelength v="0.375" p="1"/>
+    <beat v="0.000" p="1"/>
+    <beat v="0.375" p="1"/>
+    <beat v="0.750" p="1"/>
+    <beat v="1.125" p="1"/>
+    <beat v="1.500" p="1"/>
+    <beat v="1.875" p="1"/>
+    <beat v="2.250" p="1"/>
+    <beat v="2.625" p="1"/>
+  </voice>
+  <voice id="0" name="treble" lowest="2" highest="19" central="12" dev="8">
+    <step v="-1" p="1"/>
+    <step v="-12" p="1"/>
+    <step v="-2" p="1"/>
+    <step v="-3" p="1"/>
+    <step v="-4" p="1"/>
+    <step v="-5" p="1"/>
+    <step v="-6" p="1"/>
+    <step v="-7" p="1"/>
+    <step v="0" p="1"/>
+    <step v="1" p="1"/>
+    <step v="12" p="1"/>
+    <step v="2" p="1"/>
+    <step v="3" p="1"/>
+    <step v="4" p="1"/>
+    <step v="5" p="1"/>
+    <step v="6" p="1"/>
+    <step v="7" p="1"/>
+    <notelength v="0.25" p="1"/>
+    <beat v="0.00" p="1"/>
+    <beat v="0.25" p="1"/>
+    <beat v="0.50" p="1"/>
+    <beat v="0.75" p="1"/>
+    <beat v="1.00" p="1"/>
+    <beat v="1.25" p="1"/>
+    <beat v="1.50" p="1"/>
+    <beat v="1.75" p="1"/>
+    <beat v="2.00" p="1"/>
+    <beat v="2.25" p="1"/>
+    <beat v="2.50" p="1"/>
+    <beat v="2.75" p="1"/>
+  </voice>
 </hos_composer>

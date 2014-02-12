@@ -1,6 +1,16 @@
 #include "libhos_harmony.h"
 #include <stdlib.h>
 #include "defs.h"
+#include "errorhandling.h"
+
+double get_attribute_double(xmlpp::Element* e,const std::string& name)
+{
+  std::string val(e->get_attribute_value(name.c_str()));
+  if( val.size() == 0)
+    throw TASCAR::ErrMsg("Empty attribute \""+name+"\"");
+  return atof(val.c_str());
+}
+
 
 ambitus_t::ambitus_t()
 {
@@ -86,16 +96,33 @@ void harmony_model_t::update_tables()
   pkeyrel.clear();
   for( pmf_t::const_iterator kit=pkey.begin();kit!=pkey.end();++kit){
     pmf_t ptab;
+    keysig_t basekey(kit->first);
     for( pmf_t::const_iterator kcit=pchange.begin();kcit!=pchange.end();++kcit){
-      keysig_t key(kit->first);
+      keysig_t key(basekey);
       key+= keysigchange_t(kcit->first);
-      double p(kit->second * kcit->second);
-      if( p > 0 )
-        ptab.set(key.hash(),p);
-      ptab.update();
-      pkeyrel[kit->first] = ptab;
+      if( pkey.find(key.hash())!=pkey.end() ){
+        double p(kcit->second * pkey[key.hash()]);
+        if( p > 0 )
+          ptab.set(key.hash(),p);
+      }
     }
+    ptab.update();
+    if( ptab.empty() ){
+      DEBUG(basekey);
+      throw TASCAR::ErrMsg("No relative key table for key "+basekey.name()+".");
+    }
+    pkeyrel[kit->first] = ptab;
   }
+  //DEBUG(pkeyrel.size());
+  for(std::map<uint32_t,pmf_t>::iterator it=pkeyrel.begin();it!=pkeyrel.end();++it){
+    std::cout << "-- " << keysig_t(it->first) << " ------\n";
+    for(pmf_t::iterator p=it->second.begin();p!=it->second.end();++p)
+      std::cout << "  " << keysig_t(p->first);
+    std::cout << std::endl;
+  }
+  key_current = keysig_t(pkey.vpmax());
+  key_next = key_current;
+  //throw TASCAR::ErrMsg("Stop");
 }
 
 bool harmony_model_t::process(double beat)
@@ -134,36 +161,34 @@ void harmony_model_t::read_xml(xmlpp::Element* e)
         xmlpp::Element* eKey(dynamic_cast<xmlpp::Element*>(*nKeyIt));
         if( eKey ){
           std::string s_val(eKey->get_attribute_value("v"));
-          std::string s_prob(eKey->get_attribute_value("p"));
           keysig_t key(s_val);
-          pkey.set(key.hash(),atof(s_prob.c_str()));
+          pkey.set(key.hash(),get_attribute_double(eKey,"p"));
         }
       }
       // second relative key changes:
       xmlpp::Node::NodeList nChange(eHarmony->get_children("change"));
       for(xmlpp::Node::NodeList::iterator nChangeIt=nChange.begin(); nChangeIt != nChange.end(); ++nChangeIt){
-        xmlpp::Element* eKey(dynamic_cast<xmlpp::Element*>(*nChangeIt));
-        if( eKey ){
-          std::string s_val(eKey->get_attribute_value("v"));
+        xmlpp::Element* eChange(dynamic_cast<xmlpp::Element*>(*nChangeIt));
+        if( eChange ){
+          std::string s_val(eChange->get_attribute_value("v"));
           std::string s_par;
           size_t cp(0);
           if( (cp=s_val.find(":")) != std::string::npos ){
             s_par = s_val.substr(cp+1);
             s_val.erase(cp);
           }
-          std::string s_prob(eKey->get_attribute_value("p"));
           keysigchange_t ksc(atoi(s_val.c_str()),s_par == "p" );
-          pchange.set(ksc.hash(),atof(s_prob.c_str()));
+          pchange.set(ksc.hash(),get_attribute_double(eChange,"p"));
         }
       }
       // last key change beats:
       xmlpp::Node::NodeList nBeat(eHarmony->get_children("beat"));
       for(xmlpp::Node::NodeList::iterator nBeatIt=nBeat.begin(); nBeatIt != nBeat.end(); ++nBeatIt){
-        xmlpp::Element* eKey(dynamic_cast<xmlpp::Element*>(*nBeatIt));
-        if( eKey ){
-          std::string s_val(eKey->get_attribute_value("v"));
-          std::string s_prob(eKey->get_attribute_value("p"));
-          pbeat.set(atof(s_val.c_str()),atof(s_prob.c_str()));
+        xmlpp::Element* eBeat(dynamic_cast<xmlpp::Element*>(*nBeatIt));
+        if( eBeat ){
+          std::string s_val(eBeat->get_attribute_value("v"));
+          std::string s_prob(eBeat->get_attribute_value("p"));
+          pbeat.set(atof(s_val.c_str()),get_attribute_double(eBeat,"p"));
         }
       }
     }
@@ -172,6 +197,87 @@ void harmony_model_t::read_xml(xmlpp::Element* e)
   pchange.update();
   pbeat.update();
   update_tables();
+}
+
+pmf_t harmony_model_t::notes(double triadw) const
+{
+  triad_t triad;
+  scale_t scale;
+  pmf_t n(triad[key_current.mode]*triadw+scale[key_current.mode]*(1.0-triadw));
+  return n.vadd(key_current.pitch());
+}
+
+note_t melody_model_t::process(double beat,const harmony_model_t& harmony, const time_signature_t& timesig)
+{
+  pmf_t notes(harmony.notes(frac(beat)==0));
+  notes *= pambitus;
+  notes *= pstep.vadd(last_pitch);
+  notes.update();
+  int32_t pitch(PITCH_REST);
+  if( !notes.empty() ){
+    pitch = notes.rand();
+  }
+  pmf_t dur(pduration);
+  dur *= (pbeat.vadd(-beat).vscale(timesig.denominator)+pbeat.vadd(-beat+timesig.numerator).vscale(timesig.denominator));
+  dur.update();
+  double duration(0);
+  if( dur.empty() ){
+    duration = pduration.rand();
+  }else{
+    duration = dur.rand();
+  }
+  if( pitch != PITCH_REST )
+    last_pitch = pitch;
+  return note_t(pitch,closest_length(duration));
+}
+
+void melody_model_t::read_xml(xmlpp::Element* e)
+{
+  // ambitus:
+  pambitus.clear();
+  int32_t pitch_min(get_attribute_double(e,"lowest"));
+  int32_t pitch_max(get_attribute_double(e,"highest"));
+  int32_t pitch_central(get_attribute_double(e,"central"));
+  last_pitch = pitch_central;
+  int32_t pitch_dev(get_attribute_double(e,"dev"));
+  for(int32_t p=pitch_min;p<=pitch_max;p++)
+    pambitus.set(p,gauss(p-pitch_central,pitch_dev));
+  pambitus.update();
+  // steps:
+  pstep.clear();
+  xmlpp::Node::NodeList nStep(e->get_children("step"));
+  for(xmlpp::Node::NodeList::iterator nStepIt=nStep.begin(); nStepIt != nStep.end(); ++nStepIt){
+    xmlpp::Element* eStep(dynamic_cast<xmlpp::Element*>(*nStepIt));
+    if( eStep )
+      pstep.set(get_attribute_double(eStep,"v"),get_attribute_double(eStep,"p"));
+  }
+  pstep.update();
+  // note lengths:
+  pduration.clear();
+  xmlpp::Node::NodeList nDuration(e->get_children("notelength"));
+  for(xmlpp::Node::NodeList::iterator nDurationIt=nDuration.begin(); nDurationIt != nDuration.end(); ++nDurationIt){
+    xmlpp::Element* eDuration(dynamic_cast<xmlpp::Element*>(*nDurationIt));
+    if( eDuration )
+      pduration.set(get_attribute_double(eDuration,"v"),get_attribute_double(eDuration,"p"));
+  }
+  pduration.update();
+  // beats:
+  pbeat.clear();
+  xmlpp::Node::NodeList nBeat(e->get_children("beat"));
+  for(xmlpp::Node::NodeList::iterator nBeatIt=nBeat.begin(); nBeatIt != nBeat.end(); ++nBeatIt){
+    xmlpp::Element* eBeat(dynamic_cast<xmlpp::Element*>(*nBeatIt));
+    if( eBeat )
+      pbeat.set(get_attribute_double(eBeat,"v"),get_attribute_double(eBeat,"p"));
+  }
+  pbeat.update();
+  if( pduration.empty() )
+    throw TASCAR::ErrMsg("No valid durations in table.");
+  if( pbeat.empty() )
+    throw TASCAR::ErrMsg("No valid beats in table.");
+  if( pambitus.empty() )
+    throw TASCAR::ErrMsg("No valid ambitus.");
+  if( pstep.empty() )
+    throw TASCAR::ErrMsg("No valid step size table.");
 }
 
 /*

@@ -20,6 +20,11 @@ note_t::note_t()
 {
 }
 
+note_t::note_t(int32_t p,uint32_t len, double t)
+  : pitch(p),length(len),time(t)
+{
+}
+
 
 double duration(uint32_t length)
 {
