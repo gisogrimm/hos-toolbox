@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "defs.h"
 #include "errorhandling.h"
+#include <math.h>
 
 double get_attribute_double(xmlpp::Element* e,const std::string& name)
 {
@@ -9,27 +10,6 @@ double get_attribute_double(xmlpp::Element* e,const std::string& name)
   if( val.size() == 0)
     throw TASCAR::ErrMsg("Empty attribute \""+name+"\"");
   return atof(val.c_str());
-}
-
-
-ambitus_t::ambitus_t()
-{
-  // treble: d=-10 g=-5 c'=0 e'=3 a'=9 d''=14 (bb''=22)
-  for(int32_t p=-10; p<22;p++)
-    treble.set(p,gauss(p-12,8));
-  treble.update();
-  // alto: G=-17 g'=7 (ees''=15)
-  for(int32_t p=-17; p<15;p++)
-    tenor.set(p,gauss(p-2,8));
-  tenor.update();
-  // bass: D=-22 d'=2 (bb'=10)
-  for(int32_t p=-22; p<10;p++)
-    bass.set(p,gauss(p+12,8));
-  bass.update();
-  //  fezzo: GG=-29 g=-5 (ees'=3)
-  for(int32_t p=-29; p<3;p++)
-    fezzo.set(p,gauss(p+17,8));
-  fezzo.update();
 }
 
 scale_t::scale_t()
@@ -127,11 +107,17 @@ void harmony_model_t::update_tables()
 
 bool harmony_model_t::process(double beat)
 {
-  if( pbeat.rand() == beat ){
-    keysig_t old_key(key_current);
-    key_current = key_next;
-    key_next = keysig_t(pkeyrel[old_key.hash()].rand());
-    return !(key_current == key_next);
+  //DEBUG(beat);
+  beat = rint(1024.0*beat)/1024.0;
+  if( pbeat.find(beat)!=pbeat.end() ){
+    double rand(drand());
+    if( pbeat[beat] > rand ){
+      keysig_t old_key(key_current);
+      key_current = key_next;
+      DEBUG(key_current);
+      key_next = keysig_t(pkeyrel[key_current.hash()].rand());
+      return !(key_current == old_key);
+    }
   }
   return false;
 }
@@ -195,7 +181,7 @@ void harmony_model_t::read_xml(xmlpp::Element* e)
   }
   pkey.update();
   pchange.update();
-  pbeat.update();
+  //pbeat.update();
   update_tables();
 }
 
@@ -209,7 +195,9 @@ pmf_t harmony_model_t::notes(double triadw) const
 
 note_t melody_model_t::process(double beat,const harmony_model_t& harmony, const time_signature_t& timesig)
 {
-  pmf_t notes(harmony.notes(frac(beat)==0));
+  beat = rint(1024.0*beat)/1024.0;
+  pmf_t notes(harmony.notes((1.0-scalew)+scalew*(frac(beat)==0)));
+  //pmf_t notes(harmony.notes(1.0));
   notes *= pambitus;
   notes *= pstep.vadd(last_pitch);
   notes.update();
@@ -218,11 +206,24 @@ note_t melody_model_t::process(double beat,const harmony_model_t& harmony, const
     pitch = notes.rand();
   }
   pmf_t dur(pduration);
-  dur *= (pbeat.vadd(-beat).vscale(timesig.denominator)+pbeat.vadd(-beat+timesig.numerator).vscale(timesig.denominator));
+  dur *= (pbeat.vadd(-beat)+pbeat.vadd(-beat+timesig.numerator)).vthreshold(0).vscale(1.0/timesig.denominator);
   dur.update();
   double duration(0);
   if( dur.empty() ){
+    pmf_t p1(pbeat.vadd(-beat));
+    std::cout << p1;
+    pmf_t p2(pbeat.vadd(-beat+timesig.numerator));
+    std::cout << p2;
+    pmf_t p3(p1+p2);
+    std::cout << p3;
+    pmf_t p4(p3.vthreshold(0));
+    std::cout << p4;
+    pmf_t p5(p4.vscale(1.0/timesig.denominator));
+    std::cout << p5;
     duration = pduration.rand();
+    DEBUG(duration);
+    DEBUG(beat);
+    DEBUG(frac(beat));
   }else{
     duration = dur.rand();
   }
@@ -233,6 +234,7 @@ note_t melody_model_t::process(double beat,const harmony_model_t& harmony, const
 
 void melody_model_t::read_xml(xmlpp::Element* e)
 {
+  scalew = get_attribute_double(e,"scalew");
   // ambitus:
   pambitus.clear();
   int32_t pitch_min(get_attribute_double(e,"lowest"));

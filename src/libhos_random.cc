@@ -64,6 +64,16 @@ pmf_t pmf_t::vadd(double dp) const
   return retv;
 }
 
+pmf_t pmf_t::vthreshold(double dp) const
+{
+  pmf_t retv;
+  for(const_iterator it=begin();it!=end();++it)
+    if( it->first >= dp )
+      retv[it->first] = it->second;
+  retv.update();
+  return retv;
+}
+
 pmf_t pmf_t::vscale(double dp) const
 {
   pmf_t retv;

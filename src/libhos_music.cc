@@ -8,7 +8,7 @@ uint32_t closest_length(double len)
   if( len <= 0 )
     return MAXLEN;
   uint32_t l2(0);
-  while( len < (2.0/(double)(1<<l2)) )
+  while( len < duration(l2))
     l2++;
   if( l2 > MAXLEN )
     l2 = MAXLEN;
@@ -28,7 +28,7 @@ note_t::note_t(int32_t p,uint32_t len, double t)
 
 double duration(uint32_t length)
 {
-  return 2.0/(double)(1<<length);
+  return 2.0*(1.0+0.5*(!(length & 1)))/(double)(1<<(length/2));
 }
 
 double note_t::end_time() const
@@ -78,11 +78,21 @@ time_signature_t::time_signature_t()
 {
 }
 
+
+time_signature_t::time_signature_t(uint32_t hash_)
+  : numerator(hash_/256),denominator(hash_ & 255),starttime(0),addbar(0)
+{
+}
+
 time_signature_t::time_signature_t(uint32_t num,uint32_t denom,double startt,uint32_t addb)
   : numerator(num),denominator(denom),starttime(startt),addbar(addb)
 {
 }
 
+uint32_t time_signature_t::hash() const
+{
+  return 256*numerator + denominator;
+}
 
 double time_signature_t::beat(double time) const
 {

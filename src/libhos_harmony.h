@@ -7,15 +7,6 @@
 
 double get_attribute_double(xmlpp::Element* e,const std::string& name);
 
-class ambitus_t {
-public:
-  ambitus_t();
-  pmf_t treble;
-  pmf_t tenor;
-  pmf_t bass;
-  pmf_t fezzo;
-};
-
 class scale_t {
 public:
   scale_t();
@@ -32,7 +23,6 @@ public:
   pmf_t minor;
 };
 
-const ambitus_t Ambitus;
 const scale_t Scale;
 const triad_t Triad;
 
@@ -63,6 +53,7 @@ private:
   pmf_t pduration;
   pmf_t pbeat;
   int32_t last_pitch;
+  double scalew;
 };
 
 #endif

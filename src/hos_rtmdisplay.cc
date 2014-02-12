@@ -49,6 +49,7 @@ namespace Symbols {
   std::string flag_down[7] = {"","","","","","",""};
   std::string alteration[5] = {"","","","",""};
   std::string rest[7] = {"","","","","","",""};
+  std::string dot(".");
 }
 
 class graphical_note_t : public note_t {
@@ -75,7 +76,7 @@ graphical_note_t::graphical_note_t()
 
 graphical_note_t::graphical_note_t(const note_t& note, const clef_t& clef, int key,const graphical_note_t& prev)
   : note_t(note),
-    sym_head(Symbols::notehead[checklen(length)])
+    sym_head(Symbols::notehead[checklen(length)/2])
 {
   if( pitch != PITCH_REST ){
     int octave(floor((double)pitch/12.0));
@@ -113,13 +114,13 @@ graphical_note_t::graphical_note_t(const note_t& note, const clef_t& clef, int k
         sym_alteration = Symbols::alteration[alteration+2];
     }
     if( y > 0 )
-      sym_flag = Symbols::flag_down[checklen(length)];
+      sym_flag = Symbols::flag_down[checklen(length)/2];
     else
-      sym_flag = Symbols::flag_up[checklen(length)];
+      sym_flag = Symbols::flag_up[checklen(length)/2];
   }else{
     y = 2*(length == 1);
     alteration = 0;
-    sym_head = Symbols::rest[checklen(length)];
+    sym_head = Symbols::rest[checklen(length)/2];
     sym_alteration = "";
     sym_flag = "";
   }
@@ -158,6 +159,14 @@ void graphical_note_t::draw(Cairo::RefPtr<Cairo::Context> cr,double x,double y_0
   // draw head:
   cr->move_to(x,-(y_0+y));
   cr->show_text(sym_head);
+  // draw dot if needed:
+  if( !(length & 1) ){
+    double dy(-0.5);
+    if( !(y & 1) )
+      dy = 0.5;
+    cr->move_to(x+extents.width+1,-(y_0+y+dy));
+    cr->show_text(Symbols::dot);
+  }
   // draw alteration:
   if( sym_alteration.size() ){
     cr->move_to(x-2.4+extents.x_bearing,-(y_0+y));
@@ -168,13 +177,13 @@ void graphical_note_t::draw(Cairo::RefPtr<Cairo::Context> cr,double x,double y_0
   double flag_y;
   if( y > 0 ){
     flag_x = extents.x_bearing;
-    flag_y = -std::max(6.0,3.0+length);
+    flag_y = -std::max(6.0,3.0+length/2);
   }else{
     flag_x = extents.x_bearing+extents.width;
-    flag_y = std::max(6.0,3.0+length);
+    flag_y = std::max(6.0,3.0+length/2);
   }
   // draw stem:
-  if( (length > 1) && (pitch != PITCH_REST) ){
+  if( (length/2 > 1) && (pitch != PITCH_REST) ){
     cr->save();
     cr->set_line_width(0.3);
     cr->move_to(x+flag_x,-(y_0+y));
@@ -523,7 +532,7 @@ score_t::score_t()
   }
   staves[0].clef = Symbols::treble;
   staves[1].clef = Symbols::treble;
-  staves[3].clef = Symbols::bass;
+  //staves[3].clef = Symbols::bass;
   staves[4].clef = Symbols::bass;
   add_method("/time","f",score_t::set_time,this);
   add_method("/note","iiif",score_t::add_note,this);

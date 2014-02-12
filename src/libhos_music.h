@@ -15,7 +15,7 @@ double duration(uint32_t len);
 double frac(double x);
 
 #define PITCH_REST 1000
-#define MAXLEN 4
+#define MAXLEN 12
 
 class note_t {
 public:
@@ -63,6 +63,8 @@ class time_signature_t {
 public:
   time_signature_t();
   time_signature_t(uint32_t num,uint32_t denom,double startt,uint32_t addb);
+  time_signature_t(uint32_t hash_);
+  uint32_t hash() const;
   uint32_t numerator;
   uint32_t denominator;
   double starttime;
