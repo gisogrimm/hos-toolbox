@@ -12,6 +12,14 @@ double get_attribute_double(xmlpp::Element* e,const std::string& name)
   return atof(val.c_str());
 }
 
+double get_attribute_double(xmlpp::Element* e,const std::string& name,double def)
+{
+  std::string val(e->get_attribute_value(name.c_str()));
+  if( val.size() == 0)
+    return def;
+  return atof(val.c_str());
+}
+
 scale_t::scale_t()
 {
   for(int oct=-10;oct<=10;oct++){
@@ -108,13 +116,13 @@ void harmony_model_t::update_tables()
 bool harmony_model_t::process(double beat)
 {
   //DEBUG(beat);
-  beat = rint(1024.0*beat)/1024.0;
+  beat = rint(BEATRES*beat)/BEATRES;
   if( pbeat.find(beat)!=pbeat.end() ){
     double rand(drand());
     if( pbeat[beat] > rand ){
       keysig_t old_key(key_current);
       key_current = key_next;
-      DEBUG(key_current);
+      //DEBUG(key_current);
       key_next = keysig_t(pkeyrel[key_current.hash()].rand());
       return !(key_current == old_key);
     }
@@ -195,8 +203,9 @@ pmf_t harmony_model_t::notes(double triadw) const
 
 note_t melody_model_t::process(double beat,const harmony_model_t& harmony, const time_signature_t& timesig)
 {
-  beat = rint(1024.0*beat)/1024.0;
-  pmf_t notes(harmony.notes((1.0-scalew)+scalew*(frac(beat)==0)));
+  beat = rint(BEATRES*beat)/BEATRES;
+  bool onbeat(frac(beat)==0);
+  pmf_t notes(harmony.notes((double)onbeat*(1.0-onbeatscale) + (double)(!onbeat)*(1.0-offbeatscale)));
   //pmf_t notes(harmony.notes(1.0));
   notes *= pambitus;
   notes *= pstep.vadd(last_pitch);
@@ -234,14 +243,15 @@ note_t melody_model_t::process(double beat,const harmony_model_t& harmony, const
 
 void melody_model_t::read_xml(xmlpp::Element* e)
 {
-  scalew = get_attribute_double(e,"scalew");
+  onbeatscale = get_attribute_double(e,"onbeatscale",0.0);
+  offbeatscale = get_attribute_double(e,"offbeatscale",0.0);
   // ambitus:
   pambitus.clear();
-  int32_t pitch_min(get_attribute_double(e,"lowest"));
-  int32_t pitch_max(get_attribute_double(e,"highest"));
-  int32_t pitch_central(get_attribute_double(e,"central"));
+  int32_t pitch_min(get_attribute_double(e,"lowest",-12));
+  int32_t pitch_max(get_attribute_double(e,"highest",12));
+  int32_t pitch_central(get_attribute_double(e,"central",0));
   last_pitch = pitch_central;
-  int32_t pitch_dev(get_attribute_double(e,"dev"));
+  int32_t pitch_dev(get_attribute_double(e,"dev",8));
   for(int32_t p=pitch_min;p<=pitch_max;p++)
     pambitus.set(p,gauss(p-pitch_central,pitch_dev));
   pambitus.update();

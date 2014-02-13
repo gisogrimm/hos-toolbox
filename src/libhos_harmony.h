@@ -5,7 +5,10 @@
 #include "libhos_random.h"
 #include <libxml++/libxml++.h>
 
+#define BEATRES 512.0
+
 double get_attribute_double(xmlpp::Element* e,const std::string& name);
+double get_attribute_double(xmlpp::Element* e,const std::string& name,double def);
 
 class scale_t {
 public:
@@ -53,7 +56,8 @@ private:
   pmf_t pduration;
   pmf_t pbeat;
   int32_t last_pitch;
-  double scalew;
+  double onbeatscale;
+  double offbeatscale;
 };
 
 #endif

@@ -28,6 +28,7 @@ public:
     for(pmf_t::const_iterator it=p.begin();it!=p.end();++it)
       o << " " << it->first << "   " << it->second << std::endl;
     o<< "--]\n";
+    return o;
   };
 private:
   std::map<double,double> icdf;
