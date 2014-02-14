@@ -15,7 +15,10 @@ namespace HoS {
     wave_t(const wave_t& src);
     wave_t(uint32_t n,float* ptr);
     ~wave_t();
+    void operator*=(const float& d);
     void operator/=(const float& d);
+    void operator+=(const wave_t& src);
+    void operator*=(const wave_t& src);
     float maxabs() const;
     void copy(const wave_t& src);
     inline float& operator[](uint32_t k){return b[k];};
@@ -33,6 +36,11 @@ namespace HoS {
     ~spec_t();
     void copy(const spec_t& src);
     void operator/=(const spec_t& o);
+    void operator*=(const spec_t& o);
+    void conj();
+    inline float _Complex & operator[](uint32_t k){return b[k];};
+    inline const float _Complex & operator[](uint32_t k) const{return b[k];};
+    inline uint32_t size() const {return n_;};
     uint32_t n_;
     float _Complex * b;
   };
@@ -60,6 +68,8 @@ namespace HoS {
     fft_t(uint32_t fftlen);
     void execute(const wave_t& src);
     void execute(const spec_t& src);
+    void ifft();
+    void fft();
     ~fft_t();
     wave_t w;
     spec_t s;
@@ -75,15 +85,29 @@ namespace HoS {
       WND_HANNING
     };
     stft_t(uint32_t fftlen, uint32_t wndlen, uint32_t chunksize, windowtype_t wnd);
+    uint32_t get_fftlen() const { return fftlen_; };
+    uint32_t get_wndlen() const { return wndlen_; };
+    uint32_t get_chunksize() const { return chunksize_; };
     void process(const wave_t& w);
-  private:
+  protected:
     uint32_t fftlen_;
     uint32_t wndlen_;
     uint32_t chunksize_;
-    uint32_t wshift;
+    uint32_t zpad1;
+    uint32_t zpad2;
     wave_t long_in;
     wave_t long_windowed_in;
     wave_t window;
+  };
+
+  class ola_t : public stft_t {
+  public:
+    ola_t(uint32_t fftlen, uint32_t wndlen, uint32_t chunksize, windowtype_t wnd, windowtype_t zerownd);
+    void ifft(wave_t& wOut);
+  private:
+    wave_t zwnd1;
+    wave_t zwnd2;
+    wave_t long_out;
   };
 
   class delay1_t : public wave_t {
