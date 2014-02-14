@@ -1,0 +1,153 @@
+<?xml version="1.0"?>
+<hos_composer name="Chaos">
+  <harmony>
+    <key v="cm" p="1"/>
+    <key v="c#m" p="1"/>
+    <key v="dm" p="1"/>
+    <key v="ebm" p="1"/>
+    <key v="em" p="1"/>
+    <key v="fm" p="1"/>
+    <key v="f#m" p="1"/>
+    <key v="gm" p="3"/>
+    <key v="g#m" p="3"/>
+    <key v="C" p="1"/>
+    <key v="Db" p="1"/>
+    <key v="D" p="1"/>
+    <key v="Eb" p="1"/>
+    <key v="E" p="1"/>
+    <key v="F" p="1"/>
+    <key v="F#" p="1"/>
+    <key v="G" p="3"/>
+    <key v="Ab" p="3"/>
+    <change v="0" p="0.1"/>
+    <change v="1" p="1"/>
+    <change v="1:p" p="1"/>
+    <change v="-1" p="1"/>
+    <change v="-1:p" p="1"/>
+    <change v="2" p="1"/>
+    <change v="2:p" p="1"/>
+    <change v="-2" p="1"/>
+    <change v="-2:p" p="1"/>
+    <change v="3" p="1"/>
+    <change v="3:p" p="1"/>
+    <change v="-3" p="1"/>
+    <change v="-3:p" p="1"/>
+    <beat v="0" p="5"/>
+    <beat v="3" p="1"/>
+    <beat v="5" p="1"/>
+  </harmony>
+  <timesig v="3/4" p="1"/>
+  <timesig v="7/8" p="1"/>
+  <timesig v="5/2" p="1"/>
+  <timesigbars v="8" p="1"/>
+  <timesigbars v="16" p="1"/>
+  <voice id="4" name="bass" lowest="-19" highest="-2" central="-5" dev="8" scalew="1">
+    <step v="-1" p="1"/>
+    <step v="-2" p="1"/>
+    <step v="-3" p="1"/>
+    <step v="-4" p="1"/>
+    <step v="-5" p="1"/>
+    <step v="0" p="1"/>
+    <step v="6" p="1"/>
+    <step v="7" p="1"/>
+    <notelength v="1" p="1"/>
+    <notelength v="0.75" p="1"/>
+    <notelength v="0.5" p="1"/>
+    <notelength v="0.25" p="4"/>
+    <notelength v="0.125" p="1"/>
+    <notelength v="0.375" p="1"/>
+    <beat v="1" p="1"/>
+    <beat v="2" p="1"/>
+    <beat v="3" p="1"/>
+    <beat v="4" p="1"/>
+    <beat v="5" p="1"/>
+  </voice>
+  <voice id="3" name="tenor2" lowest="-7" highest="7" central="0" dev="8" scalew="0">
+    <step v="-1" p="8"/>
+    <step v="-2" p="7"/>
+    <step v="12" p="1"/>
+    <notelength v="1" p="1"/>
+    <notelength v="0.5" p="2"/>
+    <notelength v="0.25" p="4"/>
+    <beat v="0" p="1"/>
+    <beat v="1" p="1"/>
+    <beat v="2" p="1"/>
+  </voice>
+  <voice id="2" name="tenor1" lowest="-2" highest="12" central="7" dev="8" scalew="0.5">
+    <step v="-1" p="8"/>
+    <step v="-2" p="7"/>
+    <step v="-3" p="6"/>
+    <step v="-4" p="5"/>
+    <step v="-5" p="1"/>
+    <step v="-6" p="1"/>
+    <step v="-7" p="1"/>
+    <step v="0" p="1"/>
+    <step v="1" p="8"/>
+    <step v="2" p="7"/>
+    <step v="3" p="6"/>
+    <step v="4" p="5"/>
+    <step v="5" p="1"/>
+    <step v="6" p="1"/>
+    <step v="7" p="1"/>
+    <notelength v="0.5" p="1"/>
+    <beat v="0" p="1"/>
+    <beat v="0.5" p="1"/>
+    <beat v="1" p="1"/>
+    <beat v="1.5" p="1"/>
+    <beat v="2" p="1"/>
+    <beat v="2.5" p="1"/>
+  </voice>
+  <voice id="1" name="alto" lowest="-3" highest="12" central="7" dev="8" scalew="1">
+    <step v="-1" p="1"/>
+    <step v="-2" p="1"/>
+    <step v="-3" p="4"/>
+    <step v="-4" p="4"/>
+    <step v="-5" p="4"/>
+    <step v="-6" p="1"/>
+    <step v="-7" p="1"/>
+    <step v="0" p="1"/>
+    <step v="1" p="1"/>
+    <step v="2" p="1"/>
+    <step v="3" p="4"/>
+    <step v="4" p="4"/>
+    <step v="5" p="4"/>
+    <step v="6" p="1"/>
+    <step v="7" p="1"/>
+    <notelength v="0.375" p="1"/>
+    <beat v="0.000" p="1"/>
+    <beat v="0.375" p="1"/>
+    <beat v="0.750" p="1"/>
+    <beat v="1.125" p="1"/>
+    <beat v="1.500" p="1"/>
+    <beat v="1.875" p="1"/>
+    <beat v="2.250" p="1"/>
+    <beat v="2.625" p="1"/>
+  </voice>
+  <voice id="0" name="treble" lowest="2" highest="19" central="12" dev="8" scalew="1">
+    <step v="0" p="1"/>
+    <step v="1" p="2"/>
+    <step v="2" p="1"/>
+    <step v="-6" p="1"/>
+    <step v="-7" p="1"/>
+    <step v="-8" p="1"/>
+    <step v="-9" p="1"/>
+    <notelength v="0.25" p="1"/>
+    <notelength v="0.125" p="1"/>
+    <notelength v="0.0625" p="1"/>
+    <beat v="0.0000" p="1"/>
+    <beat v="0.0625" p="1"/>
+    <beat v="0.1250" p="1"/>
+    <beat v="0.1875" p="1"/>
+    <beat v="0.25" p="1"/>
+    <beat v="0.50" p="1"/>
+    <beat v="0.75" p="1"/>
+    <beat v="1.00" p="1"/>
+    <beat v="1.25" p="1"/>
+    <beat v="1.50" p="1"/>
+    <beat v="1.75" p="1"/>
+    <beat v="2.00" p="1"/>
+    <beat v="2.25" p="1"/>
+    <beat v="2.50" p="1"/>
+    <beat v="2.75" p="1"/>
+  </voice>
+</hos_composer>
