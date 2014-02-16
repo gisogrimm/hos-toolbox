@@ -53,13 +53,21 @@ namespace HoSGUI {
     virtual bool on_expose_event(GdkEventExpose* event);
     bool on_timeout();
     uint32_t chunksize;
+    uint32_t fftlen;
+    uint32_t wndlen;
     HoS::ola_t ola_w;
     HoS::ola_t ola_x;
     HoS::ola_t ola_y;
+    HoS::ola_t ola_inv_w;
+    HoS::ola_t ola_inv_x;
+    HoS::ola_t ola_inv_y;
     HoS::spec_t ccoh;
+    HoS::spec_t ccoh2;
     HoS::wave_t lp_c1;
     HoS::wave_t lp_c2;
     HoS::wave_t coh;
+    HoS::wave_t az;
+    HoS::wave_t haz;
     std::string name_;
   };
 
@@ -76,25 +84,54 @@ int foacoh_t::process(jack_nframes_t n, const std::vector<float*>& vIn, const st
   ola_w.process(inW);
   ola_x.process(inX);
   ola_y.process(inY);
+  for(uint32_t k=0;k<72;k++)
+    haz[k] = 0;
   for(uint32_t k=0;k<ola_x.s.size();k++){
     float _Complex c(ola_x.s[k] * conjf(ola_y.s[k]));
-    float ca(cabs(c));
-    if( ca > 0 )
+    float ca(cabsf(c));
+    float azt(0.0);
+    if( ca > 0 ){
+      azt = fabsf(crealf(c))/ca;
       c/=ca;
+    }
     ccoh[k] *= lp_c1[k];
     ccoh[k] += lp_c2[k]*c;
     coh[k] = cabs(ccoh[k]);
+    coh[k] = azt;
     //coh[k] *= coh[k];
+    ola_inv_w.s[k] = ola_w.s[k];
+    ola_inv_x.s[k] = ola_x.s[k];
+    ola_inv_y.s[k] = ola_y.s[k];
     ola_w.s[k] *= coh[k];
     ola_x.s[k] *= coh[k];
     ola_y.s[k] *= coh[k];
+    c = ola_x.s[k] * conjf(ola_y.s[k]);
+    ccoh2[k] *= lp_c1[k];
+    ccoh2[k] += lp_c2[k]*c;
+    //ccoh2[k] = c;
+    //az[k] = cargf(ccoh2[k]);
+    
+    //az[k] *= lp_c1[k];
+    //az[k] += lp_c2[k]*azt;
+    az[k] = azt;
+    //uint32_t azid(std::min(71.0,(az[k]+M_PI)*36.0/M_PI));
+    //haz[azid]++;
+    ola_inv_w.s[k] *= 1.0f-coh[k];
+    ola_inv_x.s[k] *= 1.0f-coh[k];
+    ola_inv_y.s[k] *= 1.0f-coh[k];
   }
   HoS::wave_t ow(n,vOut[0]);
   HoS::wave_t ox(n,vOut[1]);
   HoS::wave_t oy(n,vOut[2]);
+  HoS::wave_t inv_ow(n,vOut[3]);
+  HoS::wave_t inv_ox(n,vOut[4]);
+  HoS::wave_t inv_oy(n,vOut[5]);
   ola_w.ifft(ow);
   ola_x.ifft(ox);
   ola_y.ifft(oy);
+  ola_inv_w.ifft(inv_ow);
+  ola_inv_x.ifft(inv_ox);
+  ola_inv_y.ifft(inv_oy);
   return 0;
 }
 
@@ -102,13 +139,21 @@ foacoh_t::foacoh_t(const std::string& name)
   : osc_server_t(OSC_ADDR,OSC_PORT),
     jackc_t("cyclephase"),
     chunksize(get_fragsize()),
-    ola_w(std::max(2048u,2*chunksize),std::max(2048u,2*chunksize),chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
-    ola_x(std::max(2048u,2*chunksize),std::max(2048u,2*chunksize),chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
-    ola_y(std::max(2048u,2*chunksize),std::max(2048u,2*chunksize),chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
+    fftlen(std::max(512u,4*chunksize)),
+    wndlen(std::max(256u,2*chunksize)),
+    ola_w(fftlen,wndlen,chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
+    ola_x(fftlen,wndlen,chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
+    ola_y(fftlen,wndlen,chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
+    ola_inv_w(fftlen,wndlen,chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
+    ola_inv_x(fftlen,wndlen,chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
+    ola_inv_y(fftlen,wndlen,chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
     ccoh(ola_x.s.size()),
+    ccoh2(ola_x.s.size()),
     lp_c1(ola_x.s.size()),
     lp_c2(ola_x.s.size()),
     coh(ola_x.s.size()),
+    az(ola_x.s.size()),
+    haz(72),
     name_(name)
 {
   set_prefix("/"+name);
@@ -123,15 +168,20 @@ foacoh_t::foacoh_t(const std::string& name)
   add_output_port("out.0w");
   add_output_port("out.1x");
   add_output_port("out.1y");
-  float fs(get_srate());
-  float fscale(0.5*fs/lp_c1.size());
+  add_output_port("inv_out.0w");
+  add_output_port("inv_out.1x");
+  add_output_port("inv_out.1y");
+  float fs(get_srate()/get_fragsize());
+  float fscale(0.5*get_srate()/lp_c1.size());
   for(uint32_t k=0;k<lp_c1.size();k++){
     float f(fscale*std::max(k,1u));
-    float tau(std::min(0.1f,std::max(0.0005f,0.1f/f)));
+    float tau(std::min(0.1f,std::max(0.05f,50.0f/f)));
     //tau = 0.004;
     lp_c1[k] = exp( -1.0/(tau * fs) );
     lp_c2[k] = 1.0f-lp_c1[k];
   }
+  for(uint32_t k=0;k<az.size();k++)
+    az[k] = 0.0;
 }
 
 void foacoh_t::activate()
@@ -192,10 +242,25 @@ bool foacoh_t::on_expose_event(GdkEventExpose* event)
       cr->restore();
       // end bg
       cr->save();
-      cr->set_source_rgb( 0, 0, 0 );
+      // coherence:
+      cr->set_source_rgb( 0, 0, 0.4 );
       cr->move_to(0,height-height*coh[0]);
       for(uint32_t k=1;k<coh.size();k++)
         cr->line_to(k,height-height*coh[k]);
+      cr->stroke();
+      // azimuth:
+      cr->set_line_width(3.0);
+      cr->set_source_rgb( 0.2, 0, 0.8 );
+      cr->move_to(0,height*(0.5-0.3*az[0]));
+      for(uint32_t k=1;k<coh.size();k++)
+        cr->line_to(k,height-height*az[k]);
+      cr->stroke();
+      //
+      cr->set_line_width(2.0);
+      cr->set_source_rgb( 1, 0, 0 );
+      cr->move_to(0,height-10*haz[0]);
+      for(uint32_t k=1;k<haz.size();k++)
+        cr->line_to(10*k,height-10*haz[k]);
       cr->stroke();
       cr->restore();
     }
