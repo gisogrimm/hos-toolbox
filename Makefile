@@ -3,7 +3,7 @@ ARCH = $(shell uname -m)
 PREFIX = /usr/local
 
 ifeq "$(ARCH)" "x86_64"
-BINFILES = ommo_bridge hos_sphere_amb30 hos_sendosc hos_delay hos_cyclephase hos_visualize hos_visualize_sphere hos_cyclephasegui hos_sampler hos_scope hos_osc2jack hos_resfilt hos_tmcm hos_osc_marais hos_osc_house debug_midi hos_rtmdisplay hos_composer hos_rtm2midi test_duration hos_foacoh
+BINFILES = ommo_bridge hos_sphere_amb30 hos_sendosc hos_delay hos_cyclephase hos_visualize hos_visualize_sphere hos_cyclephasegui hos_sampler hos_scope hos_osc2jack hos_resfilt hos_tmcm hos_osc_marais hos_osc_house debug_midi hos_rtmdisplay hos_composer hos_rtm2midi test_duration hos_foacoh hos_mm
 
 OBJECTS = jackclient.o osc_helper.o libhos_midi_ctl.o errorhandling.o libhos_gainmatrix.o audiochunks.o tmcm.o
 
@@ -43,7 +43,7 @@ LOBIN = \
 
 ALSABIN = mm_midicc mm_hdsp
 
-GTKMMBIN = hos_oscrmsmeter hos_visualize mm_gui hos_visualize_sphere tascar_draw hos_cyclephasegui hos_scope hos_rtmdisplay hos_foacoh
+GTKMMBIN = hos_oscrmsmeter hos_visualize mm_gui hos_visualize_sphere tascar_draw hos_cyclephasegui hos_scope hos_rtmdisplay hos_foacoh hos_mm
 
 ifeq "$(ARCH)" "x86_64"
 CXXFLAGS += -msse -msse2 -mfpmath=sse -ffast-math -fomit-frame-pointer -fno-finite-math-only
@@ -93,13 +93,13 @@ $(BINFILES): $(OBJECTS)
 
 hos_theremin: LDLIBS += -lfftw3f
 
-hos_theremin: EXTERNALS += gtkmm-2.4
+hos_theremin: EXTERNALS += gtkmm-3.0
 
 hos_sphere_amb30: libhos_sphereparam.o 
 
 $(GTKMMBIN): $(GUIOBJ)
 
-$(GTKMMBIN): EXTERNALS += gtkmm-2.4
+$(GTKMMBIN): EXTERNALS += gtkmm-3.0
 
 hos_composer: libhos_music.o libhos_random.o libhos_harmony.o
 hos_rtmdisplay: libhos_music.o

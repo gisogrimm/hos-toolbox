@@ -28,7 +28,8 @@
  */
 
 #include "libhos_gainmatrix.h"
-
+#include <libxml++/libxml++.h>
+#include <stdlib.h>
 #include <sstream>
 #include <math.h>
 #include <stdio.h>
@@ -36,6 +37,27 @@
 #include <string.h>
 
 using namespace MM;
+
+std::string strcnv(unsigned int a)
+{
+  char buff[1024];
+  snprintf(buff,1024,"%d",a);
+  return std::string(buff);
+}
+
+std::string strcnv(float a)
+{
+  char buff[1024];
+  snprintf(buff,1024,"%g",a);
+  return std::string(buff);
+}
+
+std::string strcnv(double a)
+{
+  char buff[1024];
+  snprintf(buff,1024,"%g",a);
+  return std::string(buff);
+}
 
 std::vector<unsigned int> str2vuint( const std::string& s )
 {
@@ -471,6 +493,109 @@ int lo_matrix_t::osc_set_gain_out(const char *path, const char *types, lo_arg **
   }
   return 1;
 };
+
+
+MM::namematrix_t* MM::load(const std::string& fname)
+{
+  MM::namematrix_t* m(NULL);
+  xmlpp::DomParser parser(fname.c_str());
+  xmlpp::Element* root = parser.get_document()->get_root_node();
+  if( root ){
+    xmlpp::Node::NodeList nodesInput = root->get_children("input");
+    xmlpp::Node::NodeList nodesOutput = root->get_children("output");
+    uint32_t nin = nodesInput.size();
+    uint32_t nout = nodesOutput.size();
+    //xmlpp::Node::NodeList nodesOSC = root->get_children("osc");
+    //const xmlpp::Element* nodeElement;
+    //if( nodesOSC.size() && (nodeElement = dynamic_cast<const xmlpp::Element*>(*(nodesOSC.begin()))) ){
+    //  destaddr = nodeElement->get_attribute_value("destaddr");
+    //  serveraddr = nodeElement->get_attribute_value("serveraddr");
+    //  serverport = nodeElement->get_attribute_value("serverport");
+    //}
+    m = new MM::namematrix_t(nout, nin);
+    unsigned int k = 0;
+    for(xmlpp::Node::NodeList::iterator nit=nodesInput.begin();nit!=nodesInput.end();++nit){
+      const xmlpp::Element* nodeElement = dynamic_cast<const xmlpp::Element*>(*nit);
+      if( nodeElement ){
+        std::string nname(nodeElement->get_attribute_value("name"));
+        if( nname.size() )
+          m->set_name_in( k, nname);
+        nname = nodeElement->get_attribute_value("ports");
+        if( nname.size() )
+          m->set_inports( k, str2vuint(nname) );
+        double mute = atof(nodeElement->get_attribute_value("mute").c_str());
+        m->set_mute( k, mute );
+      }
+      k++;
+    }
+    k = 0;
+    for(xmlpp::Node::NodeList::iterator nit=nodesOutput.begin();nit!=nodesOutput.end();++nit){
+      const xmlpp::Element* nodeElement = dynamic_cast<const xmlpp::Element*>(*nit);
+      if( nodeElement ){
+        std::string nname(nodeElement->get_attribute_value("name"));
+        if( nname.size() )
+          m->set_name_out( k, nname);
+        nname = nodeElement->get_attribute_value("ports");
+        if( nname.size() )
+          m->set_outports( k, str2vuint(nname) );
+        nname = nodeElement->get_attribute_value("gain");
+        m->set_out_gain( k, atof(nname.c_str()) );
+      }
+      k++;
+    }
+    xmlpp::Node::NodeList nodesMatrix = root->get_children("matrix");
+    if( nodesMatrix.size() ){
+      xmlpp::Node::NodeList nodesME = (*nodesMatrix.begin())->get_children("me");
+      for(xmlpp::Node::NodeList::iterator nit=nodesME.begin();nit!=nodesME.end();++nit){
+        const xmlpp::Element* me = dynamic_cast<const xmlpp::Element*>(*nit);
+        if( me ){
+          unsigned int k_out = atoi(me->get_attribute_value("out").c_str());
+          unsigned int k_in = atoi(me->get_attribute_value("in").c_str());
+          double gain = atof(me->get_attribute_value("gain").c_str());
+          double pan = atof(me->get_attribute_value("pan").c_str());
+          m->set_gain(k_out, k_in, gain);
+          m->set_pan(k_out, k_in, pan);
+        }
+      }
+    }
+  }
+  return m;
+}
+
+void MM::save(MM::namematrix_t* m,const std::string& fname)
+{
+  xmlpp::Document doc;
+  xmlpp::Element* root = doc.create_root_node("hdspmm");
+  //xmlpp::Element* elOSC = root->add_child("osc");
+  //elOSC->set_attribute("destaddr",destaddr);
+  //elOSC->set_attribute("serveraddr",serveraddr);
+  //elOSC->set_attribute("serverport",serverport);
+  if( m ){
+    for( unsigned int k=0;k < m->get_num_inputs(); k++ ){
+      xmlpp::Element* elIN = root->add_child("input");
+      elIN->set_attribute("name", m->get_name_in( k ) );
+      elIN->set_attribute("ports", vuint2str(m->get_inports( k )) );
+      elIN->set_attribute("mute", strcnv(m->get_mute( k )));
+    }
+    for( unsigned int k=0;k < m->get_num_outputs(); k++ ){
+      xmlpp::Element* elOUT = root->add_child("output");
+      elOUT->set_attribute("name", m->get_name_out( k ) );
+      elOUT->set_attribute("ports", vuint2str(m->get_outports( k )) );
+      elOUT->set_attribute("gain", strcnv(m->get_out_gain( k )) );
+    }
+    xmlpp::Element* elMM = root->add_child("matrix");
+    for( unsigned int kout=0;kout < m->get_num_outputs(); kout++ ){
+      for( unsigned int kin=0;kin < m->get_num_inputs(); kin++ ){
+	xmlpp::Element* elME = elMM->add_child("me");
+	elME->set_attribute("in", strcnv( kin ) );
+	elME->set_attribute("out", strcnv( kout ) );
+	elME->set_attribute("gain", strcnv( m->get_gain( kout, kin ) ) );
+	elME->set_attribute("pan", strcnv( m->get_pan( kout, kin ) ) );
+      }
+    }
+  }
+  doc.write_to_file_formatted(fname);
+}
 
 /*
  * Local Variables:

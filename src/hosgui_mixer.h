@@ -43,24 +43,20 @@ namespace HoSGUI {
   class mixergui_t : public Gtk::DrawingArea
   {
   public:
-    mixergui_t(lo_server_thread& l, lo_address& a);
+    mixergui_t();
     virtual ~mixergui_t();
+    void hdspmm_destroy();
+    void hdspmm_new(MM::namematrix_t*);
+
   protected:
     //Override default signal handler:
-    virtual bool on_expose_event(GdkEventExpose* event);
+    virtual bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr);
+    //virtual bool on_expose_event(GdkEventExpose* event);
     bool on_timeout();
 
-    static int hdspmm_new(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
-    static int hdspmm_destroy(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
-    void hdspmm_destroy();
-    void hdspmm_new(unsigned int kout, unsigned int kin);
-
-    MM::lo_matrix_t* mm;
+    MM::namematrix_t* mm;
     bool modified;
     pthread_mutex_t mutex;
-
-    lo_server_thread& lost;
-    lo_address& addr;
   };
 
 }

@@ -141,6 +141,9 @@ namespace MM {
     lo_address& addr;
   };
 
+  namematrix_t* load(const std::string& fname);
+  void save(namematrix_t* m,const std::string& fname);
+
 };
 
 #endif

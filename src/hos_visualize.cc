@@ -78,7 +78,7 @@ int main(int argc, char** argv)
   box_meter.attach( m_giso, 4, 5, 0, 1 );
   box_meter.attach( m_gisofezzo, 5, 6, 0, 1 );
   box_meter.attach( m_gisobass, 6, 7, 0, 1 );
-  mixergui_t mix(lost,addr);
+  //mixergui_t mix(lost,addr);
   Gtk::VPaned vbox;
   //Gtk::HBox hbox;
   Gtk::HPaned hbox2;
@@ -86,7 +86,7 @@ int main(int argc, char** argv)
   vbox.add2(hbox2);
   //hbox2.add1(hbox);
   hbox2.add1(box_meter);
-  hbox2.add2(mix);
+  //hbox2.add2(mix);
   win.add(vbox);
   //hbox.add(m_hille);
   //hbox.add(m_marthe);
