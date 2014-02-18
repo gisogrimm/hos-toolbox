@@ -98,8 +98,7 @@ gainmatrix_t::gainmatrix_t(unsigned int nout, unsigned int nin)
     select_out(std::vector<unsigned int>(n_out_,0)),
     select_in(std::vector<unsigned int>(n_in_,0)),
     outports(std::vector<std::vector<unsigned int> >(n_out_,std::vector<unsigned int>(1,0))),
-    inports(std::vector<std::vector<unsigned int> >(n_in_,std::vector<unsigned int>(1,0))),
-    modified(true)
+    inports(std::vector<std::vector<unsigned int> >(n_in_,std::vector<unsigned int>(1,0)))
 {
   pthread_mutex_init( &mutex, NULL );
 }
@@ -116,12 +115,31 @@ void gainmatrix_t::set_mute(unsigned int kin, double mute)
   lock();
   if( (kin < n_in_) && ((float)(muted[kin]) != (float)mute) ){
     muted[kin] = mute;
-    modified = true;
+    //modified = true;
+    modify();
     lmod = true;
   }
   unlock();
   if( lmod )
     modified_mute( kin, mute );
+}
+
+void gainmatrix_t::add_observer(observer_t* o)
+{
+  modified[o] = true;
+}
+
+void gainmatrix_t::rm_observer(observer_t* o)
+{
+  std::map<observer_t*,bool>::iterator i(modified.find(o));
+  if( i != modified.end() )
+    modified.erase(o);
+}
+
+void gainmatrix_t::modify()
+{
+  for(std::map<observer_t*,bool>::iterator i=modified.begin();i!=modified.end();++i)
+    i->second = true;
 }
 
 void gainmatrix_t::set_out_gain(unsigned int k, double g)
@@ -131,7 +149,8 @@ void gainmatrix_t::set_out_gain(unsigned int k, double g)
   lock();
   if( (k < n_out_) && ((float)(Gout[k]) != (float)g) ){
     Gout[k] = g;
-    modified = true;
+    //modified = true;
+    modify();
     lmod = true;
   }
   unlock();
@@ -169,7 +188,8 @@ void gainmatrix_t::set_gain(unsigned int kout, unsigned int kin, double g)
   lock();
   if( (kout < n_out_) && (kin < n_in_) && ((float)(G[index(kout,kin)]) != (float)g) ){
     G[index(kout,kin)] = g;
-    modified = true;
+    //modified = true;
+    modify();
     lmod = true;
   }
   unlock();
@@ -184,7 +204,8 @@ void gainmatrix_t::set_pan(unsigned int kout, unsigned int kin, double p)
   lock();
   if( (kout < n_out_) && (kin < n_in_) && ((float)(P[index(kout,kin)]) != (float)p) ){
     P[index(kout,kin)] = p;
-    modified = true;
+    //modified = true;
+    modify();
     lmod = true;
   }
   unlock();
@@ -201,7 +222,8 @@ void gainmatrix_t::set_select_out(unsigned int k, unsigned int n)
     //DEBUG(select_out.size());
     //DEBUG(k);
     select_out[k] = n;
-    modified = true;
+    //modified = true;
+    modify();
     lmod = true;
   }
   unlock();
@@ -216,7 +238,8 @@ void gainmatrix_t::set_select_in(unsigned int k, unsigned int n)
   lock();
   if( (k < n_in_) && (select_in[k] != n) ){
     select_in[k] = n;
-    modified = true;
+    //modified = true;
+    modify();
     lmod = true;
   }
   unlock();
@@ -231,7 +254,8 @@ void gainmatrix_t::set_inports(unsigned int k, const std::vector<unsigned int>& 
   lock();
   if( (k < n_in_) && (inports[k] != ports) ){
     inports[k] = ports;
-    modified = true;
+    //modified = true;
+    modify();
     lmod = true;
   }
   unlock();
@@ -246,7 +270,8 @@ void gainmatrix_t::set_outports(unsigned int k, const std::vector<unsigned int>&
   lock();
   if( (k < n_out_) && (outports[k] != ports) ){
     outports[k] = ports;
-    modified = true;
+    //modified = true;
+    modify();
     lmod = true;
   }
   unlock();
@@ -275,7 +300,8 @@ void namematrix_t::set_name_in(unsigned int kin, const std::string& name)
   lock();
   if( (kin < n_in_) && (name_in[kin] != name) ){
     name_in[kin] = name;
-    modified = true;
+    //modified = true;
+    modify();
     lmod = true;
   }
   unlock();
@@ -290,7 +316,8 @@ void namematrix_t::set_name_out(unsigned int kout, const std::string& name)
   lock();
   if( (kout < n_out_) && (name_out[kout] != name) ){
     name_out[kout] = name;
-    modified = true;
+    //modified = true;
+    modify();
     lmod = true;
   }
   unlock();

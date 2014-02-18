@@ -30,6 +30,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 #include <iostream>
 #include <lo/lo.h>
 
@@ -40,6 +41,10 @@ std::string vuint2str( const std::vector<unsigned int>& s );
    \brief Matrix mixer classes
 */
 namespace MM {
+
+  class observer_t {
+  public:
+  };
 
   class gainmatrix_t {
   public:
@@ -71,7 +76,10 @@ namespace MM {
     std::vector<unsigned int> get_inports(unsigned int k){return inports[k];};
     void lock(){pthread_mutex_lock( &mutex );};
     void unlock(){pthread_mutex_unlock( &mutex );};
-    bool ismodified(){bool btmp(modified);modified=false;return btmp;};
+    bool ismodified(observer_t* o){bool btmp(modified[o]);modified[o]=false;return btmp;};
+    void add_observer(observer_t* o);
+    void rm_observer(observer_t* o);
+    void modify();
   protected:
     virtual void modified_mute(unsigned int kin, double mute) {};
     virtual void modified_gain(unsigned int kout, unsigned out, double g) {};
@@ -93,7 +101,8 @@ namespace MM {
     std::vector<std::vector<unsigned int> > outports;
     std::vector<std::vector<unsigned int> > inports;
     pthread_mutex_t mutex;
-    bool modified;
+    std::map<observer_t*,bool> modified;
+    //bool modified;
   };
 
   class namematrix_t : public gainmatrix_t {

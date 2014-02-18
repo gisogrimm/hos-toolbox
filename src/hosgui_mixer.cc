@@ -61,6 +61,8 @@ void mixergui_t::hdspmm_new(MM::namematrix_t* src)
 {
   pthread_mutex_lock( &mutex );
   mm = src;
+  if( mm )
+    mm->add_observer(this);
   modified = true;
   pthread_mutex_unlock( &mutex );
 }
@@ -286,7 +288,7 @@ bool mixergui_t::on_timeout()
   pthread_mutex_lock( &mutex );
   bool lmod(modified);
   if( mm )
-    lmod = lmod || mm->ismodified();
+    lmod = lmod || mm->ismodified(this);
   modified = false;
   pthread_mutex_unlock( &mutex );
   // force our program to redraw the entire clock.

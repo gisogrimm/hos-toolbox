@@ -40,7 +40,7 @@
 
 namespace HoSGUI {
 
-  class mixergui_t : public Gtk::DrawingArea
+  class mixergui_t : public Gtk::DrawingArea, public MM::observer_t
   {
   public:
     mixergui_t();

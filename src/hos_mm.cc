@@ -29,12 +29,460 @@
 */
 #include "hosgui_mixer.h"
 #include "defs.h"
+#include "libhos_midi_ctl.h"
 
 using namespace HoSGUI;
 
-void lo_err_handler_cb(int num, const char *msg, const char *where) 
+namespace MM {
+
+  /**
+     \ingroup apphos
+  */
+  class mm_midicc_t : public midi_ctl_t, public MM::observer_t
+  {
+  public:
+    mm_midicc_t();
+    ~mm_midicc_t();
+    float midi2gain(unsigned int v);
+    unsigned int gain2midi(float v);
+    float midi2pan(unsigned int v);
+    unsigned int pan2midi(float v);
+    float midi2pan2(unsigned int v);
+    unsigned int pan22midi(float v);
+    //void create_hos_mapping();
+    //void run();
+    void hdspmm_destroy();
+    void hdspmm_new(MM::namematrix_t* mm);
+  private:
+    virtual void emit_event(int channel, int param, int value);
+
+    void upload();
+
+    void start_updt_service();
+    void stop_updt_service();
+    static void * updt_service(void *);
+    void updt_service();
+
+    MM::namematrix_t* mm;
+    bool modified;
+    pthread_mutex_t mutex;
+
+    bool b_shift1;
+    bool b_shift2;
+    unsigned int selected_out;
+    //bool b_exit;
+
+    bool b_run_service;
+    pthread_t srv_thread;
+  };
+
+
+  /**
+     \ingroup apphos
+  */
+  class mm_hdsp_t : public MM::observer_t
+  {
+  public:
+    mm_hdsp_t();
+    ~mm_hdsp_t();
+    void hdspmm_destroy();
+    void hdspmm_new(MM::namematrix_t* m_);
+  private:
+    void upload();
+    MM::namematrix_t* mm;
+    bool modified;
+    pthread_mutex_t mutex;
+    //bool b_exit;
+    pthread_t srv_thread;
+    bool b_run_service;
+    void start_updt_service();
+    void stop_updt_service();
+    static void * updt_service(void *);
+    void updt_service();
+  };
+
+}
+
+using namespace MM;
+
+
+void * mm_hdsp_t::updt_service(void* h)
 {
-  std::cerr << "lo error " << num << ": " << msg << " (" << where << ")\n";
+  ((mm_hdsp_t*)h)->updt_service();
+  return NULL;
+}
+
+void mm_hdsp_t::start_updt_service()
+{
+  if( b_run_service )
+    return;
+  b_run_service = true;
+  int err = pthread_create( &srv_thread, NULL, &mm_hdsp_t::updt_service, this);
+  if( err < 0 )
+    throw "pthread_create failed";
+}
+
+void mm_hdsp_t::stop_updt_service()
+{
+  if( !b_run_service )
+    return;
+  b_run_service = false;
+  pthread_join( srv_thread, NULL );
+}
+
+void mm_hdsp_t::updt_service()
+{
+  while( b_run_service ){
+    usleep( 50000 );
+    pthread_mutex_lock( &mutex );
+    if( mm && mm->ismodified(this) ){
+      pthread_mutex_unlock( &mutex );
+      upload();
+      pthread_mutex_lock( &mutex );
+    }
+    pthread_mutex_unlock( &mutex );
+  }
+}
+
+mm_hdsp_t::mm_hdsp_t()
+  : mm(NULL),
+    modified(true),
+    b_run_service(false)
+{
+  pthread_mutex_init( &mutex, NULL );
+  start_updt_service();
+}
+
+mm_hdsp_t::~mm_hdsp_t()
+{
+  stop_updt_service();
+  pthread_mutex_destroy( &mutex );
+}
+
+void mm_hdsp_t::upload()
+{
+  pthread_mutex_lock( &mutex );
+  if( mm ){
+    snd_ctl_elem_id_t *id;
+    snd_ctl_elem_id_alloca(&id);
+    snd_ctl_elem_id_set_name(id, "Mixer");
+    snd_ctl_elem_id_set_interface(id, SND_CTL_ELEM_IFACE_HWDEP);
+    snd_ctl_elem_id_set_device(id, 0);
+    snd_ctl_elem_id_set_index(id, 0);
+    snd_ctl_elem_value_t *ctl;
+    snd_ctl_elem_value_alloca(&ctl);
+    snd_ctl_elem_value_set_id(ctl, id);
+    snd_ctl_t *handle;
+    int err;
+    if ((err = snd_ctl_open(&handle, "hw:DSP", SND_CTL_NONBLOCK)) < 0) {
+      fprintf(stderr, "Alsa error: %s\n", snd_strerror(err));
+      return;
+    }
+    for( unsigned int kin=0;kin<mm->get_num_inputs();kin++){
+      for( unsigned int kout=0;kout<mm->get_num_outputs();kout++){
+        std::vector<unsigned int> inports = mm->get_inports(kin);
+        std::vector<unsigned int> outports = mm->get_outports(kout);
+        for( unsigned int kinsub=0;kinsub < inports.size();kinsub++){
+          for( unsigned int koutsub=0;koutsub < outports.size();koutsub++){
+            unsigned int src = inports[kinsub];
+            unsigned int dest = outports[koutsub];
+            double val = mm->channelgain(kout, koutsub, kin, kinsub);
+            snd_ctl_elem_value_set_integer(ctl, 0, src);
+            snd_ctl_elem_value_set_integer(ctl, 1, dest);
+            snd_ctl_elem_value_set_integer(ctl, 2, (int)(32767*std::min(1.0,std::max(0.0,val))));
+            if ((err = snd_ctl_elem_write(handle, ctl)) < 0) {
+              fprintf(stderr, "Alsa error: %s\n", snd_strerror(err));
+            }
+          }
+        }
+      }
+    }
+    snd_ctl_close(handle);
+  }
+  pthread_mutex_unlock( &mutex );
+}
+
+
+void mm_hdsp_t::hdspmm_destroy()
+{
+  pthread_mutex_lock( &mutex );
+  mm = NULL;
+  modified = true;
+  pthread_mutex_unlock( &mutex );
+  //b_exit = true;
+}
+
+void mm_hdsp_t::hdspmm_new(MM::namematrix_t* mm_)
+{
+  pthread_mutex_lock( &mutex );
+  mm = mm_;
+  if( mm )
+    mm->add_observer(this);
+  modified = true;
+  pthread_mutex_unlock( &mutex );
+  upload();
+}
+
+
+mm_midicc_t::mm_midicc_t()
+  : midi_ctl_t("mm_mididcc"),
+    mm(NULL),
+    modified(true),
+    b_shift1(false),
+    b_shift2(false),
+    selected_out(0),
+    b_run_service(false)
+{
+  pthread_mutex_init( &mutex, NULL );
+  start_service();
+  start_updt_service();
+}
+
+void * mm_midicc_t::updt_service(void* h)
+{
+  ((mm_midicc_t*)h)->updt_service();
+  return NULL;
+}
+
+void mm_midicc_t::start_updt_service()
+{
+  if( b_run_service )
+    return;
+  b_run_service = true;
+  int err = pthread_create( &srv_thread, NULL, &mm_midicc_t::updt_service, this);
+  if( err < 0 )
+    throw "pthread_create failed";
+}
+
+void mm_midicc_t::stop_updt_service()
+{
+  if( !b_run_service )
+    return;
+  b_run_service = false;
+  pthread_join( srv_thread, NULL );
+}
+
+void mm_midicc_t::updt_service()
+{
+  while(b_run_service ){
+    usleep(700000);
+    pthread_mutex_lock( &mutex );
+    if( mm && mm->ismodified(this) ){
+      pthread_mutex_unlock( &mutex );
+      upload();
+      pthread_mutex_lock( &mutex );
+    }
+    pthread_mutex_unlock( &mutex );
+  }
+}
+
+mm_midicc_t::~mm_midicc_t()
+{
+  stop_updt_service();
+  stop_service();
+  pthread_mutex_destroy( &mutex );
+}
+
+float mm_midicc_t::midi2gain(unsigned int v)
+{
+  double db(v/90.0);
+  db *= db;
+  return db;
+}
+
+unsigned int mm_midicc_t::gain2midi(float v)
+{
+  double midi(v);
+  midi = 90.0*sqrt(midi);
+  return (unsigned int)(std::min(127.0,std::max(0.0,midi+0.5)));
+}
+
+
+float mm_midicc_t::midi2pan(unsigned int v)
+{
+  if( v < 63 )
+    return (float)v/126.0;
+  if( v > 65 )
+    return 0.5+((float)v-65.0)/126.0;
+  return 0.5;
+}
+
+unsigned int mm_midicc_t::pan2midi(float v)
+{
+  v = std::min(1.0f,std::max(0.0f,v));
+  if( v < 0.5 )
+    return 126.0*v;
+  if( v > 0.5 )
+    return 65+(126.0*(v-0.5));
+  return 64;
+}
+
+
+float mm_midicc_t::midi2pan2(unsigned int v)
+{
+  if( v < 63 )
+    return 0.5*(float)v/126.0;
+  if( v > 65 )
+    return 0.5*(0.5+((float)v-65.0)/126.0);
+  return 0.25;
+}
+
+unsigned int mm_midicc_t::pan22midi(float v)
+{
+  v *= 2;
+  v = std::min(1.0f,std::max(0.0f,v));
+  if( v < 0.5 )
+    return 126.0*v;
+  if( v > 0.5 )
+    return 65+(126.0*(v-0.5));
+  return 64;
+}
+
+void mm_midicc_t::emit_event(int channel, int param, int value)
+{
+  if( channel != 0 )
+    return;
+  pthread_mutex_lock( &mutex );
+  if( mm ){
+    unsigned int mod_in = 7*b_shift1+14*b_shift2;
+    switch( param ){
+    case 7 : // output gain
+      mm->set_out_gain( selected_out, midi2gain( value ) );
+      break;
+    case 0 :
+    case 1 :
+    case 2 :
+    case 3 :
+    case 4 :
+    case 5 :
+    case 6 :
+      mm->set_gain( selected_out, param+mod_in, midi2gain( value ) );
+      break;
+    case 8 :
+    case 9 :
+    case 10 :
+    case 11 :
+    case 12 :
+    case 13 :
+    case 14 :
+      mm->set_mute( param+mod_in-8, (value == 0) );
+      break;
+    case 24 :
+    case 25 :
+    case 26 :
+    case 27 :
+    case 28 :
+    case 29 :
+    case 30 :
+      if( mm->get_n_out( selected_out ) == 2 )
+        mm->set_pan( selected_out, param-24+mod_in, midi2pan2( value ));
+      else
+        mm->set_pan( selected_out, param-24+mod_in, midi2pan( value ));
+      break;
+    case 16 :
+    case 17 :
+    case 18 :
+    case 19 :
+    case 20 :
+    case 21 :
+    case 22 :
+      selected_out = param-16;
+      pthread_mutex_unlock( &mutex );
+      upload();
+      pthread_mutex_lock( &mutex );
+      break;
+    case 23 :
+      b_shift2 = (value>0);
+      pthread_mutex_unlock( &mutex );
+      upload();
+      pthread_mutex_lock( &mutex );
+      break;
+    case 15 :
+      b_shift1 = (value>0);
+      pthread_mutex_unlock( &mutex );
+      upload();
+      pthread_mutex_lock( &mutex );
+      break;
+    }
+  }
+  pthread_mutex_unlock( &mutex );
+}
+
+void mm_midicc_t::upload()
+{
+  pthread_mutex_lock( &mutex );
+  if( mm ){
+    unsigned int mod_in = 7*b_shift1+14*b_shift2;
+    for( unsigned int k=0;k<mm->get_num_outputs();k++)
+      mm->set_select_out( k, k==selected_out );
+    for( unsigned int k=0;k<mm->get_num_inputs();k++)
+      mm->set_select_in( k, (k>=mod_in) && (k<mod_in+7) );
+    // output gain:
+    if( selected_out < mm->get_num_outputs() )
+      send_midi( 0, 7, gain2midi( mm->get_out_gain( selected_out ) ) );
+    else
+      send_midi( 0, 7, 0 );
+    // matrix gains:
+    for( unsigned int k=0;k<7;k++){
+      unsigned int kin = k+mod_in;
+      if( kin < mm->get_num_inputs() )
+        send_midi(0, k, gain2midi( mm->get_gain( selected_out, kin ) ) );
+      else
+        send_midi(0, k, 0 );
+    }
+    // matrix pans:
+    for( unsigned int k=24;k<31;k++){
+      unsigned int kin = k-24+mod_in;
+      if( kin < mm->get_num_inputs() )
+        if( mm->get_n_out( selected_out ) == 2 )
+          send_midi(0, k, pan22midi( mm->get_pan( selected_out, kin ) ) );
+        else
+          send_midi(0, k, pan2midi( mm->get_pan( selected_out, kin ) ) );
+      else
+        send_midi(0, k, 0 );
+    }
+    // selection:
+    for( unsigned int k=16;k<23;k++){
+      if( k-16 == selected_out )
+        send_midi(0, k, 127 );
+      else
+        send_midi(0, k, 0 );
+    }
+    for( unsigned int k=8;k<15;k++){
+      unsigned int kin = k+mod_in-8;
+      if( kin < mm->get_num_inputs() )
+        send_midi(0, k, 127*(mm->get_mute( kin )==0) );
+      else
+        send_midi(0, k, 0 );
+    }
+    send_midi( 0, 23, 127*b_shift2 );
+    send_midi( 0, 15, 127*b_shift2 );
+  }else{
+    for( unsigned int k=0;k<64;k++ ){
+      send_midi( 0, k, 0 );
+    }
+  }
+  pthread_mutex_unlock( &mutex );
+}
+
+void mm_midicc_t::hdspmm_destroy()
+{
+  pthread_mutex_lock( &mutex );
+  mm = NULL;
+  modified = true;
+  pthread_mutex_unlock( &mutex );
+  //b_exit = true;
+}
+
+void mm_midicc_t::hdspmm_new(MM::namematrix_t* mm_)
+{
+  pthread_mutex_lock( &mutex );
+  mm = mm_;
+  if( mm )
+    mm->add_observer(this);
+  modified = true;
+  pthread_mutex_unlock( &mutex );
+  upload();
 }
 
 class mm_window_t : public Gtk::Window
@@ -47,16 +495,25 @@ protected:
   //Signal handlers:
   void on_menu_file_new();
   void on_menu_file_open();
+  void on_menu_file_reload();
   void on_menu_file_save();
   void on_menu_file_saveas();
   void on_menu_file_close();
   void on_menu_file_quit();
 
+  void mm_destroy();
+  void mm_new();
+
   //Child widgets:
   Gtk::VPaned vbox;
   Gtk::Box m_Box;
+
   mixergui_t mixer;
+  mm_midicc_t midi;
+  mm_hdsp_t hdsp;
+
   MM::namematrix_t* mm;
+
   std::string mm_filename;
 
   Glib::RefPtr<Gtk::UIManager> m_refUIManager;
@@ -64,12 +521,26 @@ protected:
   Glib::RefPtr<Gtk::RadioAction> m_refChoiceOne, m_refChoiceTwo;
 };
 
+void mm_window_t::mm_destroy()
+{
+  mixer.hdspmm_destroy();
+  midi.hdspmm_destroy();
+  hdsp.hdspmm_destroy();
+}
+
+void mm_window_t::mm_new()
+{
+  mixer.hdspmm_new(mm);
+  midi.hdspmm_new(mm);
+  hdsp.hdspmm_new(mm);
+}
+
+
 mm_window_t::mm_window_t()
   : m_Box(Gtk::ORIENTATION_VERTICAL),mm(NULL)
 {
   set_title("main menu example");
   set_default_size(200, 200);
-  mixer.hdspmm_new(NULL);
   add(vbox);
   vbox.add(m_Box); // put a MenuBar at the top of the box and other stuff below it.
   vbox.add(mixer);
@@ -82,6 +553,8 @@ mm_window_t::mm_window_t()
                         sigc::mem_fun(*this, &mm_window_t::on_menu_file_new));
   m_refActionGroup->add(Gtk::Action::create("FileOpen",Gtk::Stock::OPEN),
                         sigc::mem_fun(*this, &mm_window_t::on_menu_file_open));
+  m_refActionGroup->add(Gtk::Action::create("FileReload",Gtk::Stock::REVERT_TO_SAVED),
+                        sigc::mem_fun(*this, &mm_window_t::on_menu_file_reload));
   m_refActionGroup->add(Gtk::Action::create("FileSave",Gtk::Stock::SAVE),
                         sigc::mem_fun(*this, &mm_window_t::on_menu_file_save));
   m_refActionGroup->add(Gtk::Action::create("FileSaveAs",Gtk::Stock::SAVE_AS),
@@ -109,6 +582,7 @@ mm_window_t::mm_window_t()
     "    <menu action='FileMenu'>"
     "      <menuitem action='FileNew'/>"
     "      <menuitem action='FileOpen'/>"
+    "      <menuitem action='FileReload'/>"
     "      <separator/>"
     "      <menuitem action='FileSave'/>"
     "      <menuitem action='FileSaveAs'/>"
@@ -120,6 +594,7 @@ mm_window_t::mm_window_t()
     "  <toolbar  name='ToolBar'>"
     "    <toolitem action='FileNew'/>"
     "    <toolitem action='FileOpen'/>"
+    "    <toolitem action='FileReload'/>"
     "    <toolitem action='FileSave'/>"
     "    <toolitem action='FileSaveAs'/>"
     "    <toolitem action='FileClose'/>"
@@ -153,12 +628,12 @@ void mm_window_t::on_menu_file_quit()
 
 void mm_window_t::on_menu_file_close()
 {
-  mixer.hdspmm_destroy();
+  mm_destroy();
 }
 
 void mm_window_t::on_menu_file_new()
 {
-  mixer.hdspmm_destroy();
+  mm_destroy();
   Gtk::SpinButton e_inputs;
   Gtk::SpinButton e_outputs;
   e_inputs.set_range(1,128);
@@ -186,7 +661,7 @@ void mm_window_t::on_menu_file_new()
     mm =  NULL;
     mm = new MM::namematrix_t(num_out,num_in);
     mm_filename = "";
-    mixer.hdspmm_new(mm);
+    mm_new();
   }
 }
 
@@ -230,6 +705,20 @@ void mm_window_t::on_menu_file_saveas()
   }
 }
 
+void mm_window_t::on_menu_file_reload()
+{
+  if( mm )
+    delete mm;
+  mm =  NULL;
+  try{
+    mm = MM::load(mm_filename);
+    mm_new();
+  }
+  catch( const std::exception& e){
+    std::cerr << "Error while loading file: " <<  e.what() << std::endl;
+  }
+}
+
 void mm_window_t::on_menu_file_open()
 {
   Gtk::FileChooserDialog dialog("Please choose a file",
@@ -253,13 +742,13 @@ void mm_window_t::on_menu_file_open()
   if( result == Gtk::RESPONSE_OK){
     //Notice that this is a std::string, not a Glib::ustring.
     std::string filename = dialog.get_filename();
-    mixer.hdspmm_destroy();
+    mm_destroy();
     if( mm )
       delete mm;
     mm =  NULL;
     try{
       mm = MM::load(filename);
-      mixer.hdspmm_new(mm);
+      mm_new();
       mm_filename = filename;
     }
     catch( const std::exception& e){
