@@ -490,7 +490,7 @@ class mm_window_t : public Gtk::Window
 public:
   mm_window_t();
   virtual ~mm_window_t();
-
+  void load(const std::string& fname);
 protected:
   //Signal handlers:
   void on_menu_file_new();
@@ -705,6 +705,22 @@ void mm_window_t::on_menu_file_saveas()
   }
 }
 
+
+void mm_window_t::load(const std::string& fname)
+{
+  if( mm )
+    delete mm;
+  mm =  NULL;
+  try{
+    mm = MM::load(fname);
+    mm_filename = fname;
+    mm_new();
+  }
+  catch( const std::exception& e){
+    std::cerr << "Error while loading file: " <<  e.what() << std::endl;
+  }
+}
+
 void mm_window_t::on_menu_file_reload()
 {
   if( mm )
@@ -760,9 +776,10 @@ void mm_window_t::on_menu_file_open()
 int main(int argc, char** argv)
 {
   Gtk::Main kit(argc, argv);
-  
   //Gtk::Window win;
   mm_window_t win;
+  if( argc > 1 )
+    win.load(argv[1]);
   win.set_title("RME hdsp matrix mixer");
   win.set_default_size(800,600);
   win.show_all();
