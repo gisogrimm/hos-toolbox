@@ -501,6 +501,8 @@ protected:
   void on_menu_file_close();
   void on_menu_file_quit();
 
+  void on_menu_edit_inputs();
+
   void mm_destroy();
   void mm_new();
 
@@ -518,7 +520,6 @@ protected:
 
   Glib::RefPtr<Gtk::UIManager> m_refUIManager;
   Glib::RefPtr<Gtk::ActionGroup> m_refActionGroup;
-  Glib::RefPtr<Gtk::RadioAction> m_refChoiceOne, m_refChoiceTwo;
 };
 
 void mm_window_t::mm_destroy()
@@ -563,6 +564,9 @@ mm_window_t::mm_window_t()
                         sigc::mem_fun(*this, &mm_window_t::on_menu_file_close));
   m_refActionGroup->add(Gtk::Action::create("FileQuit", Gtk::Stock::QUIT),
                         sigc::mem_fun(*this, &mm_window_t::on_menu_file_quit));
+  m_refActionGroup->add(Gtk::Action::create("EditMenu", "Edit"));
+  m_refActionGroup->add(Gtk::Action::create("EditInputs"),
+                        sigc::mem_fun(*this, &mm_window_t::on_menu_edit_inputs));
   //Edit menu:
   //m_refActionGroup->add(Gtk::Action::create("EditMenu", "Edit"));
   //m_refActionGroup->add(Gtk::Action::create("EditCopy", Gtk::Stock::COPY),
@@ -589,6 +593,9 @@ mm_window_t::mm_window_t()
     "      <separator/>"
     "      <menuitem action='FileClose'/>"
     "      <menuitem action='FileQuit'/>"
+    "    </menu>"
+    "    <menu action='EditMenu'>"
+    "      <menuitem action='EditInputs'/>"
     "    </menu>"
     "  </menubar>"
     "  <toolbar  name='ToolBar'>"
@@ -619,6 +626,29 @@ mm_window_t::mm_window_t()
 
 mm_window_t::~mm_window_t()
 {
+}
+
+void mm_window_t::on_menu_edit_inputs()
+{
+  if( mm ){
+    mm->lock();
+    try{
+      Gtk::Dialog dialog("Edit inputs",*this);
+      //Gtk::Box* box(dialog.get_content_area());
+      //box->add(e_inputs);
+      //box->add(e_outputs);
+      dialog.add_button(Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);
+      dialog.add_button(Gtk::Stock::OK, Gtk::RESPONSE_OK);
+      dialog.show_all();
+      int result = dialog.run();
+      DEBUG(result);
+      mm->unlock();
+    }
+    catch(const std::exception& e){
+      mm->unlock();
+      std::cerr << e.what() << std::endl;
+    }
+  }
 }
 
 void mm_window_t::on_menu_file_quit()
