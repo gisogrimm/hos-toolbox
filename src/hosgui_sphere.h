@@ -55,7 +55,7 @@ namespace HoSGUI {
     ~pos_tail_t();
     void addpoint(float r,float phi);
     void set_rotate(double r);
-    void draw(Cairo::RefPtr<Cairo::Context>& cr);
+    void draw(const Cairo::RefPtr<Cairo::Context>& cr);
   private:
     std::vector<pos_t> tail;
     std::vector<pos_t>::iterator tailp;
@@ -70,13 +70,10 @@ namespace HoSGUI {
     visualize_t(const std::vector<std::string>& paddr, lo_server_thread & l);
     virtual ~visualize_t();
     void set_rotate(double r);
-
   protected:
     //Override default signal handler:
-    virtual bool on_expose_event(GdkEventExpose* event);
-
+    virtual bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr);
     bool on_timeout();
-
     std::vector<pos_tail_t*> vTail;
     lo_server_thread & lost;
   };

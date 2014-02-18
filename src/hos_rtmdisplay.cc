@@ -367,7 +367,7 @@ public:
   void set_keysig(double time,int32_t pitch,keysig_t::mode_t mode);
 protected:
   //Override default signal handler:
-  virtual bool on_expose_event(GdkEventExpose* event);
+  virtual bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr);
   bool on_timeout();
   std::vector<staff_t> staves;
   std::map<double,double> xpositions;
@@ -663,35 +663,23 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
   pthread_mutex_unlock( &mutex );
 }
 
-bool score_t::on_expose_event(GdkEventExpose* event)
+bool score_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 {
-  // This is where we draw on the window
-  Glib::RefPtr<Gdk::Window> window = get_window();
-  if(window)
-    {
-      Gtk::Allocation allocation = get_allocation();
-      const int width = allocation.get_width();
-      const int height = allocation.get_height();
-      Cairo::RefPtr<Cairo::Context> cr = window->create_cairo_context();
-      if(event)
-	{
-	  // clip to the area indicated by the expose event so that we only
-	  // redraw the portion of the window that needs to be redrawn
-	  cr->rectangle(event->area.x, event->area.y,
-			event->area.width, event->area.height);
-	  cr->clip();
-	}
-      cr->translate(0.5*width, 0.5*height);
-      cr->scale(0.004*width, 0.004*width);
-      //cr->set_line_width(0.1);
-      cr->set_line_width(0.2);
-      cr->save();
-      //cr->set_source_rgb( 0,0.07,0.06 );
-      cr->set_source_rgb( 1,1,1 );
-      cr->paint();
-      cr->restore();
-      draw(cr);
-    }
+  Gtk::Allocation allocation = get_allocation();
+  const int width = allocation.get_width();
+  const int height = allocation.get_height();
+  cr->rectangle(0,0,width,height);
+  cr->clip();
+  cr->translate(0.5*width, 0.5*height);
+  cr->scale(0.004*width, 0.004*width);
+  //cr->set_line_width(0.1);
+  cr->set_line_width(0.2);
+  cr->save();
+  //cr->set_source_rgb( 0,0.07,0.06 );
+  cr->set_source_rgb( 1,1,1 );
+  cr->paint();
+  cr->restore();
+  draw(cr);
   return true;
 }
 

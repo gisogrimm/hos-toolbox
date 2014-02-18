@@ -68,7 +68,7 @@ meter_t::meter_t(const std::string& paddr, lo_server_thread& l, double lmin_, do
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &meter_t::on_timeout), 50 );
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
   //Connect the signal handler if it isn't already a virtual method override:
-  signal_expose_event().connect(sigc::mem_fun(*this, &meter_t::on_expose_event), false);
+  //signal_expose_event().connect(sigc::mem_fun(*this, &meter_t::on_expose_event), false);
 #endif //GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
 }
 

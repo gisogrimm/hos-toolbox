@@ -42,7 +42,7 @@ static double spheres_colours [6][3] = {
 extern double brightness;
 double brightness = 0.5;
 
-void set_hoscolor( unsigned int k, Cairo::RefPtr<Cairo::Context>& cr, double alpha)
+void set_hoscolor( unsigned int k, const Cairo::RefPtr<Cairo::Context>& cr, double alpha)
 {
   k = k % 6;
   /*
@@ -136,7 +136,7 @@ void pos_tail_t::addpoint(float r,float phi)
   pthread_mutex_unlock( &mutex );
 }
 
-void pos_tail_t::draw(Cairo::RefPtr<Cairo::Context>& cr)
+void pos_tail_t::draw(const Cairo::RefPtr<Cairo::Context>& cr)
 {
   pthread_mutex_lock( &mutex );
   cr->save();
@@ -173,7 +173,8 @@ visualize_t::visualize_t(const std::vector<std::string>& paddr, lo_server_thread
   
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
   //Connect the signal handler if it isn't already a virtual method override:
-  signal_expose_event().connect(sigc::mem_fun(*this, &visualize_t::on_expose_event), false);
+  //signal_expose_event().connect(sigc::mem_fun(*this, &visualize_t::on_expose_event), false);
+  signal_draw().connect(sigc::mem_fun(*this, &visualize_t::on_draw), false);
 #endif //GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
 
 }
@@ -191,47 +192,41 @@ void visualize_t::set_rotate(double r)
     vTail[k]->set_rotate(r);
 }
 
-bool visualize_t::on_expose_event(GdkEventExpose* event)
+bool visualize_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 {
-  // This is where we draw on the window
-  Glib::RefPtr<Gdk::Window> window = get_window();
-  if(window)
-    {
-      Gtk::Allocation allocation = get_allocation();
-      const int width = allocation.get_width();
-      const int height = allocation.get_height();
-
-      Cairo::RefPtr<Cairo::Context> cr = window->create_cairo_context();
-
-      if(event)
-	{
-	  // clip to the area indicated by the expose event so that we only
-	  // redraw the portion of the window that needs to be redrawn
-	  cr->rectangle(event->area.x, event->area.y,
-			event->area.width, event->area.height);
-	  cr->clip();
-	}
-
-      cr->translate(0.5*width, 0.5*height);
-      cr->scale(0.05*height, 0.05*height);
-      //cr->set_line_width(0.1);
-      cr->set_line_width(0.2);
-
-      cr->save();
-      //cr->set_source_rgb( 0,0.07,0.06 );
-      cr->set_source_rgb( 0,0,0 );
-      cr->paint();
-      cr->restore();
-      cr->set_source_rgba(0.8, 0.8, 0.8, 0.8);
-      cr->move_to(-0.3, 0 );
-      cr->line_to( 0.3, 0 );
-      cr->move_to( 0, -0.3 );
-      cr->line_to( 0,  0.3 );
-      cr->stroke();
-      for(unsigned int k=0;k<vTail.size();k++)
-	vTail[k]->draw(cr);
-    }
-
+  //// This is where we draw on the window
+  //Glib::RefPtr<Gdk::Window> window = get_window();
+  //if(window)
+  //  {
+  Gtk::Allocation allocation = get_allocation();
+  const int width = allocation.get_width();
+  const int height = allocation.get_height();
+  //
+  //Cairo::RefPtr<Cairo::Context> cr = window->create_cairo_context();
+  //if(event)
+  //{
+  // clip to the area indicated by the expose event so that we only
+  // redraw the portion of the window that needs to be redrawn
+  cr->rectangle(0,0,width,height);
+  cr->clip();
+  //}
+  cr->translate(0.5*width, 0.5*height);
+  cr->scale(0.05*height, 0.05*height);
+  //cr->set_line_width(0.1);
+  cr->set_line_width(0.2);
+  cr->save();
+  //cr->set_source_rgb( 0,0.07,0.06 );
+  cr->set_source_rgb( 0,0,0 );
+  cr->paint();
+  cr->restore();
+  cr->set_source_rgba(0.8, 0.8, 0.8, 0.8);
+  cr->move_to(-0.3, 0 );
+  cr->line_to( 0.3, 0 );
+  cr->move_to( 0, -0.3 );
+  cr->line_to( 0,  0.3 );
+  cr->stroke();
+  for(unsigned int k=0;k<vTail.size();k++)
+    vTail[k]->draw(cr);
   return true;
 }
 
