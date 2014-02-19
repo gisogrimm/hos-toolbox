@@ -30,11 +30,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-
+#include "defs.h"
+#include <iostream>
 
 int b_run;
 
-void err_handler(int num, const char *msg, const char *where)
+void mbcst_err_handler(int num, const char *msg, const char *where)
 {
   fprintf(stderr,"liblo: %d %s (%s)\n",num,msg,where);
 }
@@ -55,12 +56,18 @@ int _marker(const char *path, const char *types, lo_arg **argv, int argc, lo_mes
     if( strncmp(m,"preset:",7)==0 ){
       sprintf(cmd,"bash -c \"cat presets/%s.preset | ./src/sendosc osc.udp://224.1.2.3:6978/\"",m+7);
       //DEBUG(cmd);
-      system(cmd);
+      int err=system(cmd);
+      if( err != 0 ){
+	DEBUG(err);
+      }
     }
     if(strncmp(m,"ardour:",7)==0 ){
       sprintf(cmd,"bash -c \"send_osc 3819 /ardour/%s\"",m+7);
       //DEBUG(cmd);
-      system(cmd);
+      int err=system(cmd);
+      if( err != 0 ){
+	DEBUG(err);
+      }
     }
   }
   return 0;
@@ -70,7 +77,7 @@ int main(int argc, char** argv)
 {
   lo_server_thread lost;
   b_run = 1;
-  lost = lo_server_thread_new("9999",err_handler);
+  lost = lo_server_thread_new("9999",mbcst_err_handler);
   lo_server_thread_add_method(lost,"/quit","",_quit,NULL);
   lo_server_thread_add_method(lost,"/marker","s",_marker,NULL);
   lo_server_thread_start(lost);
