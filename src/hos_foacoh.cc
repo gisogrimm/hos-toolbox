@@ -23,6 +23,26 @@
 
 */
 
+/*
+  measure 1:
+
+  if signal is FOA-panned, then X/Y (and thus X*conj(Y) ) must be real-valued
+
+  c = < abs(real(X*conj(Y))) / abs(X*conj(Y)) >
+
+  if signal is FOA-panned, then (X/W)^2 + (Y/W)^2 = 0.5
+
+  c = < 1 - abs(2*((X/W)^2 + (Y/W)^2)-1) >
+
+
+  measure 2:
+
+  coherence function of X/Y
+
+  c = abs( < X/Y*abs(Y/X) > )
+
+ */
+
 #include <gtkmm.h>
 #include <gtkmm/main.h>
 #include <gtkmm/window.h>
@@ -50,7 +70,7 @@ namespace HoSGUI {
     void deactivate();
   protected:
     //Override default signal handler:
-    virtual bool on_expose_event(GdkEventExpose* event);
+    virtual bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr);
     bool on_timeout();
     uint32_t chunksize;
     uint32_t fftlen;
@@ -61,13 +81,18 @@ namespace HoSGUI {
     HoS::ola_t ola_inv_w;
     HoS::ola_t ola_inv_x;
     HoS::ola_t ola_inv_y;
-    HoS::spec_t ccoh;
-    HoS::spec_t ccoh2;
+    // low pass filter coefficients:
     HoS::wave_t lp_c1;
     HoS::wave_t lp_c2;
-    HoS::wave_t coh;
-    HoS::wave_t az;
-    HoS::wave_t haz;
+    // complex temporary coherence:
+    HoS::spec_t ccohXY;
+    //HoS::spec_t ccoh2;
+    // coherence functions:
+    HoS::wave_t cohXY;
+    HoS::wave_t cohReXY;
+    HoS::wave_t cohXWYW;
+    //HoS::wave_t az;
+    //HoS::wave_t haz;
     std::string name_;
   };
 
@@ -84,60 +109,75 @@ int foacoh_t::process(jack_nframes_t n, const std::vector<float*>& vIn, const st
   ola_w.process(inW);
   ola_x.process(inX);
   ola_y.process(inY);
-  for(uint32_t k=0;k<72;k++)
-    haz[k] = 0;
+  //for(uint32_t k=0;k<72;k++)
+  //  haz[k] = 0;
   for(uint32_t k=0;k<ola_x.s.size();k++){
-    float _Complex c(ola_x.s[k] * conjf(ola_y.s[k]));
-    float ca(cabsf(c));
-    float azt(0.0);
-    if( ca > 0 ){
-      azt = fabsf(crealf(c))/ca;
-      c/=ca;
+    // for all measures, X*conj(Y) and its absolute value is needed:
+    float _Complex cW(ola_w.s[k]);
+    float _Complex cX(ola_x.s[k]);
+    float _Complex cY(ola_y.s[k]);
+    float _Complex cXY(cX * conjf(cY));
+    float cXYabs(cabsf(cXY));
+    // Measure 1: x-y-coherence:
+    ccohXY[k] *= lp_c1[k];
+    if( cXYabs > 0 ){
+      ccohXY[k] += (lp_c2[k]/cXYabs)*cXY;
     }
-    ccoh[k] *= lp_c1[k];
-    ccoh[k] += lp_c2[k]*c;
-    coh[k] = cabs(ccoh[k]);
-    coh[k] = azt;
-    //coh[k] *= coh[k];
-    ola_inv_w.s[k] = ola_w.s[k];
-    ola_inv_x.s[k] = ola_x.s[k];
-    ola_inv_y.s[k] = ola_y.s[k];
-    ola_w.s[k] *= coh[k];
-    ola_x.s[k] *= coh[k];
-    ola_y.s[k] *= coh[k];
-    c = ola_x.s[k] * conjf(ola_y.s[k]);
-    ccoh2[k] *= lp_c1[k];
-    ccoh2[k] += lp_c2[k]*c;
-    //ccoh2[k] = c;
-    //az[k] = cargf(ccoh2[k]);
-    
-    //az[k] *= lp_c1[k];
-    //az[k] += lp_c2[k]*azt;
-    az[k] = azt;
-    //uint32_t azid(std::min(71.0,(az[k]+M_PI)*36.0/M_PI));
-    //haz[azid]++;
-    ola_inv_w.s[k] *= 1.0f-coh[k];
-    ola_inv_x.s[k] *= 1.0f-coh[k];
-    ola_inv_y.s[k] *= 1.0f-coh[k];
+    cohXY[k] = cabs(ccohXY[k]);
+    // Measure 2: real part of X/Y:
+    cohReXY[k] *= lp_c1[k];
+    if( cXYabs > 0 ){
+      cohReXY[k] += lp_c2[k]*fabsf(crealf(cXY))/cXYabs;
+    }
+    cohReXY[k] = fabsf(creal(ccohXY[k]));
+    // Measure 3: (X/W)^2 + (Y/W)^2 = 2
+    cohXWYW[k] = std::min(1.0f,cohXWYW[k]);
+    cohXWYW[k] *= lp_c1[k];
+    if( cabsf(cW) > 0 ){
+      cX /= cW;
+      cY /= cW;
+      cohXWYW[k] += lp_c2[k]*0.25*cabsf(cX*conjf(cX) + cY*conjf(cY));
+    }
+    ////coh[k] *= coh[k];
+    //ola_inv_w.s[k] = ola_w.s[k];
+    //ola_inv_x.s[k] = ola_x.s[k];
+    //ola_inv_y.s[k] = ola_y.s[k];
+    //ola_w.s[k] *= coh[k];
+    //ola_x.s[k] *= coh[k];
+    //ola_y.s[k] *= coh[k];
+    //c = ola_x.s[k] * conjf(ola_y.s[k]);
+    //ccoh2[k] *= lp_c1[k];
+    //ccoh2[k] += lp_c2[k]*c;
+    ////ccoh2[k] = c;
+    ////az[k] = cargf(ccoh2[k]);
+    //
+    ////az[k] *= lp_c1[k];
+    ////az[k] += lp_c2[k]*azt;
+    //az[k] = azt;
+    ////uint32_t azid(std::min(71.0,(az[k]+M_PI)*36.0/M_PI));
+    ////haz[azid]++;
+    //ola_inv_w.s[k] *= 1.0f-coh[k];
+    //ola_inv_x.s[k] *= 1.0f-coh[k];
+    //ola_inv_y.s[k] *= 1.0f-coh[k];
   }
-  HoS::wave_t ow(n,vOut[0]);
-  HoS::wave_t ox(n,vOut[1]);
-  HoS::wave_t oy(n,vOut[2]);
-  HoS::wave_t inv_ow(n,vOut[3]);
-  HoS::wave_t inv_ox(n,vOut[4]);
-  HoS::wave_t inv_oy(n,vOut[5]);
-  ola_w.ifft(ow);
-  ola_x.ifft(ox);
-  ola_y.ifft(oy);
-  ola_inv_w.ifft(inv_ow);
-  ola_inv_x.ifft(inv_ox);
-  ola_inv_y.ifft(inv_oy);
+  //HoS::wave_t ow(n,vOut[0]);
+  //HoS::wave_t ox(n,vOut[1]);
+  //HoS::wave_t oy(n,vOut[2]);
+  //HoS::wave_t inv_ow(n,vOut[3]);
+  //HoS::wave_t inv_ox(n,vOut[4]);
+  //HoS::wave_t inv_oy(n,vOut[5]);
+  //ola_w.ifft(ow);
+  //ola_x.ifft(ox);
+  //ola_y.ifft(oy);
+  //ola_inv_w.ifft(inv_ow);
+  //ola_inv_x.ifft(inv_ox);
+  //ola_inv_y.ifft(inv_oy);
   return 0;
 }
 
 foacoh_t::foacoh_t(const std::string& name)
   : osc_server_t(OSC_ADDR,OSC_PORT),
-    jackc_t("cyclephase"),
+    jackc_t("foacoh"),
     chunksize(get_fragsize()),
     fftlen(std::max(512u,4*chunksize)),
     wndlen(std::max(256u,2*chunksize)),
@@ -147,20 +187,21 @@ foacoh_t::foacoh_t(const std::string& name)
     ola_inv_w(fftlen,wndlen,chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
     ola_inv_x(fftlen,wndlen,chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
     ola_inv_y(fftlen,wndlen,chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
-    ccoh(ola_x.s.size()),
-    ccoh2(ola_x.s.size()),
     lp_c1(ola_x.s.size()),
     lp_c2(ola_x.s.size()),
-    coh(ola_x.s.size()),
-    az(ola_x.s.size()),
-    haz(72),
+    ccohXY(ola_x.s.size()),
+    cohXY(ola_x.s.size()),
+    cohReXY(ola_x.s.size()),
+    cohXWYW(ola_x.s.size()),
+    //az(ola_x.s.size()),
+    //haz(72),
     name_(name)
 {
   set_prefix("/"+name);
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &foacoh_t::on_timeout), 40 );
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
   //Connect the signal handler if it isn't already a virtual method override:
-  signal_expose_event().connect(sigc::mem_fun(*this, &foacoh_t::on_expose_event), false);
+  signal_draw().connect(sigc::mem_fun(*this, &mixergui_t::on_draw), false);
 #endif //GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
   add_input_port("in.0w");
   add_input_port("in.1x");
@@ -175,13 +216,13 @@ foacoh_t::foacoh_t(const std::string& name)
   float fscale(0.5*get_srate()/lp_c1.size());
   for(uint32_t k=0;k<lp_c1.size();k++){
     float f(fscale*std::max(k,1u));
-    float tau(std::min(0.1f,std::max(0.05f,50.0f/f)));
-    //tau = 0.004;
+    float tau(std::min(0.5f,std::max(0.05f,150.0f/f)));
+    tau = 0.4;
     lp_c1[k] = exp( -1.0/(tau * fs) );
     lp_c2[k] = 1.0f-lp_c1[k];
   }
-  for(uint32_t k=0;k<az.size();k++)
-    az[k] = 0.0;
+  //for(uint32_t k=0;k<az.size();k++)
+  //  az[k] = 0.0;
 }
 
 void foacoh_t::activate()
@@ -212,58 +253,47 @@ foacoh_t::~foacoh_t()
 {
 }
   
-bool foacoh_t::on_expose_event(GdkEventExpose* event)
+bool foacoh_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 {
-  Glib::RefPtr<Gdk::Window> window = get_window();
-  if(window)
-    {
-      Gtk::Allocation allocation = get_allocation();
-      //const int width = allocation.get_width();
-      const int height = allocation.get_height();
-      //double ratio = (double)width/(double)height;
-      Cairo::RefPtr<Cairo::Context> cr = window->create_cairo_context();
-      if(event)
-        {
-          // clip to the area indicated by the expose event so that we only
-          // redraw the portion of the window that needs to be redrawn
-          cr->rectangle(event->area.x, event->area.y,
-                        event->area.width, event->area.height);
-          cr->clip();
-        }
-      //cr->scale(1.0,1.0);
-      cr->set_line_width(2.0);
-      cr->set_source_rgb( 1, 1, 1 );
-      cr->set_line_cap(Cairo::LINE_CAP_ROUND);
-      cr->set_line_join(Cairo::LINE_JOIN_ROUND);
-      // bg:
-      cr->save();
-      cr->set_source_rgb( 1.0, 1.0, 1.0 );
-      cr->paint();
-      cr->restore();
-      // end bg
-      cr->save();
-      // coherence:
-      cr->set_source_rgb( 0, 0, 0.4 );
-      cr->move_to(0,height-height*coh[0]);
-      for(uint32_t k=1;k<coh.size();k++)
-        cr->line_to(k,height-height*coh[k]);
-      cr->stroke();
-      // azimuth:
-      cr->set_line_width(3.0);
-      cr->set_source_rgb( 0.2, 0, 0.8 );
-      cr->move_to(0,height*(0.5-0.3*az[0]));
-      for(uint32_t k=1;k<coh.size();k++)
-        cr->line_to(k,height-height*az[k]);
-      cr->stroke();
-      //
-      cr->set_line_width(2.0);
-      cr->set_source_rgb( 1, 0, 0 );
-      cr->move_to(0,height-10*haz[0]);
-      for(uint32_t k=1;k<haz.size();k++)
-        cr->line_to(10*k,height-10*haz[k]);
-      cr->stroke();
-      cr->restore();
-    }
+  Gtk::Allocation allocation = get_allocation();
+  const int width = allocation.get_width();
+  const int height = allocation.get_height();
+  //double ratio = (double)width/(double)height;
+  cr->rectangle(0,0,width, height);
+  cr->clip();
+  //cr->scale(1.0,1.0);
+  cr->set_line_width(2.0);
+  cr->set_source_rgb( 1, 1, 1 );
+  cr->set_line_cap(Cairo::LINE_CAP_ROUND);
+  cr->set_line_join(Cairo::LINE_JOIN_ROUND);
+  // bg:
+  cr->save();
+  cr->set_source_rgb( 1.0, 1.0, 1.0 );
+  cr->paint();
+  cr->restore();
+  // end bg
+  cr->save();
+  // coherence:
+  cr->set_line_width(3.0);
+  // Measure 1:
+  cr->set_source_rgb( 1, 0, 0 );
+  cr->move_to(0,height-height*cohXY[0]);
+  for(uint32_t k=1;k<cohXY.size();k++)
+    cr->line_to(k,height-height*cohXY[k]);
+  cr->stroke();
+  // Measure 2:
+  cr->set_source_rgb( 0, 1, 0 );
+  cr->move_to(0,height-height*cohReXY[0]);
+  for(uint32_t k=1;k<cohReXY.size();k++)
+    cr->line_to(k,height-height*cohReXY[k]);
+  cr->stroke();
+  // Measure 3:
+  cr->set_source_rgb( 0, 0, 1 );
+  cr->move_to(0,height-height*cohXWYW[0]);
+  for(uint32_t k=1;k<cohXWYW.size();k++)
+    cr->line_to(k,height-height*cohXWYW[k]);
+  cr->stroke();
+  cr->restore();
   return true;
 }
 
