@@ -126,7 +126,8 @@ bool composer_t::process_timesig()
 
 void composer_t::process_time()
 {
-  time += 1.0/128.0;
+  //time += 1.0/128.0;
+  time += 1.0/256.0;
   lo_send(lo_addr,"/time","f",time);
   if( harmony.process(timesig.beat(time)) )
     lo_send(lo_addr,"/key","fii",time,get_key(),get_mode());

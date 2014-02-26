@@ -645,21 +645,21 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
       bar_endtime = std::min(it->second.starttime,tpos);
     }
   }
-  // draw key signature here:
-  for( std::map<double,keysig_t>::iterator ks=keysig.begin();ks!=keysig.end();++ks){
-    if( (ks->first >= prev_tpos) && (ks->first <= tpos) ){
-      double xpos(get_xpos(ks->first));
-      std::map<double,graphical_time_signature_t>::iterator ts(timesig.find(ks->first));
-      if( ts != timesig.end() )
-        xpos += ts->second.space(cr);
-      cr->save();
-      cr->move_to(x_left+xpos,-staves.rbegin()->y_0+12);
-      cr->select_font_face("Arial",Cairo::FONT_SLANT_NORMAL,Cairo::FONT_WEIGHT_BOLD);
-      cr->set_font_size(6);
-      cr->show_text(ks->second.name().c_str());
-      cr->restore();
-    }
-  }
+  //nokey//// draw key signature here:
+  //nokey//for( std::map<double,keysig_t>::iterator ks=keysig.begin();ks!=keysig.end();++ks){
+  //nokey//  if( (ks->first >= prev_tpos) && (ks->first <= tpos) ){
+  //nokey//    double xpos(get_xpos(ks->first));
+  //nokey//    std::map<double,graphical_time_signature_t>::iterator ts(timesig.find(ks->first));
+  //nokey//    if( ts != timesig.end() )
+  //nokey//      xpos += ts->second.space(cr);
+  //nokey//    cr->save();
+  //nokey//    cr->move_to(x_left+xpos,-staves.rbegin()->y_0+12);
+  //nokey//    cr->select_font_face("Arial",Cairo::FONT_SLANT_NORMAL,Cairo::FONT_WEIGHT_BOLD);
+  //nokey//    cr->set_font_size(6);
+  //nokey//    cr->show_text(ks->second.name().c_str());
+  //nokey//    cr->restore();
+  //nokey//  }
+  //nokey//}
   pthread_mutex_unlock( &mutex );
 }
 
@@ -704,7 +704,7 @@ int main(int argc, char** argv)
   win.add(n);
   win.set_title("music");
   win.set_default_size(1024,480);
-  //win.fullscreen();
+  win.fullscreen();
   win.show_all();
   Gtk::Main::run(win);
   return 0;
