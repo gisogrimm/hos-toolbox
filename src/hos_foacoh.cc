@@ -53,10 +53,83 @@
 #include <stdlib.h>
 #include <iostream>
 #include "audiochunks.h"
+#include "defs.h"
+
 
 #define OSC_ADDR "224.1.2.3"
 #define OSC_PORT "6978"
 #define HIST_SIZE 256
+
+class az_hist_t : public HoS::wave_t
+{
+public:
+  az_hist_t();
+  void update();
+  void add(float f, float az,float weight);
+  void set_tau(float tau,float fs);
+  void draw(const Cairo::RefPtr<Cairo::Context>& cr,float scale);
+  void set_frange(float f1,float f2);
+private:
+  float c1;
+  float c2;
+  float fmin;
+  float fmax;
+};
+
+az_hist_t::az_hist_t()
+  : HoS::wave_t(36)
+{
+  set_tau(1.0f,1.0f);
+  set_frange(0,22050);
+}
+
+void az_hist_t::update()
+{
+  *this *= c1;
+}
+
+void az_hist_t::add(float f, float az, float weight)
+{
+  if( (f >= fmin) && (f < fmax) ){
+    az += M_PI;
+    az *= (0.5*size()/M_PI);
+    uint32_t iaz(std::max(0.0f,std::min((float)(size()-1),az)));
+    operator[](iaz) += c2*weight;
+  }
+}
+
+void az_hist_t::set_tau(float tau,float fs)
+{
+  c1 = exp( -1.0/(tau * fs) );
+  c2 = 1.0f - c1;
+}
+
+void az_hist_t::set_frange(float f1,float f2)
+{
+  fmin = f1;
+  fmax = f2;
+}
+
+void az_hist_t::draw(const Cairo::RefPtr<Cairo::Context>& cr,float scale)
+{
+  float w(0);
+  for(uint32_t k=0;k<size();k++)
+    w+=operator[](k);
+  w /= size();
+  if( w > 0.0f )
+    scale /= w;
+  for(uint32_t k=0;k<size();k++){
+    float arg(2.0*M_PI*k/size());
+    float r(scale*operator[](k));
+    float x(r*cos(arg));
+    float y(r*sin(arg));
+    if( k==0)
+      cr->move_to(x,y);
+    else
+      cr->line_to(x,y);
+  }
+  cr->stroke();
+}
 
 namespace HoSGUI {
 
@@ -91,15 +164,18 @@ namespace HoSGUI {
     HoS::wave_t cohXY;
     HoS::wave_t cohReXY;
     HoS::wave_t cohXWYW;
-    //HoS::wave_t az;
-    //HoS::wave_t haz;
+    HoS::wave_t az;
+    std::vector<az_hist_t> haz;
+    //az_hist_t haz2;
     std::string name_;
+    //float haz_c1;
+    //float haz_c2;
+    float fscale;
   };
 
 }
 
 using namespace HoSGUI;
-
 
 int foacoh_t::process(jack_nframes_t n, const std::vector<float*>& vIn, const std::vector<float*>& vOut)
 {
@@ -109,9 +185,10 @@ int foacoh_t::process(jack_nframes_t n, const std::vector<float*>& vIn, const st
   ola_w.process(inW);
   ola_x.process(inX);
   ola_y.process(inY);
-  //for(uint32_t k=0;k<72;k++)
-  //  haz[k] = 0;
+  for(uint32_t kH=0;kH<haz.size();kH++)
+    haz[kH].update();
   for(uint32_t k=0;k<ola_x.s.size();k++){
+    float freq(k*fscale);
     // for all measures, X*conj(Y) and its absolute value is needed:
     float _Complex cW(ola_w.s[k]);
     float _Complex cX(ola_x.s[k]);
@@ -133,11 +210,13 @@ int foacoh_t::process(jack_nframes_t n, const std::vector<float*>& vIn, const st
     // Measure 3: (X/W)^2 + (Y/W)^2 = 2
     cohXWYW[k] = std::min(1.0f,cohXWYW[k]);
     cohXWYW[k] *= lp_c1[k];
+    //az[k] = atan2f(creal(cY),creal(cX));
     if( cabsf(cW) > 0 ){
       cX /= cW;
       cY /= cW;
       cohXWYW[k] += lp_c2[k]*0.25*cabsf(cX*conjf(cX) + cY*conjf(cY));
     }
+    az[k] = cargf(cX+I*cY);
     ////coh[k] *= coh[k];
     //ola_inv_w.s[k] = ola_w.s[k];
     //ola_inv_x.s[k] = ola_x.s[k];
@@ -154,8 +233,9 @@ int foacoh_t::process(jack_nframes_t n, const std::vector<float*>& vIn, const st
     ////az[k] *= lp_c1[k];
     ////az[k] += lp_c2[k]*azt;
     //az[k] = azt;
-    ////uint32_t azid(std::min(71.0,(az[k]+M_PI)*36.0/M_PI));
-    ////haz[azid]++;
+    float w(pow(cohReXY[k],2.0));
+    for(uint32_t kH=0;kH<haz.size();kH++)
+      haz[kH].add(freq,az[k],w);
     //ola_inv_w.s[k] *= 1.0f-coh[k];
     //ola_inv_x.s[k] *= 1.0f-coh[k];
     //ola_inv_y.s[k] *= 1.0f-coh[k];
@@ -193,8 +273,7 @@ foacoh_t::foacoh_t(const std::string& name)
     cohXY(ola_x.s.size()),
     cohReXY(ola_x.s.size()),
     cohXWYW(ola_x.s.size()),
-    //az(ola_x.s.size()),
-    //haz(72),
+    az(ola_x.s.size()),
     name_(name)
 {
   set_prefix("/"+name);
@@ -213,16 +292,24 @@ foacoh_t::foacoh_t(const std::string& name)
   add_output_port("inv_out.1x");
   add_output_port("inv_out.1y");
   float fs(get_srate()/get_fragsize());
-  float fscale(0.5*get_srate()/lp_c1.size());
+  fscale = 0.5*get_srate()/lp_c1.size();
   for(uint32_t k=0;k<lp_c1.size();k++){
     float f(fscale*std::max(k,1u));
     float tau(std::min(0.5f,std::max(0.05f,150.0f/f)));
-    tau = 0.4;
+    tau = 0.04;
     lp_c1[k] = exp( -1.0/(tau * fs) );
     lp_c2[k] = 1.0f-lp_c1[k];
   }
-  //for(uint32_t k=0;k<az.size();k++)
-  //  az[k] = 0.0;
+  for(uint32_t k=0;k<az.size();k++)
+    az[k] = 0.0;
+  haz.resize(8);
+  float fold(0);
+  for(uint32_t kH=0;kH<haz.size();kH++){
+    float fnext(250*powf(2.0f,(float)kH/1.0f));
+    haz[kH].set_tau(std::max(0.125f,std::min(1.0f,250.0f/fnext)),fs);
+    haz[kH].set_frange(fold,fnext);
+    fold = fnext;
+  }
 }
 
 void foacoh_t::activate()
@@ -275,24 +362,41 @@ bool foacoh_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
   cr->save();
   // coherence:
   cr->set_line_width(3.0);
-  // Measure 1:
-  cr->set_source_rgb( 1, 0, 0 );
-  cr->move_to(0,height-height*cohXY[0]);
-  for(uint32_t k=1;k<cohXY.size();k++)
-    cr->line_to(k,height-height*cohXY[k]);
+  //// Measure 1:
+  //cr->set_source_rgb( 1, 0, 0 );
+  //cr->move_to(0,height-height*cohXY[0]);
+  //for(uint32_t k=1;k<cohXY.size();k++)
+  //  cr->line_to(k,height-height*cohXY[k]);
+  //cr->stroke();
+  //// Measure 2:
+  //cr->set_source_rgb( 0, 1, 0 );
+  //cr->move_to(0,height-height*cohReXY[0]);
+  //for(uint32_t k=1;k<cohReXY.size();k++)
+  //  cr->line_to(k,height-height*cohReXY[k]);
+  //cr->stroke();
+  //// Measure 3:
+  //cr->set_source_rgb( 0, 0, 1 );
+  //cr->move_to(0,0.5*height-0.5*height/M_PI*az[0]);
+  //for(uint32_t k=1;k<az.size();k++)
+  //  cr->line_to(k,0.5*height-0.5*height/M_PI*az[k]);
+  //cr->stroke();
+
+
+  cr->save();
+  cr->translate(0.5*width,0.5*height);
+  cr->scale(0.5*std::min(width,height),0.5*std::min(width,height));
+  cr->set_line_width(0.006);
+  cr->set_source_rgba( 0, 0, 0, 0.4 );
+  cr->move_to(-1,0);
+  cr->line_to(1,0);
+  cr->move_to(0,-1);
+  cr->line_to(0,1);
   cr->stroke();
-  // Measure 2:
-  cr->set_source_rgb( 0, 1, 0 );
-  cr->move_to(0,height-height*cohReXY[0]);
-  for(uint32_t k=1;k<cohReXY.size();k++)
-    cr->line_to(k,height-height*cohReXY[k]);
-  cr->stroke();
-  // Measure 3:
-  cr->set_source_rgb( 0, 0, 1 );
-  cr->move_to(0,height-height*cohXWYW[0]);
-  for(uint32_t k=1;k<cohXWYW.size();k++)
-    cr->line_to(k,height-height*cohXWYW[k]);
-  cr->stroke();
+  for(uint32_t kH=0;kH<haz.size();kH++){
+    float arg((float)kH/(float)(haz.size()-1));
+    cr->set_source_rgb( pow(1.0f-arg,2.0), pow(0.5-0.5*cos(2.0*M_PI*arg),4.0), pow(arg,2.0) );
+    haz[kH].draw(cr,0.3);
+  }
   cr->restore();
   return true;
 }
@@ -318,7 +422,7 @@ int main(int argc, char** argv)
 {
   Gtk::Main kit(argc, argv);
   Gtk::Window win;
-  win.set_title("HoS cycle phase");
+  win.set_title("foacoh");
   HoSGUI::foacoh_t c("foacoh");
   win.add(c);
   win.set_default_size(1024,768);
