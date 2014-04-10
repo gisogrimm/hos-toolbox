@@ -3,7 +3,7 @@ ARCH = $(shell uname -m)
 PREFIX = /usr/local
 
 ifeq "$(ARCH)" "x86_64"
-BINFILES = ommo_bridge hos_sphere_amb30 hos_sendosc hos_delay hos_cyclephase hos_visualize hos_visualize_sphere hos_cyclephasegui hos_sampler hos_scope hos_osc2jack hos_resfilt hos_tmcm hos_osc_marais hos_osc_house debug_midi hos_rtmdisplay hos_composer hos_rtm2midi test_duration hos_foacoh hos_mm hos_markerbroadcast hos_marker2osc
+BINFILES = ommo_bridge hos_sphere_amb30 hos_sendosc hos_delay hos_cyclephase hos_visualize hos_visualize_sphere hos_cyclephasegui hos_sampler hos_scope hos_osc2jack hos_resfilt hos_tmcm hos_osc_marais hos_osc_house debug_midi hos_rtmdisplay hos_composer hos_rtm2midi test_duration hos_foacoh hos_mm hos_markerbroadcast hos_marker2osc laserctl
 
 OBJECTS = jackclient.o osc_helper.o libhos_midi_ctl.o errorhandling.o libhos_gainmatrix.o audiochunks.o tmcm.o
 
@@ -52,6 +52,9 @@ endif
 CXXFLAGS += -Wall -O3 -Wall -O3 -L./
 
 EXTERNALS = alsa jack libxml++-2.6 liblo fftw3f sndfile
+
+laserctl: EXTERNALS += libserial
+
 
 LDLIBS += `pkg-config --libs $(EXTERNALS)`
 CXXFLAGS += `pkg-config --cflags $(EXTERNALS)`
