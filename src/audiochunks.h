@@ -82,7 +82,8 @@ namespace HoS {
   public:
     enum windowtype_t {
       WND_RECT, 
-      WND_HANNING
+      WND_HANNING,
+      WND_SQRTHANN
     };
     stft_t(uint32_t fftlen, uint32_t wndlen, uint32_t chunksize, windowtype_t wnd);
     uint32_t get_fftlen() const { return fftlen_; };
@@ -102,11 +103,13 @@ namespace HoS {
 
   class ola_t : public stft_t {
   public:
-    ola_t(uint32_t fftlen, uint32_t wndlen, uint32_t chunksize, windowtype_t wnd, windowtype_t zerownd);
+    ola_t(uint32_t fftlen, uint32_t wndlen, uint32_t chunksize, windowtype_t wnd, windowtype_t zerownd,windowtype_t postwnd=WND_RECT);
     void ifft(wave_t& wOut);
   private:
     wave_t zwnd1;
     wave_t zwnd2;
+    wave_t pwnd;
+    bool apply_pwnd;
     wave_t long_out;
   };
 

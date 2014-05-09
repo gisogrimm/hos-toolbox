@@ -173,6 +173,9 @@ stft_t::stft_t(uint32_t fftlen, uint32_t wndlen, uint32_t chunksize, windowtype_
   case WND_HANNING :
     for(k=0;k<wndlen;k++)
       window.b[k] = 0.5-0.5*cos(2.0*k*M_PI/wndlen);
+  case WND_SQRTHANN :
+    for(k=0;k<wndlen;k++)
+      window.b[k] = sqrt(0.5-0.5*cos(2.0*k*M_PI/wndlen));
   }
 }
     
@@ -194,10 +197,12 @@ void stft_t::process(const wave_t& w)
   execute(long_windowed_in);
 }
 
-ola_t::ola_t(uint32_t fftlen, uint32_t wndlen, uint32_t chunksize, windowtype_t wnd, windowtype_t zerownd)
+ola_t::ola_t(uint32_t fftlen, uint32_t wndlen, uint32_t chunksize, windowtype_t wnd, windowtype_t zerownd,windowtype_t postwnd)
   : stft_t(fftlen,wndlen,chunksize,wnd),
     zwnd1(zpad1),
     zwnd2(zpad2),
+    pwnd(fftlen),
+    apply_pwnd(true),
     long_out(fftlen)
 {
   switch( zerownd ){
@@ -206,12 +211,43 @@ ola_t::ola_t(uint32_t fftlen, uint32_t wndlen, uint32_t chunksize, windowtype_t 
       zwnd1[k] = 1.0;
     for(uint32_t k=0;k<zpad2;k++)
       zwnd2[k] = 1.0;
+    break;
   case WND_HANNING :
     for(uint32_t k=0;k<zpad1;k++)
       zwnd1[k] = 0.5-0.5*cos(k*M_PI/zpad1);
     for(uint32_t k=0;k<zpad2;k++)
       zwnd2[k] = 0.5+0.5*cos(k*M_PI/zpad2);
+    break;
+  case WND_SQRTHANN :
+    for(uint32_t k=0;k<zpad1;k++)
+      zwnd1[k] = sqrt(0.5-0.5*cos(k*M_PI/zpad1));
+    for(uint32_t k=0;k<zpad2;k++)
+      zwnd2[k] = sqrt(0.5+0.5*cos(k*M_PI/zpad2));
+    break;
   }
+  switch( postwnd ){
+  case WND_RECT :
+    for(uint32_t k=0;k<pwnd.size();k++)
+      pwnd[k] = 1.0;
+    apply_pwnd = false;
+    break;
+  case WND_HANNING :
+    for(uint32_t k=0;k<pwnd.size();k++)
+      pwnd[k] = 0.5-0.5*cos(PI2*(double)k/(double)(pwnd.size()));
+    break;
+  case WND_SQRTHANN :
+    for(uint32_t k=0;k<pwnd.size();k++)
+      pwnd[k] = sqrt(0.5-0.5*cos(PI2*(double)k/(double)(pwnd.size())));
+    break;
+  }
+  //DEBUG(fftlen);
+  //DEBUG(wndlen);
+  //DEBUG(chunksize);
+  //DEBUG(wnd);
+  //DEBUG(zerownd);
+  //DEBUG(postwnd);
+  //DEBUG(zpad1);
+  //DEBUG(zpad2);
 }
 
 void ola_t::ifft(wave_t& wOut)
@@ -221,6 +257,8 @@ void ola_t::ifft(wave_t& wOut)
   wave_t zero2(zpad2,&(w.b[fftlen_-zpad2]));
   zero1 *= zwnd1;
   zero2 *= zwnd2;
+  if( apply_pwnd )
+    w *= pwnd;
   long_out += w;
   wave_t w1(fftlen_-chunksize_,long_out.b);
   wave_t w2(fftlen_-chunksize_,&(long_out.b[chunksize_]));
