@@ -308,7 +308,7 @@ int main(int argc,char** argv)
   signal(SIGINT, &sighandler);
   std::string jackname("osc2jack");
   std::string serverport("6978");
-  std::string serveraddr("224.1.2.3");
+  std::string serveraddr("239.255.1.7");
   std::vector<std::string> path;
   const char *options = "hn:p:m:";
   struct option long_options[] = { 

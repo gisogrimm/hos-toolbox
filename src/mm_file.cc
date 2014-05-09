@@ -144,7 +144,7 @@ void MM::mm_file_t::reset_par()
 {
   nout = 1;
   nin = 1;
-  destaddr = "osc.udp://224.1.2.3:6978/";
+  destaddr = "osc.udp://239.255.1.7:6978/";
   serveraddr = "";
   serverport = "6979";
 }

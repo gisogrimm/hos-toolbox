@@ -32,7 +32,7 @@
 #include "osc_helper.h"
 
 #define MAXDELAY 480000
-#define OSC_ADDR "224.1.2.3"
+#define OSC_ADDR "239.255.1.7"
 #define OSC_PORT "6978"
 
 namespace HoS {

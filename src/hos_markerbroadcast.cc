@@ -54,7 +54,7 @@ int _marker(const char *path, const char *types, lo_arg **argv, int argc, lo_mes
     m = &(argv[0]->s);
     printf("%s\n",m);
     if( strncmp(m,"preset:",7)==0 ){
-      sprintf(cmd,"bash -c \"cat presets/%s.preset | ./src/sendosc osc.udp://224.1.2.3:6978/\"",m+7);
+      sprintf(cmd,"bash -c \"cat presets/%s.preset | ./src/sendosc osc.udp://239.255.1.7:6978/\"",m+7);
       //DEBUG(cmd);
       int err=system(cmd);
       if( err != 0 ){

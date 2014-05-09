@@ -41,7 +41,7 @@ int main(int argc, char** argv)
 
   Gtk::Window win;
   win.set_title("HoS visualize");
-  std::string osc_server("224.1.2.3");
+  std::string osc_server("239.255.1.7");
   std::string osc_port("6978");
   std::vector<std::string> pAddr;
   if( argc > 1 )

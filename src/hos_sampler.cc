@@ -200,7 +200,7 @@ private:
 
 sampler_t::sampler_t(const std::string& jname,const std::string& announce)
   : jackc_t(jname),
-    osc_server_t("224.1.2.3","6978"),
+    osc_server_t("239.255.1.7","6978"),
     current_time(0),
     last_phase(0),
     b_quit(false),

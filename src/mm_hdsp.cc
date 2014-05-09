@@ -206,7 +206,7 @@ int main(int argc, char** argv)
     //todo: midi device command line, other pars optional, midi mapping
     std::string osc_server_addr("");
     std::string osc_server_port("6976");
-    std::string osc_dest_url("osc.udp://224.1.2.3:6978/");
+    std::string osc_dest_url("osc.udp://239.255.1.7:6978/");
     if( (argc == 2) && (strcmp(argv[1],"-h")==0) ){
       std::cerr << "Usage: mm_hdsp [ <osc_server_addr> <osc_server_port> <osc_dest_url> ]\n";
       return 1;
