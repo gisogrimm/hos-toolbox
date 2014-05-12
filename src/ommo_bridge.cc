@@ -346,6 +346,10 @@ int main(int argc, char** argv)
   std::string cfgfile;
   if( argc > 1 )
     cfgfile = argv[1];
+  else{
+    std::cerr << "Usage: " << argv[0] << " <cfgfile> [ <ctlport> ]\n";
+    exit(1);
+  }
   std::string ctlport("9999");
   if( argc > 2 )
     ctlport = argv[2];
