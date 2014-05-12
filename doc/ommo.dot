@@ -1,0 +1,71 @@
+digraph ap {
+  //ranksep = 2.5;
+  //splines = true;
+  node [
+	shape = "Mrecord",
+	style = "filled",
+	fillcolor = "gold"
+	];
+
+  edge [ penwidth = "1", style="dashed" ];
+
+  {
+    rank = "min";
+    oscserver;
+    midireceiver;
+  }
+
+  oscserver [label="{oscserver:|multicast|port}"];
+  midireceiver [lavel="{midireceiver:|}"];
+
+  oscosc [label="{osc:|serverpath|types}"];
+  midiccosc [label="{midicc:|channel|param|argnum|serverpath|types}"];
+
+  oscmidi [label="{osc:|clientchannel|clientparam}"];
+  midiccmidi [label="{midicc:|clientchannel|clientparam|channel|param}"];
+
+  osc_dest [label="{osc_destination:|dest|path|argmap|condition|valmap}",fillcolor="gray"];
+  midi_dest [label="{midi_destination:|}",fillcolor="gray"];
+
+  data [label="{data:|type|value}"];
+
+  /*
+   * Inheritance:
+   */
+  //route -> object;
+  //object -> src_object;
+  //object -> src_diffuse;
+  //object -> src_door;
+  //object -> sink_mask;
+  //object -> sink_object;
+  //object -> face;
+  //jack_port -> src_diffuse;
+  //jack_port -> src_door;
+  //jack_port -> sound;
+  //jack_port -> sink_object;
+
+  /*
+   * Sub-nodes:
+   */
+  oscserver -> oscosc [style="solid",label="N",penwidth="3"];
+  oscserver -> midiccosc [style="solid",label="N",penwidth="3"];
+
+  midireceiver -> oscmidi [style="solid",label="N",penwidth="3"];
+  midireceiver -> midiccmidi [style="solid",label="N",penwidth="3"];
+
+  oscosc -> osc_dest;
+  oscmidi -> osc_dest;
+
+  midiccosc -> midi_dest;
+  midiccmidi -> midi_dest;
+
+  osc_dest -> data [style="solid",label="N",penwidth="3"];
+
+}
+
+/*
+ * Local Variables:
+ * mode: c
+ * c-basic-offset: 2
+ * End:
+ */
