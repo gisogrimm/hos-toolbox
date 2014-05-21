@@ -1,9 +1,9 @@
 /**
-   \file hos_visualize_sphere.cc
+   \file hos_foacoh.cc
    \ingroup apphos
-   \brief Trajectory visualization
+   \brief First order ambisonics coherence filter and source decomposition
    \author Giso Grimm
-   \date 2011
+   \date 2014
 
    \section license License (GPL)
 
@@ -41,7 +41,7 @@
 
   c = abs( < X/Y*abs(Y/X) > )
 
- */
+*/
 
 #include <gtkmm.h>
 #include <gtkmm/main.h>
@@ -124,37 +124,37 @@ void colormap_t::clim(float vmin,float vmax)
 
 colormap_t::colormap_t(int tp)
 {
-    switch( tp ){
-    case 1 : // rgb linear
-	r.add(1.0);
-	r.add(0.0);
-	r.add(0.0);
-	g.add(0.0);
-	g.add(1.0);
-	g.add(0.0);
-	b.add(0.0);
-	b.add(0.0);
-	b.add(1.0);
-	break;
-    case 2 : // gray
-	r.add(0.0);
-	r.add(1.0);
-	g.add(0.0);
-	g.add(1.0);
-	b.add(0.0);
-	b.add(1.0);
-	break;
-    default: // cos
-	b.add(0.0);
-	g.add(0.0);
-	r.add(0.0);
-	for(unsigned int k=0;k<64;k++){
-	    float phi = k/63.0*M_PI-M_PI/6.0;
-            b.add( powf(cosf(phi),2.0) );
-            g.add( powf(cosf(phi+M_PI/3.0),2.0) );
-            r.add( powf(cosf(phi+2.0*M_PI/3.0),2.0) );
-	}
+  switch( tp ){
+  case 1 : // rgb linear
+    r.add(1.0);
+    r.add(0.0);
+    r.add(0.0);
+    g.add(0.0);
+    g.add(1.0);
+    g.add(0.0);
+    b.add(0.0);
+    b.add(0.0);
+    b.add(1.0);
+    break;
+  case 2 : // gray
+    r.add(0.0);
+    r.add(1.0);
+    g.add(0.0);
+    g.add(1.0);
+    b.add(0.0);
+    b.add(1.0);
+    break;
+  default: // cos
+    b.add(0.0);
+    g.add(0.0);
+    r.add(0.0);
+    for(unsigned int k=0;k<64;k++){
+      float phi = k/63.0*M_PI-M_PI/6.0;
+      b.add( powf(cosf(phi),2.0) );
+      g.add( powf(cosf(phi+M_PI/3.0),2.0) );
+      r.add( powf(cosf(phi+2.0*M_PI/3.0),2.0) );
     }
+  }
 }
 
 class az_hist_t : public HoS::wave_t
@@ -163,6 +163,7 @@ public:
   az_hist_t(uint32_t size);
   void update();
   void add(float f, float az,float weight);
+  void add(float f, float _Complex W, float _Complex X, float _Complex Y, float weight);
   void set_tau(float tau,float fs);
   void draw(const Cairo::RefPtr<Cairo::Context>& cr,float scale);
   void set_frange(float f1,float f2);
@@ -171,13 +172,29 @@ private:
   float c2;
   float fmin;
   float fmax;
+  float dec_w;
+  HoS::wave_t dec_x;
+  HoS::wave_t dec_y;
 };
 
 az_hist_t::az_hist_t(uint32_t size)
-  : HoS::wave_t(size)
+  : HoS::wave_t(size),
+    dec_x(size),
+    dec_y(size)
 {
   set_tau(1.0f,1.0f);
   set_frange(0,22050);
+  // 1st order decoder type:
+  // basic = 1
+  // max-rE(2D) = 0.707
+  float dec_gain(1.0);
+  dec_gain = 0.707;
+  dec_w = 1.0/sqrt(2.0);
+  for(uint32_t k=0;k<size;k++){
+    float az((float)k*2.0*M_PI/(float)size);
+    dec_x[k] = dec_gain*cos(az);
+    dec_y[k] = dec_gain*sin(az);
+  }
 }
 
 void az_hist_t::update()
@@ -192,6 +209,18 @@ void az_hist_t::add(float f, float az, float weight)
     az *= (0.5*size()/M_PI);
     uint32_t iaz(std::max(0.0f,std::min((float)(size()-1),az)));
     operator[](iaz) += c2*weight;
+  }
+}
+
+void az_hist_t::add(float f, float _Complex W, float _Complex X, float _Complex Y, float weight)
+{
+  if( (f >= fmin) && (f < fmax) ){
+    for(uint32_t k=0;k<size();k++){
+      float t(crealf(dec_w*W+dec_x[k]*X+dec_y[k]*Y));
+      t *= t;
+      //DEBUG(t);
+      operator[](k) += c2*t*weight;
+    }
   }
 }
 
@@ -353,9 +382,15 @@ int foacoh_t::process(jack_nframes_t n, const std::vector<float*>& vIn, const st
     ////az[k] *= lp_c1[k];
     ////az[k] += lp_c2[k]*azt;
     //az[k] = azt;
-    float w(pow(cohReXY[k],2.0));
+    //float w(powf(cohReXY[k]*cabsf(cW),2.0));
+    float w(powf(cabsf(cW)*cohXY[k],2.0));
+    //float w(powf(cohXY[k]*cabsf(cW),2.0));
+    //float w(powf(cohXWYW[k]*cabsf(cW),2.0));
+    //float w(powf(cohXY[k],2.0));
     for(uint32_t kH=0;kH<haz.size();kH++)
       haz[kH].add(freq,az[k],w);
+    //for(uint32_t kH=0;kH<haz.size();kH++)
+    //  haz[kH].add(freq,cW,cX,cY,1.0);
     //ola_inv_w.s[k] *= 1.0f-coh[k];
     //ola_inv_x.s[k] *= 1.0f-coh[k];
     //ola_inv_y.s[k] *= 1.0f-coh[k];
@@ -426,10 +461,10 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
   // tau = 250/fc, max 1s, min 125ms
   for(uint32_t kH=0;kH<bands;kH++){
     haz.push_back(az_hist_t(channels));
-    haz.back().set_tau(std::max(0.125f,std::min(1.0f,1500.0f/fc[kH])),frame_rate);
+    haz.back().set_tau(std::max(0.125f,std::min(1.0f,500.0f/fc[kH])),frame_rate);
     haz.back().set_frange(fe[kH],fe[kH+1]);
   }
-  col.clim(-80,0);
+  col.clim(-30,50);
   set_prefix("/"+name);
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &foacoh_t::on_timeout), 40 );
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
@@ -491,6 +526,8 @@ bool foacoh_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
   Gtk::Allocation allocation = get_allocation();
   const int width = allocation.get_width();
   const int height = allocation.get_height();
+  float vmax(-1e8);
+  float vmin(1e8);
   if( draw_image ){
     guint8* pixels = image->get_pixels();
     for(uint32_t k=0;k<azchannels;k++)
@@ -498,10 +535,18 @@ bool foacoh_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
         uint32_t pix(k+b*azchannels);
         //uint32_t pix(bands*k+b);
         float val(10.0f*log10f(haz[b][k]));
+        if( val > vmax ){
+          vmax = val;
+        }
+        if( val < vmin ){
+          vmin = val;
+        }
         pixels[3*pix] = col.r(val)*255;
         pixels[3*pix+1] = col.g(val)*255;
         pixels[3*pix+2] = col.b(val)*255;
       }
+    std::cout << vmin << " " << vmax << std::endl;
+    //DEBUG(vmax);
     cr->save();
     cr->scale((double)width/(double)azchannels,(double)height/(double)bands);
     Gdk::Cairo::set_source_pixbuf(cr, image, 0,0);
@@ -640,7 +685,7 @@ int main(int argc, char** argv)
   win.set_title(jackname);
   HoSGUI::foacoh_t c(jackname,channels,bpoctave,fmin,fmax);
   win.add(c);
-  win.set_default_size(1024,768);
+  win.set_default_size(640,480);
   //win.fullscreen();
   win.show_all();
   c.activate();
