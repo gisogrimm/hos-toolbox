@@ -85,12 +85,44 @@ public:
   uint32_t sizex() const {return sx_;};
   uint32_t sizey() const {return sy_;};
   uint32_t size() const {return s_;};
+  float min() const;
+  float max() const;
+  void operator+=(float x);
+  void operator*=(float x);
 private:
   uint32_t sx_;
   uint32_t sy_;
   uint32_t s_;
   float* data;
 };
+
+void xyfield_t::operator+=(float x)
+{
+  for(uint32_t k=0;k<s_;k++)
+    data[k] += x;
+}
+
+void xyfield_t::operator*=(float x)
+{
+  for(uint32_t k=0;k<s_;k++)
+    data[k] *= x;
+}
+
+float xyfield_t::min() const
+{
+  float r(data[0]);
+  for(uint32_t k=1;k<s_;k++)
+    r = std::min(data[k],r);
+  return r;
+}
+
+float xyfield_t::max() const
+{
+  float r(data[0]);
+  for(uint32_t k=1;k<s_;k++)
+    r = std::max(data[k],r);
+  return r;
+}
 
 xyfield_t::xyfield_t(uint32_t sx,uint32_t sy)
   : sx_(sx),sy_(sy),s_(std::max(1u,sx*sy)),data(new float[s_])
@@ -147,35 +179,35 @@ private:
 };
 
 objmodel_t::param_t::param_t()
-  : cx(0),cy(0),wx(3),wy(3),g(1)
+  : cx(0),cy(0),wx(3),wy(2),g(1)
 {
 }
 
 objmodel_t::param_t::param_t(uint32_t num,const std::vector<float>& vp)
 {
-  cx = vp[3*num];
-  cy = vp[3*num+1];
-  g = vp[3*num+2];
-  wx = 3;
-  wy = 3;
+  cx = vp[5*num];
+  cy = vp[5*num+1];
+  wx = vp[5*num+2];
+  wy = vp[5*num+3];
+  g = vp[5*num+4];
   //wx = vp[4*num+2];
   //wy = vp[4*num+3];
 }
 
 void objmodel_t::param_t::setp(uint32_t num,std::vector<float>& vp)
 {
-  vp[3*num] = cx;
-  vp[3*num+1] = cy;
-  vp[3*num+2] = g;
-  //vp[4*num+2] = wx;
-  //vp[4*num+3] = wy;
+  vp[5*num] = cx;
+  vp[5*num+1] = cy;
+  vp[5*num+2] = wx;
+  vp[5*num+3] = wy;
+  vp[5*num+4] = g;
 }
 
 objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj)
   : xyfield_t(sx,sy),error(0),nobj(numobj),xscale(PI2/(float)sx)
 {
-  p.resize(3*nobj);
-  unitstep.resize(3*nobj);
+  p.resize(5*nobj);
+  unitstep.resize(5*nobj);
   for(uint32_t k=0;k<nobj;k++){
     param_t par;
     // center x:
@@ -184,10 +216,12 @@ objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj)
     par.cy = sy*drand();
     par.setp(k,p);
     // center x:
-    unitstep[3*k] = 0.01;
+    unitstep[5*k] = 0.01;
     // center y:
-    unitstep[3*k+1] = 0.1;
-    unitstep[3*k+2] = 1;
+    unitstep[5*k+1] = 0.1;
+    unitstep[5*k+2] = 0.01;
+    unitstep[5*k+3] = 0.01;
+    unitstep[5*k+4] = 1;
     // exponent x:
     //unitstep[4*k+2] = 0.001;
     // bandwidth y:
@@ -249,10 +283,14 @@ void objmodel_t::iterate()
       par.cy = 0.0f;
     if( par.cy >= sizey() )
       par.cy = sizey()-1.0f;
-    if( par.wx < 0.1 )
-      par.wx = 0.1;
-    if( par.wy < 0.1 )
-      par.wy = 0.1;
+    if( par.wx < 0.5 )
+      par.wx = 0.5;
+    if( par.wx > 4 )
+      par.wx = 4;
+    if( par.wy < 1 )
+      par.wy = 1;
+    if( par.wy > 5 )
+      par.wy = 5;
     if( par.g < 1 )
       par.g = 1;
     par.setp(k,p);
@@ -383,7 +421,7 @@ namespace HoSGUI {
   class foacoh_t : public freqinfo_t, public Gtk::DrawingArea, public TASCAR::osc_server_t, public jackc_t
   {
   public:
-    foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax);
+    foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,uint32_t nobjects);
     virtual ~foacoh_t();
     virtual int process(jack_nframes_t, const std::vector<float*>&, const std::vector<float*>&);
     void activate();
@@ -424,6 +462,10 @@ namespace HoSGUI {
     colormap_t col;
     uint32_t azchannels;
     objmodel_t obj;
+    float vmin;
+    float vmax;
+    float objlp_c1;
+    float objlp_c2;
   };
 
 }
@@ -513,7 +555,7 @@ int foacoh_t::process(jack_nframes_t n, const std::vector<float*>& vIn, const st
   //ola_inv_y.ifft(inv_oy);
   for(uint32_t kb=0;kb<bands;kb++){
     for(uint32_t kc=0;kc<azchannels;kc++){
-      obj.val(kc,kb) = std::max(0.0f,40.0f+10.0f*log10f(std::max(1.0e-10f,haz[kb][kc])));
+      obj.val(kc,kb) = 10.0f*log10f(std::max(1.0e-10f,haz[kb][kc]));
     }
     //if( sum > 0 ){
     //  sum = (float)azchannels/sum;
@@ -522,11 +564,15 @@ int foacoh_t::process(jack_nframes_t n, const std::vector<float*>& vIn, const st
     //  }
     //}
   }
+  vmin = objlp_c1*vmin+objlp_c2*obj.min();
+  vmax = std::max(vmin+0.1f,objlp_c1*vmax+objlp_c2*obj.max());
+  obj += -vmin;
+  obj *= 100.0/(vmax-vmin);
   obj.iterate();
   return 0;
 }
 
-foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax)
+foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,uint32_t nobjects)
   : freqinfo_t(bpo,fmin,fmax),
     osc_server_t(OSC_ADDR,OSC_PORT),
     jackc_t("foacoh"),
@@ -550,7 +596,8 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
     draw_image(true),
     col(0),
     azchannels(channels),
-    obj(channels,bands,3)
+    obj(channels,bands,nobjects),
+    vmin(0),vmax(1)
 {
   image = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB,false,8,channels,bands);
   image_mod = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB,false,8,channels,bands);
@@ -582,7 +629,9 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
     haz.back().set_tau(std::max(0.125f,std::min(1.0f,500.0f/fc[kH])),frame_rate);
     haz.back().set_frange(fe[kH],fe[kH+1]);
   }
-  col.clim(-3,80);
+  objlp_c1 = exp( -1.0/(0.5 * frame_rate) );
+  objlp_c2 = 1.0f-objlp_c1;
+  col.clim(-1,100);
   set_prefix("/"+name);
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &foacoh_t::on_timeout), 40 );
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
@@ -651,7 +700,7 @@ bool foacoh_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
     guint8* pixels = image->get_pixels();
     for(uint32_t k=0;k<azchannels;k++)
       for(uint32_t b=0;b<bands;b++){
-        uint32_t pix(k+b*azchannels);
+        uint32_t pix(k+(bands-b-1)*azchannels);
         //uint32_t pix(bands*k+b);
         //float val(10.0f*log10f(haz[b][k]));
         float val(obj.val(k,b));
@@ -668,7 +717,7 @@ bool foacoh_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
     pixels = image_mod->get_pixels();
     for(uint32_t k=0;k<azchannels;k++)
       for(uint32_t b=0;b<bands;b++){
-        uint32_t pix(k+b*azchannels);
+        uint32_t pix(k+(bands-b-1)*azchannels);
         //uint32_t pix(bands*k+b);
         float val(obj.objval(k,b));
         pixels[3*pix] = col.r(val)*255;
@@ -676,28 +725,28 @@ bool foacoh_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
         pixels[3*pix+2] = col.b(val)*255;
       }
     //std::cout << vmin << " " << vmax << std::endl;
-    std::cout << obj.geterror();
+    //std::cout << obj.geterror();
     //DEBUG(vmax);
     cr->save();
     cr->scale(0.5*(double)width/(double)azchannels,(double)height/(double)bands);
-    Gdk::Cairo::set_source_pixbuf(cr, image, 0,0);
+    Gdk::Cairo::set_source_pixbuf(cr, image, 0, 0);
     //(width - image->get_width())/2, (height - image->get_height())/2);
     cr->paint();
     Gdk::Cairo::set_source_pixbuf(cr, image_mod, azchannels,0);
     cr->paint();
     for(uint32_t ko=0;ko<obj.size();ko++){
       objmodel_t::param_t par(obj.param(ko));
-      std::cout << " " << par.cx << " " << par.cy << " " << par.wx << " " << par.wy << " " << par.g;
+      //std::cout << " " << par.cx << " " << par.cy << " " << par.wx << " " << par.wy << " " << par.g;
       cr->set_line_width(0.2);
       cr->set_source_rgb( 1, 1, 1 );
-      cr->move_to(par.cx,par.cy-0.5*par.wy);
-      cr->line_to(par.cx,par.cy+0.5*par.wy);
+      cr->move_to(par.cx,bands-(par.cy-0.5*par.wy)-1);
+      cr->line_to(par.cx,bands-(par.cy+0.5*par.wy)-1);
       cr->stroke();
-      cr->move_to(par.cx-0.5/par.wx,par.cy);
-      cr->line_to(par.cx+0.5/par.wx,par.cy);
+      cr->move_to(par.cx-0.5/par.wx,bands-par.cy-1);
+      cr->line_to(par.cx+0.5/par.wx,bands-par.cy-1);
       cr->stroke();
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
     cr->restore();
   }else{
     //double ratio = (double)width/(double)height;
@@ -793,7 +842,8 @@ int main(int argc, char** argv)
   float bpoctave(1);
   float fmin(125);
   float fmax(8000);
-  const char *options = "hj:c:b:l:u:";
+  uint32_t nobjects(5);
+  const char *options = "hj:c:b:l:u:o:";
   struct option long_options[] = { 
     { "help",     0, 0, 'h' },
     { "jackname", 1, 0, 'j' },
@@ -801,6 +851,7 @@ int main(int argc, char** argv)
     { "bpoctave", 1, 0, 'b' },
     { "fmin",     1, 0, 'l' },
     { "fmax",     1, 0, 'u' },
+    { "objects",  1, 0, 'o' },
     { 0, 0, 0, 0 }
   };
   int opt(0);
@@ -817,6 +868,9 @@ int main(int argc, char** argv)
     case 'c':
       channels = atoi(optarg);
       break;
+    case 'o':
+      nobjects = atoi(optarg);
+      break;
     case 'b':
       bpoctave = atof(optarg);
       break;
@@ -829,7 +883,7 @@ int main(int argc, char** argv)
     }
   }
   win.set_title(jackname);
-  HoSGUI::foacoh_t c(jackname,channels,bpoctave,fmin,fmax);
+  HoSGUI::foacoh_t c(jackname,channels,bpoctave,fmin,fmax,nobjects);
   win.add(c);
   win.set_default_size(640,480);
   //win.fullscreen();
