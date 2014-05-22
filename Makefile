@@ -7,7 +7,7 @@ BINFILES = ommo_bridge hos_sphere_amb30 hos_sendosc hos_delay hos_cyclephase hos
 
 #BINFILES = hos_sustain
 
-OBJECTS = jackclient.o osc_helper.o libhos_midi_ctl.o errorhandling.o libhos_gainmatrix.o audiochunks.o tmcm.o  libhos_random.o ringbuffer.o
+OBJECTS = jackclient.o osc_helper.o libhos_midi_ctl.o errorhandling.o libhos_gainmatrix.o audiochunks.o tmcm.o  libhos_random.o ringbuffer.o lininterp.o
 
 GUIOBJ = hosgui_meter.o hosgui_mixer.o hosgui_sphere.o 
 

@@ -55,105 +55,143 @@
 #include "audiochunks.h"
 #include "defs.h"
 #include <getopt.h>
+#include "lininterp.h"
+#include "libhos_random.h"
 
 
 #define OSC_ADDR "239.255.1.7"
 #define OSC_PORT "6978"
 #define HIST_SIZE 256
 
-class interp_table_t
+void downhill_iter(float eps,std::vector<float>& param,float (*err)(const std::vector<float>& x,void* data),void* data,float unitstep = 1.0f)
 {
+  std::vector<float> stepparam(param);
+  float errv(err(param,data));
+  for(uint32_t k=0;k<param.size();k++){
+    stepparam[k] += unitstep;
+    float dv(eps*(errv - err(stepparam,data)));
+    stepparam[k] = param[k];
+    param[k] += dv;
+  }
+}
+
+class xyfield_t {
 public:
-  interp_table_t();
-  void set_range(float x1,float x2);
-  float operator()(float x);
-  void add(float y);
+  xyfield_t(uint32_t sx,uint32_t sy);
+  ~xyfield_t();
+  float& val(uint32_t px,uint32_t py);
+  uint32_t sizex() const {return sx_;};
+  uint32_t sizey() const {return sy_;};
+  uint32_t size() const {return s_;};
 private:
-  std::vector<float> y;
-  float xmin;
-  float xmax;
-  float scale;
+  uint32_t sx_;
+  uint32_t sy_;
+  uint32_t s_;
+  float* data;
 };
 
-
-interp_table_t::interp_table_t()
-  : xmin(0),xmax(1),scale(1)
+xyfield_t::xyfield_t(uint32_t sx,uint32_t sy)
+  : sx_(sx),sy_(sy),s_(std::max(1u,sx*sy)),data(new float[s_])
 {
+  for(uint32_t k=0;k<s_;k++)
+    data[k] = 0;
 }
 
-void interp_table_t::add(float vy)
+xyfield_t::~xyfield_t()
 {
-  y.push_back(vy);
-  set_range(xmin,xmax);
+  delete [] data;
 }
 
-void interp_table_t::set_range(float x1,float x2)
+float& xyfield_t::val(uint32_t px,uint32_t py)
 {
-  xmin = x1;
-  xmax = x2;
-  scale = (y.size()-1)/(xmax-xmin);
+  return data[px+sx_*py];
 }
 
-float interp_table_t::operator()(float x)
-{
-  float xs((x-xmin)*scale);
-  if( xs <= 0.0f )
-    return y.front();
-  uint32_t idx(floor(xs));
-  if( idx >= y.size()-1 )
-    return y.back();
-  float dx(xs-(float)idx);
-  return (1.0f-dx)*y[idx]+dx*y[idx+1];
-}
-
-class colormap_t {
+class objmodel_t : public xyfield_t {
 public:
-  colormap_t(int tp);
-  void clim(float vmin,float vmax);
-  interp_table_t r;
-  interp_table_t b;
-  interp_table_t g;
+  objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj);
+  float objval(float x,float y,float cx,float cy,float wx,float wy,float g) const;
+  float objval(uint32_t x,uint32_t y,const std::vector<float>&) const;
+  static float errfun(const std::vector<float>&,void* data);
+  float errfun(const std::vector<float>&);
+  void inter();
+  const std::vector<float>& param() const { return p;};
+private:
+  uint32_t nobj;
+  std::vector<float> p;
 };
 
-void colormap_t::clim(float vmin,float vmax)
+objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj)
+  : xyfield_t(sx,sy),nobj(numobj)
 {
-  r.set_range(vmin,vmax);
-  g.set_range(vmin,vmax);
-  b.set_range(vmin,vmax);
+  p.resize(5*nobj);
+  for(uint32_t k=0;k<nobj;k++){
+    // center x:
+    p[5*k] = sx*drand();
+    // center y:
+    p[5*k+1] = sy*drand();
+    // exponent x:
+    p[5*k+2] = 1.0;
+    // bandwidth y:
+    p[5*k+3] = 1.0;
+    // gain:
+    p[5*k+4] = 1.0;
+  }
 }
 
-colormap_t::colormap_t(int tp)
+float objmodel_t::objval(float x,float y,float cx,float cy,float wx,float wy,float g) const
 {
-  switch( tp ){
-  case 1 : // rgb linear
-    r.add(1.0);
-    r.add(0.0);
-    r.add(0.0);
-    g.add(0.0);
-    g.add(1.0);
-    g.add(0.0);
-    b.add(0.0);
-    b.add(0.0);
-    b.add(1.0);
-    break;
-  case 2 : // gray
-    r.add(0.0);
-    r.add(1.0);
-    g.add(0.0);
-    g.add(1.0);
-    b.add(0.0);
-    b.add(1.0);
-    break;
-  default: // cos
-    b.add(0.0);
-    g.add(0.0);
-    r.add(0.0);
-    for(unsigned int k=0;k<64;k++){
-      float phi = k/63.0*M_PI-M_PI/6.0;
-      b.add( powf(cosf(phi),2.0) );
-      g.add( powf(cosf(phi+M_PI/3.0),2.0) );
-      r.add( powf(cosf(phi+2.0*M_PI/3.0),2.0) );
+  cy = y-cy;
+  cy /= wy*1.4142135623730f;
+  cy *= cy;
+  return g*powf(0.5+0.5*cosf((x-cx)*PI2),wx)*expf(-cy);
+}
+
+float objmodel_t::objval(uint32_t x,uint32_t y,const std::vector<float>& p) const
+{
+  float rv(0.0f);
+  for(uint32_t k=0;k<nobj;k++)
+    rv += objval(x,y,p[5*k],p[5*k+1],p[5*k+2],p[5*k+3],p[5*k+4]);
+  return rv;
+}
+
+float objmodel_t::errfun(const std::vector<float>& p,void* data)
+{
+  return ((objmodel_t*)(data))->errfun(p);
+}
+
+float objmodel_t::errfun(const std::vector<float>& p)
+{
+  float err(0.0);
+  for(uint32_t kx=0;kx<sizex();kx++)
+    for(uint32_t ky=0;ky<sizey();ky++){
+      float lerr(val(kx,ky)-objval(kx,ky,p));
+      err += lerr*lerr;
     }
+  return err;
+}
+
+void objmodel_t::inter()
+{
+  downhill_iter(0.001,p,&objmodel_t::errfun,this);
+  // constraints:
+  for(uint32_t k=0;k<nobj;k++){
+    // center x:
+    if( p[5*k] < 0 )
+      p[5*k] += sizex();
+    if( p[5*k] >= sizex() )
+      p[5*k] -= sizex();
+    // center y:
+    //p[5*k+1] = sy*drand();
+    // exponent x:
+    if( p[5*k+2] < 0.0f )
+      p[5*k+2] = 0.0f;
+    // bandwidth y:
+    if( p[5*k+3] < 0.0f )
+      p[5*k+3] = 0.0f;
+    // gain:
+    if( p[5*k+4] < 0.0f )
+      p[5*k+4] = 0.0f;
   }
 }
 
