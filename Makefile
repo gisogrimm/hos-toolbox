@@ -51,7 +51,8 @@ ifeq "$(ARCH)" "x86_64"
 CXXFLAGS += -msse -msse2 -mfpmath=sse -ffast-math -fomit-frame-pointer -fno-finite-math-only
 endif
 
-CXXFLAGS += -Wall -O3 -Wall -O3 -L./
+CXXFLAGS += -Wall -O3 -L./
+#CXXFLAGS += -Wall -g -L./
 
 EXTERNALS = alsa jack libxml++-2.6 liblo fftw3f sndfile
 

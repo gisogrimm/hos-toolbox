@@ -63,16 +63,17 @@
 #define OSC_PORT "6978"
 #define HIST_SIZE 256
 
-void downhill_iter(float eps,std::vector<float>& param,float (*err)(const std::vector<float>& x,void* data),void* data,float unitstep = 1.0f)
+float downhill_iterate(float eps,std::vector<float>& param,float (*err)(const std::vector<float>& x,void* data),void* data,const std::vector<float>& unitstep)
 {
   std::vector<float> stepparam(param);
   float errv(err(param,data));
   for(uint32_t k=0;k<param.size();k++){
-    stepparam[k] += unitstep;
+    stepparam[k] += unitstep[k];
     float dv(eps*(errv - err(stepparam,data)));
     stepparam[k] = param[k];
     param[k] += dv;
   }
+  return errv;
 }
 
 class xyfield_t {
@@ -80,6 +81,7 @@ public:
   xyfield_t(uint32_t sx,uint32_t sy);
   ~xyfield_t();
   float& val(uint32_t px,uint32_t py);
+  float val(uint32_t px,uint32_t py) const;
   uint32_t sizex() const {return sx_;};
   uint32_t sizey() const {return sy_;};
   uint32_t size() const {return s_;};
@@ -107,52 +109,114 @@ float& xyfield_t::val(uint32_t px,uint32_t py)
   return data[px+sx_*py];
 }
 
+float xyfield_t::val(uint32_t px,uint32_t py) const
+{
+  return data[px+sx_*py];
+}
+
 class objmodel_t : public xyfield_t {
 public:
+  class param_t {
+  public:
+    param_t();
+    param_t(uint32_t num,const std::vector<float>& vp);
+    void setp(uint32_t num,std::vector<float>& v);
+    float cx;
+    float cy;
+    float wx;
+    float wy;
+    float g;
+  };
   objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj);
-  float objval(float x,float y,float cx,float cy,float wx,float wy,float g) const;
+  float objval(float x,float y,param_t lp) const;
   float objval(uint32_t x,uint32_t y,const std::vector<float>&) const;
+  float objval(uint32_t x,uint32_t y) const;
   static float errfun(const std::vector<float>&,void* data);
   float errfun(const std::vector<float>&);
-  void inter();
+  void iterate();
+  uint32_t size() const {return nobj;};
   const std::vector<float>& param() const { return p;};
+  param_t param(uint32_t k) const { return param_t(k,p);};
+  float geterror() const{ return error;};
 private:
+  float error;
   uint32_t nobj;
   std::vector<float> p;
+  std::vector<float> unitstep;
+  float xscale;
 };
 
-objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj)
-  : xyfield_t(sx,sy),nobj(numobj)
+objmodel_t::param_t::param_t()
+  : cx(0),cy(0),wx(3),wy(3),g(1)
 {
-  p.resize(5*nobj);
+}
+
+objmodel_t::param_t::param_t(uint32_t num,const std::vector<float>& vp)
+{
+  cx = vp[3*num];
+  cy = vp[3*num+1];
+  g = vp[3*num+2];
+  wx = 3;
+  wy = 3;
+  //wx = vp[4*num+2];
+  //wy = vp[4*num+3];
+}
+
+void objmodel_t::param_t::setp(uint32_t num,std::vector<float>& vp)
+{
+  vp[3*num] = cx;
+  vp[3*num+1] = cy;
+  vp[3*num+2] = g;
+  //vp[4*num+2] = wx;
+  //vp[4*num+3] = wy;
+}
+
+objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj)
+  : xyfield_t(sx,sy),error(0),nobj(numobj),xscale(PI2/(float)sx)
+{
+  p.resize(3*nobj);
+  unitstep.resize(3*nobj);
   for(uint32_t k=0;k<nobj;k++){
+    param_t par;
     // center x:
-    p[5*k] = sx*drand();
+    par.cx = sx*drand();
     // center y:
-    p[5*k+1] = sy*drand();
+    par.cy = sy*drand();
+    par.setp(k,p);
+    // center x:
+    unitstep[3*k] = 0.01;
+    // center y:
+    unitstep[3*k+1] = 0.1;
+    unitstep[3*k+2] = 1;
     // exponent x:
-    p[5*k+2] = 1.0;
+    //unitstep[4*k+2] = 0.001;
     // bandwidth y:
-    p[5*k+3] = 1.0;
-    // gain:
-    p[5*k+4] = 1.0;
+    //unitstep[4*k+3] = 0.01;
   }
 }
 
-float objmodel_t::objval(float x,float y,float cx,float cy,float wx,float wy,float g) const
+float objmodel_t::objval(float x,float y,param_t lp) const
 {
-  cy = y-cy;
-  cy /= wy*1.4142135623730f;
-  cy *= cy;
-  return g*powf(0.5+0.5*cosf((x-cx)*PI2),wx)*expf(-cy);
+  //float g(val(std::max(0.0f,std::min(lp.cx,(float)(sizex()))),
+  //            std::max(0.0f,std::min(lp.cy,(float)(sizey())))));
+  lp.cy = y-lp.cy;
+  lp.cy /= lp.wy*1.4142135623730f;
+  lp.cy *= lp.cy;
+  //return g*powf(0.5+0.5*cosf((x-lp.cx)*PI2),lp.wx);
+  return lp.g*powf(0.5+0.5*cosf((x-lp.cx)*xscale),lp.wx)*expf(-lp.cy);
 }
 
 float objmodel_t::objval(uint32_t x,uint32_t y,const std::vector<float>& p) const
 {
   float rv(0.0f);
   for(uint32_t k=0;k<nobj;k++)
-    rv += objval(x,y,p[5*k],p[5*k+1],p[5*k+2],p[5*k+3],p[5*k+4]);
+    rv += objval(x,y,param_t(k,p));
   return rv;
+}
+
+float objmodel_t::objval(uint32_t x,uint32_t y) const
+{
+  return objval(x,y,p);
 }
 
 float objmodel_t::errfun(const std::vector<float>& p,void* data)
@@ -171,27 +235,27 @@ float objmodel_t::errfun(const std::vector<float>& p)
   return err;
 }
 
-void objmodel_t::inter()
+void objmodel_t::iterate()
 {
-  downhill_iter(0.001,p,&objmodel_t::errfun,this);
+  error = downhill_iterate(0.0001,p,&objmodel_t::errfun,this,unitstep);
   // constraints:
   for(uint32_t k=0;k<nobj;k++){
-    // center x:
-    if( p[5*k] < 0 )
-      p[5*k] += sizex();
-    if( p[5*k] >= sizex() )
-      p[5*k] -= sizex();
-    // center y:
-    //p[5*k+1] = sy*drand();
-    // exponent x:
-    if( p[5*k+2] < 0.0f )
-      p[5*k+2] = 0.0f;
-    // bandwidth y:
-    if( p[5*k+3] < 0.0f )
-      p[5*k+3] = 0.0f;
-    // gain:
-    if( p[5*k+4] < 0.0f )
-      p[5*k+4] = 0.0f;
+    param_t par(k,p);
+    while( par.cx < 0 )
+      par.cx += sizex();
+    while( par.cx >= sizex() )
+      par.cx -= sizex();
+    if( par.cy < 0.0f )
+      par.cy = 0.0f;
+    if( par.cy >= sizey() )
+      par.cy = sizey()-1.0f;
+    if( par.wx < 0.1 )
+      par.wx = 0.1;
+    if( par.wy < 0.1 )
+      par.wy = 0.1;
+    if( par.g < 1 )
+      par.g = 1;
+    par.setp(k,p);
   }
 }
 
@@ -355,9 +419,11 @@ namespace HoSGUI {
     //float haz_c2;
     float fscale;
     Glib::RefPtr<Gdk::Pixbuf> image;
+    Glib::RefPtr<Gdk::Pixbuf> image_mod;
     bool draw_image;
     colormap_t col;
     uint32_t azchannels;
+    objmodel_t obj;
   };
 
 }
@@ -445,6 +511,18 @@ int foacoh_t::process(jack_nframes_t n, const std::vector<float*>& vIn, const st
   //ola_inv_w.ifft(inv_ow);
   //ola_inv_x.ifft(inv_ox);
   //ola_inv_y.ifft(inv_oy);
+  for(uint32_t kb=0;kb<bands;kb++){
+    for(uint32_t kc=0;kc<azchannels;kc++){
+      obj.val(kc,kb) = std::max(0.0f,40.0f+10.0f*log10f(std::max(1.0e-10f,haz[kb][kc])));
+    }
+    //if( sum > 0 ){
+    //  sum = (float)azchannels/sum;
+    //  for(uint32_t kc=0;kc<azchannels;kc++){
+    //    obj.val(kc,kb) *= sum;
+    //  }
+    //}
+  }
+  obj.iterate();
   return 0;
 }
 
@@ -471,9 +549,11 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
     name_(name),
     draw_image(true),
     col(0),
-    azchannels(channels)
+    azchannels(channels),
+    obj(channels,bands,3)
 {
   image = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB,false,8,channels,bands);
+  image_mod = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB,false,8,channels,bands);
   add_input_port("in.0w");
   add_input_port("in.1x");
   add_input_port("in.1y");
@@ -502,7 +582,7 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
     haz.back().set_tau(std::max(0.125f,std::min(1.0f,500.0f/fc[kH])),frame_rate);
     haz.back().set_frange(fe[kH],fe[kH+1]);
   }
-  col.clim(-30,50);
+  col.clim(-3,80);
   set_prefix("/"+name);
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &foacoh_t::on_timeout), 40 );
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
@@ -557,6 +637,7 @@ void foacoh_t::deactivate()
 foacoh_t::~foacoh_t()
 {
   image.clear();
+  image_mod.clear();
 }
   
 bool foacoh_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
@@ -572,7 +653,8 @@ bool foacoh_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
       for(uint32_t b=0;b<bands;b++){
         uint32_t pix(k+b*azchannels);
         //uint32_t pix(bands*k+b);
-        float val(10.0f*log10f(haz[b][k]));
+        //float val(10.0f*log10f(haz[b][k]));
+        float val(obj.val(k,b));
         if( val > vmax ){
           vmax = val;
         }
@@ -583,13 +665,39 @@ bool foacoh_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
         pixels[3*pix+1] = col.g(val)*255;
         pixels[3*pix+2] = col.b(val)*255;
       }
-    std::cout << vmin << " " << vmax << std::endl;
+    pixels = image_mod->get_pixels();
+    for(uint32_t k=0;k<azchannels;k++)
+      for(uint32_t b=0;b<bands;b++){
+        uint32_t pix(k+b*azchannels);
+        //uint32_t pix(bands*k+b);
+        float val(obj.objval(k,b));
+        pixels[3*pix] = col.r(val)*255;
+        pixels[3*pix+1] = col.g(val)*255;
+        pixels[3*pix+2] = col.b(val)*255;
+      }
+    //std::cout << vmin << " " << vmax << std::endl;
+    std::cout << obj.geterror();
     //DEBUG(vmax);
     cr->save();
-    cr->scale((double)width/(double)azchannels,(double)height/(double)bands);
+    cr->scale(0.5*(double)width/(double)azchannels,(double)height/(double)bands);
     Gdk::Cairo::set_source_pixbuf(cr, image, 0,0);
     //(width - image->get_width())/2, (height - image->get_height())/2);
     cr->paint();
+    Gdk::Cairo::set_source_pixbuf(cr, image_mod, azchannels,0);
+    cr->paint();
+    for(uint32_t ko=0;ko<obj.size();ko++){
+      objmodel_t::param_t par(obj.param(ko));
+      std::cout << " " << par.cx << " " << par.cy << " " << par.wx << " " << par.wy << " " << par.g;
+      cr->set_line_width(0.2);
+      cr->set_source_rgb( 1, 1, 1 );
+      cr->move_to(par.cx,par.cy-0.5*par.wy);
+      cr->line_to(par.cx,par.cy+0.5*par.wy);
+      cr->stroke();
+      cr->move_to(par.cx-0.5/par.wx,par.cy);
+      cr->line_to(par.cx+0.5/par.wx,par.cy);
+      cr->stroke();
+    }
+    std::cout << std::endl;
     cr->restore();
   }else{
     //double ratio = (double)width/(double)height;
