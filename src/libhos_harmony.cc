@@ -1,6 +1,6 @@
 #include "libhos_harmony.h"
 #include <stdlib.h>
-#include "defs.h"
+#include "hos_defs.h"
 #include "errorhandling.h"
 #include <math.h>
 

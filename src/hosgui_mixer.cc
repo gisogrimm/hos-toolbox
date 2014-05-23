@@ -26,7 +26,7 @@
 /*
  */
 #include "hosgui_mixer.h"
-#include "defs.h"
+#include "hos_defs.h"
 
 using namespace HoSGUI;
 

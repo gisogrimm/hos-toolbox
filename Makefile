@@ -7,7 +7,7 @@ BINFILES = ommo_bridge hos_sphere_amb30 hos_sendosc hos_delay hos_cyclephase hos
 
 #BINFILES = hos_sustain
 
-OBJECTS = jackclient.o osc_helper.o libhos_midi_ctl.o errorhandling.o libhos_gainmatrix.o audiochunks.o tmcm.o  libhos_random.o ringbuffer.o lininterp.o
+OBJECTS = libhos_midi_ctl.o libhos_gainmatrix.o libhos_audiochunks.o tmcm.o  libhos_random.o lininterp.o
 
 GUIOBJ = hosgui_meter.o hosgui_mixer.o hosgui_sphere.o 
 
@@ -58,6 +58,10 @@ EXTERNALS = alsa jack libxml++-2.6 liblo fftw3f sndfile
 
 laserctl: EXTERNALS += libserial
 
+LDLIBS += -ltascar
+LDFLAGS += -L../tascar/build
+CXXFLAGS += -I../tascar/src
+CPPFLAGS += -I../tascar/src
 
 LDLIBS += `pkg-config --libs $(EXTERNALS)`
 CXXFLAGS += `pkg-config --cflags $(EXTERNALS)`

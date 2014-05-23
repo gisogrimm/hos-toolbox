@@ -32,7 +32,7 @@
 #include "osc_helper.h"
 #include <stdlib.h>
 #include <iostream>
-#include "audiochunks.h"
+#include "libhos_audiochunks.h"
 
 #define OSC_ADDR "239.255.1.7"
 #define OSC_PORT "6978"

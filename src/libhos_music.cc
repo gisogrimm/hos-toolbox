@@ -1,7 +1,7 @@
 #include "libhos_music.h"
 #include <math.h>
 #include "errorhandling.h"
-#include "defs.h"
+#include "hos_defs.h"
 
 uint32_t closest_length(double len)
 {

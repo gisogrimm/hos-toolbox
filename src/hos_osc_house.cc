@@ -8,7 +8,7 @@
 #include <signal.h>
 #include <string.h>
 #include <fstream>
-#include "defs.h"
+#include "hos_defs.h"
 #include <math.h>
 
 static bool b_quit;

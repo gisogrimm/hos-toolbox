@@ -27,7 +27,7 @@
 #include "libhos_music.h"
 #include "osc_helper.h"
 #include <iostream>
-#include "defs.h"
+#include "hos_defs.h"
 
 class midi_note_t {
 public:

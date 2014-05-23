@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "libhos_harmony.h"
-#include "defs.h"
+#include "hos_defs.h"
 #include <math.h>
 #include "errorhandling.h"
 

@@ -1,10 +1,10 @@
-#include "audiochunks.h"
+#include "libhos_audiochunks.h"
 #include <string.h>
 #include <math.h>
 #include <complex.h>
 #include <algorithm>
 #include "errorhandling.h"
-#include "defs.h"
+#include "hos_defs.h"
 #include <iostream>
 
 using namespace HoS;

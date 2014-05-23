@@ -9,7 +9,7 @@
 #include <gtkmm/window.h>
 #include <gtkmm/drawingarea.h>
 #include <cairomm/context.h>
-#include "audiochunks.h"
+#include "libhos_audiochunks.h"
 
 #define DEBUG(x) std::cerr << __FILE__ << ":" << __LINE__ << " " << #x << "=" << x << std::endl
 

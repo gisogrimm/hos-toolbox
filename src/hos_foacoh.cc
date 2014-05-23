@@ -52,8 +52,8 @@
 #include "osc_helper.h"
 #include <stdlib.h>
 #include <iostream>
-#include "audiochunks.h"
-#include "defs.h"
+#include "libhos_audiochunks.h"
+#include "hos_defs.h"
 #include <getopt.h>
 #include "lininterp.h"
 #include "libhos_random.h"

@@ -6,7 +6,7 @@
 #include <lo/lo.h>
 #include "osc_helper.h"
 #include "libhos_music.h"
-#include "defs.h"
+#include "hos_defs.h"
 #include "errorhandling.h"
 
 class clef_t {

@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <string.h>
-#include "defs.h"
+#include "hos_defs.h"
 
 static bool b_quit;
 

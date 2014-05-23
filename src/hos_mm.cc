@@ -28,7 +28,7 @@
 
 */
 #include "hosgui_mixer.h"
-#include "defs.h"
+#include "hos_defs.h"
 #include "libhos_midi_ctl.h"
 
 using namespace HoSGUI;

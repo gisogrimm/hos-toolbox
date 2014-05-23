@@ -1,8 +1,8 @@
-#ifndef DEFS_H
-#define DEFS_H
+#ifndef HOSDEFS_H
+#define HOSDEFS_H
 
 /**
-   \file defs.h
+   \file hosdefs.h
    \brief Some basic definitions
 */
 

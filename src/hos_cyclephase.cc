@@ -32,7 +32,7 @@
 #include "osc_helper.h"
 #include <complex.h>
 #include <math.h>
-#include "defs.h"
+#include "hos_defs.h"
 
 #define OSC_ADDR "239.255.1.7"
 #define OSC_PORT "6978"
