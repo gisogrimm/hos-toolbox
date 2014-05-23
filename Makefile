@@ -62,9 +62,12 @@ laserctl: EXTERNALS += libserial
 LDLIBS += `pkg-config --libs $(EXTERNALS)`
 CXXFLAGS += `pkg-config --cflags $(EXTERNALS)`
 
-all:
+all: libtascar
 	mkdir -p build
 	$(MAKE) -C build -f ../Makefile $(BINFILES)
+
+libtascar:
+	$(MAKE) -C tascar lib
 
 install:
 	$(MAKE) -C build -f ../Makefile $(INSTBIN)
@@ -73,6 +76,7 @@ uninstall:
 	rm -f $(INSTBIN)
 
 clean:
+	$(MAKE) -C tascar clean
 	rm -Rf *~ src/*~ build doc/html
 
 VPATH = ../src ../src/hoafilt

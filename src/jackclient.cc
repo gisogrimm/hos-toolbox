@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <iostream>
 #include "errorhandling.h"
+#include <string.h>
 
 static std::string errmsg("");
 
@@ -78,20 +79,24 @@ int jackc_t::process_(jack_nframes_t nframes)
 
 void jackc_t::add_input_port(const std::string& name)
 {
+  if( (int)(strlen(jack_get_client_name(jc))+name.size()+2) >= jack_port_name_size())
+    throw TASCAR::ErrMsg(std::string("Port name "+name+" is to long."));
   jack_port_t* p;
   p = jack_port_register(jc,name.c_str(),JACK_DEFAULT_AUDIO_TYPE,JackPortIsInput,0);
   if( !p )
-    throw TASCAR::ErrMsg("unable to register port");
+    throw TASCAR::ErrMsg(std::string("unable to register port \""+name+"\"."));
   inPort.push_back(p);
   inBuffer.push_back(NULL);
 }
 
 void jackc_t::add_output_port(const std::string& name)
 {
+  if( (int)(strlen(jack_get_client_name(jc))+name.size()+2) >= jack_port_name_size())
+    throw TASCAR::ErrMsg(std::string("Port name "+name+" is to long."));
   jack_port_t* p;
   p = jack_port_register(jc,name.c_str(),JACK_DEFAULT_AUDIO_TYPE,JackPortIsOutput,0);
   if( !p )
-    throw TASCAR::ErrMsg("unable to register port");
+    throw TASCAR::ErrMsg(std::string("unable to register port \""+name+"\"."));
   outPort.push_back(p);
   outBuffer.push_back(NULL);
 }
@@ -106,10 +111,10 @@ void jackc_portless_t::deactivate()
   jack_deactivate(jc);
 }
 
-void jackc_t::connect_in(unsigned int port,const std::string& pname,bool bwarn)
+void jackc_portless_t::connect(const std::string& src, const std::string& dest, bool bwarn)
 {
-  if( jack_connect(jc,pname.c_str(),jack_port_name(inPort[port])) != 0 ){
-    errmsg = std::string("unable to connect port '")+pname + "' to '" + jack_port_name(inPort[port]) + "'.";
+  if( jack_connect(jc,src.c_str(),dest.c_str()) != 0 ){
+    errmsg = std::string("unable to connect port '")+src + "' to '" + dest + "'.";
     if( bwarn )
       std::cerr << "Warning: " << errmsg << std::endl;
     else
@@ -117,15 +122,14 @@ void jackc_t::connect_in(unsigned int port,const std::string& pname,bool bwarn)
   }
 }
 
+void jackc_t::connect_in(unsigned int port,const std::string& pname,bool bwarn)
+{
+  connect(pname,jack_port_name(inPort[port]),bwarn);
+}
+
 void jackc_t::connect_out(unsigned int port,const std::string& pname,bool bwarn)
 {
-  if( jack_connect(jc,jack_port_name(outPort[port]),pname.c_str()) != 0 ){
-    errmsg = std::string("unable to connect port '")+jack_port_name(outPort[port]) + "' to '" + pname + "'.";
-    if( bwarn )
-      std::cerr << "Warning: " << errmsg << std::endl;
-    else
-      throw TASCAR::ErrMsg(errmsg.c_str());
-  }
+  connect(jack_port_name(outPort[port]),pname,bwarn);
 }
 
 jackc_transport_t::jackc_transport_t(const std::string& clientname)
