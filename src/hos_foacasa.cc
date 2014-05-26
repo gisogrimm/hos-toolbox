@@ -392,7 +392,6 @@ void az_hist_t::add(float f, float _Complex W, float _Complex X, float _Complex 
     for(uint32_t k=0;k<size();k++){
       float t(crealf(dec_w*W+dec_x[k]*X+dec_y[k]*Y));
       t *= t;
-      //DEBUG(t);
       operator[](k) += c2*t*weight;
     }
   }
@@ -452,19 +451,19 @@ freqinfo_t::freqinfo_t(float bpo,float fmin,float fmax)
 
 namespace HoSGUI {
 
-  class foacoh_t : public freqinfo_t, public Gtk::DrawingArea, public TASCAR::osc_server_t, public jackc_t
+  class foacoh_t : public freqinfo_t, public Gtk::DrawingArea, public TASCAR::osc_server_t, public jackc_db_t
   {
   public:
-    foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,uint32_t nobjects);
+    foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,uint32_t nobjects,uint32_t periodsize);
     virtual ~foacoh_t();
-    virtual int process(jack_nframes_t, const std::vector<float*>&, const std::vector<float*>&);
+    virtual int inner_process(jack_nframes_t, const std::vector<float*>&, const std::vector<float*>&);
     void activate();
     void deactivate();
   protected:
     //Override default signal handler:
     virtual bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr);
     bool on_timeout();
-    uint32_t chunksize;
+    uint32_t periodsize;
     uint32_t fftlen;
     uint32_t wndlen;
     HoS::ola_t ola_w;
@@ -505,7 +504,7 @@ namespace HoSGUI {
 
 using namespace HoSGUI;
 
-int foacoh_t::process(jack_nframes_t n, const std::vector<float*>& vIn, const std::vector<float*>& vOut)
+int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, const std::vector<float*>& vOut)
 {
   HoS::wave_t inW(n,vIn[0]);
   HoS::wave_t inX(n,vIn[1]);
@@ -544,9 +543,9 @@ int foacoh_t::process(jack_nframes_t n, const std::vector<float*>& vIn, const st
       cohXWYW[k] += lp_c2[k]*0.25*cabsf(cX*conjf(cX) + cY*conjf(cY));
     }
     az[k] = cargf(cX+I*cY);
-    ola_w.s[k] *= 1.0f-cohXY[k];
-    ola_x.s[k] *= 1.0f-cohXY[k];
-    ola_y.s[k] *= 1.0f-cohXY[k];
+    //ola_w.s[k] *= 1.0f-cohXY[k];
+    //ola_x.s[k] *= 1.0f-cohXY[k];
+    //ola_y.s[k] *= 1.0f-cohXY[k];
     float w(powf(cabsf(cW)*cohXY[k],2.0));
     float l_az(az[k]+M_PI);
     l_az *= (0.5*haz.size()/M_PI);
@@ -557,20 +556,29 @@ int foacoh_t::process(jack_nframes_t n, const std::vector<float*>& vIn, const st
       if( haz[kH].add(freq,az[k],w) ){
         obj.bayes_prob(iaz,kH,bayes_prob);
       }
-    for(uint32_t kobj=0;kobj<obj.size();kobj++)
-      ola_obj[kobj]->s[k] = cohXY[k]*cW*bayes_prob[kobj];
+    //for(uint32_t kobj=0;kobj<obj.size();kobj++)
+      //ola_obj[kobj]->s[k] = cohXY[k]*cW*bayes_prob[kobj];
+      //ola_obj[kobj]->s[k] = cW*bayes_prob[kobj];
   }
-  HoS::wave_t diffuse_w(n,vOut[0]);
-  HoS::wave_t diffuse_x(n,vOut[1]);
-  HoS::wave_t diffuse_y(n,vOut[2]);
+  //HoS::wave_t diffuse_w(n,vOut[0]);
+  //HoS::wave_t diffuse_x(n,vOut[1]);
+  //HoS::wave_t diffuse_y(n,vOut[2]);
   //HoS::wave_t inv_ow(n,vOut[3]);
   //HoS::wave_t inv_ox(n,vOut[4]);
   //HoS::wave_t inv_oy(n,vOut[5]);
-  ola_w.ifft(diffuse_w);
-  ola_x.ifft(diffuse_x);
-  ola_y.ifft(diffuse_y);
+  //ola_w.ifft(diffuse_w);
+  //ola_x.ifft(diffuse_x);
+  //ola_y.ifft(diffuse_y);
   for(uint32_t kobj=0;kobj<obj.size();kobj++){
-    HoS::wave_t outW(n,vOut[kobj+3]);
+    HoS::wave_t outW(n,vOut[kobj]);
+    objmodel_t::param_t par(obj.param(kobj));
+    float az(PI2*par.cx/(float)azchannels-M_PI);
+    float wx(cos(az));
+    float wy(sin(az));
+    for(uint32_t k=0;k<ola_w.s.size();k++)
+      ola_obj[kobj]->s[k] = ola_w.s[k]+wx*ola_x.s[k]+wy*ola_y.s[k];
+      //ola_obj[kobj]->s[k] = ola_w.s[k];
+    ola_obj[kobj]->s[0] = creal(ola_obj[kobj]->s[0]);
     ola_obj[kobj]->ifft(outW);
   }
   for(uint32_t kb=0;kb<bands;kb++){
@@ -592,16 +600,16 @@ int foacoh_t::process(jack_nframes_t n, const std::vector<float*>& vIn, const st
   return 0;
 }
 
-foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,uint32_t nobjects)
+foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,uint32_t nobjects,uint32_t periodsize_)
   : freqinfo_t(bpo,fmin,fmax),
     osc_server_t(OSC_ADDR,OSC_PORT),
-    jackc_t("foacoh"),
-    chunksize(get_fragsize()),
-    fftlen(std::max(512u,4*chunksize)),
-    wndlen(std::max(256u,2*chunksize)),
-    ola_w(fftlen,wndlen,chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
-    ola_x(fftlen,wndlen,chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
-    ola_y(fftlen,wndlen,chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
+    jackc_db_t("foacoh",periodsize_),
+    periodsize(periodsize_),
+    fftlen(std::max(512u,4*periodsize)),
+    wndlen(std::max(256u,2*periodsize)),
+    ola_w(fftlen,wndlen,periodsize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
+    ola_x(fftlen,wndlen,periodsize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
+    ola_y(fftlen,wndlen,periodsize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
     lp_c1(ola_x.s.size()),
     lp_c2(ola_x.s.size()),
     ccohXY(ola_x.s.size()),
@@ -620,17 +628,17 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
   add_input_port("in.0w");
   add_input_port("in.1x");
   add_input_port("in.1y");
-  add_output_port("diffuse.0w");
-  add_output_port("diffuse.1x");
-  add_output_port("diffuse.1y");
+  //add_output_port("diffuse.0w");
+  //add_output_port("diffuse.1x");
+  //add_output_port("diffuse.1y");
   for(uint32_t ko=0;ko<nobjects;ko++){
     char ctmp[1024];
     sprintf(ctmp,"out_%d",ko+1);
     add_output_port(ctmp);
-    ola_obj.push_back(new HoS::ola_t(fftlen,wndlen,chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING));
+    ola_obj.push_back(new HoS::ola_t(fftlen,wndlen,periodsize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING));
     bayes_prob.push_back(0.0f);
   }
-  float frame_rate(get_srate()/get_fragsize());
+  float frame_rate(get_srate()/(float)periodsize);
   fscale = 0.5*get_srate()/lp_c1.size();
   // coherence/azimuth estimation smoothing: 40 ms
   for(uint32_t k=0;k<lp_c1.size();k++){
@@ -662,7 +670,7 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
 
 void foacoh_t::activate()
 {
-  jackc_t::activate();
+  jackc_db_t::activate();
   osc_server_t::activate();
   try{
     connect_in(0,"mhwe:out1");
@@ -700,7 +708,7 @@ void foacoh_t::activate()
 void foacoh_t::deactivate()
 {
   osc_server_t::deactivate();
-  jackc_t::deactivate();
+  jackc_db_t::deactivate();
 }
 
 foacoh_t::~foacoh_t()
@@ -748,7 +756,6 @@ bool foacoh_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
       }
     //std::cout << vmin << " " << vmax << std::endl;
     //std::cout << obj.geterror();
-    //DEBUG(vmax);
     cr->save();
     cr->scale(0.5*(double)width/(double)azchannels,(double)height/(double)bands);
     Gdk::Cairo::set_source_pixbuf(cr, image, 0, 0);
@@ -865,12 +872,13 @@ int main(int argc, char** argv)
   Gtk::Main kit(argc, argv);
   Gtk::Window win;
   std::string jackname("foacoh");
-  uint32_t channels(32);
-  float bpoctave(1);
+  uint32_t channels(8);
+  float bpoctave(3);
   float fmin(125);
   float fmax(8000);
   uint32_t nobjects(5);
-  const char *options = "hj:c:b:l:u:o:";
+  uint32_t periodsize(512);
+  const char *options = "hj:c:b:l:u:o:p:";
   struct option long_options[] = { 
     { "help",     0, 0, 'h' },
     { "jackname", 1, 0, 'j' },
@@ -879,6 +887,7 @@ int main(int argc, char** argv)
     { "fmin",     1, 0, 'l' },
     { "fmax",     1, 0, 'u' },
     { "objects",  1, 0, 'o' },
+    { "periodsize",1, 0, 'p'},
     { 0, 0, 0, 0 }
   };
   int opt(0);
@@ -907,10 +916,13 @@ int main(int argc, char** argv)
     case 'u':
       fmax = atof(optarg);
       break;
+    case 'p':
+      periodsize = atoi(optarg);
+      break;
     }
   }
   win.set_title(jackname);
-  HoSGUI::foacoh_t c(jackname,channels,bpoctave,fmin,fmax,nobjects);
+  HoSGUI::foacoh_t c(jackname,channels,bpoctave,fmin,fmax,nobjects,periodsize);
   win.add(c);
   win.set_default_size(640,480);
   //win.fullscreen();
