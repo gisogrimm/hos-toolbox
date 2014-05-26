@@ -57,6 +57,7 @@
 #include <getopt.h>
 #include "lininterp.h"
 #include "libhos_random.h"
+#include "errorhandling.h"
 
 
 #define OSC_ADDR "239.255.1.7"
@@ -79,6 +80,7 @@ float downhill_iterate(float eps,std::vector<float>& param,float (*err)(const st
 class xyfield_t {
 public:
   xyfield_t(uint32_t sx,uint32_t sy);
+  xyfield_t(const xyfield_t& src);
   ~xyfield_t();
   float& val(uint32_t px,uint32_t py);
   float val(uint32_t px,uint32_t py) const;
@@ -124,6 +126,13 @@ float xyfield_t::max() const
   return r;
 }
 
+xyfield_t::xyfield_t(const xyfield_t& src)
+  : sx_(src.sx_),sy_(src.sy_),s_(src.s_),data(new float[s_])
+{
+  for(uint32_t k=0;k<s_;k++)
+    data[k] = src.data[k];
+}
+
 xyfield_t::xyfield_t(uint32_t sx,uint32_t sy)
   : sx_(sx),sy_(sy),s_(std::max(1u,sx*sy)),data(new float[s_])
 {
@@ -167,15 +176,17 @@ public:
   float errfun(const std::vector<float>&);
   void iterate();
   uint32_t size() const {return nobj;};
-  const std::vector<float>& param() const { return p;};
-  param_t param(uint32_t k) const { return param_t(k,p);};
+  const std::vector<float>& param() const { return obj_param;};
+  param_t param(uint32_t k) const { return param_t(k,obj_param);};
   float geterror() const{ return error;};
+  void bayes_prob(uint32_t kx,uint32_t ky,std::vector<float>& p);
 private:
   float error;
   uint32_t nobj;
-  std::vector<float> p;
+  std::vector<float> obj_param;
   std::vector<float> unitstep;
   float xscale;
+  std::vector<xyfield_t> bayes_table;
 };
 
 objmodel_t::param_t::param_t()
@@ -206,7 +217,7 @@ void objmodel_t::param_t::setp(uint32_t num,std::vector<float>& vp)
 objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj)
   : xyfield_t(sx,sy),error(0),nobj(numobj),xscale(PI2/(float)sx)
 {
-  p.resize(5*nobj);
+  obj_param.resize(5*nobj);
   unitstep.resize(5*nobj);
   for(uint32_t k=0;k<nobj;k++){
     param_t par;
@@ -214,7 +225,7 @@ objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj)
     par.cx = sx*drand();
     // center y:
     par.cy = sy*drand();
-    par.setp(k,p);
+    par.setp(k,obj_param);
     // center x:
     unitstep[5*k] = 0.01;
     // center y:
@@ -226,6 +237,7 @@ objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj)
     //unitstep[4*k+2] = 0.001;
     // bandwidth y:
     //unitstep[4*k+3] = 0.01;
+    bayes_table.push_back(xyfield_t(sx,sy));
   }
 }
 
@@ -250,7 +262,7 @@ float objmodel_t::objval(uint32_t x,uint32_t y,const std::vector<float>& p) cons
 
 float objmodel_t::objval(uint32_t x,uint32_t y) const
 {
-  return objval(x,y,p);
+  return objval(x,y,obj_param);
 }
 
 float objmodel_t::errfun(const std::vector<float>& p,void* data)
@@ -271,10 +283,10 @@ float objmodel_t::errfun(const std::vector<float>& p)
 
 void objmodel_t::iterate()
 {
-  error = downhill_iterate(0.0001,p,&objmodel_t::errfun,this,unitstep);
+  error = downhill_iterate(0.0001,obj_param,&objmodel_t::errfun,this,unitstep);
   // constraints:
   for(uint32_t k=0;k<nobj;k++){
-    param_t par(k,p);
+    param_t par(k,obj_param);
     while( par.cx < 0 )
       par.cx += sizex();
     while( par.cx >= sizex() )
@@ -293,16 +305,36 @@ void objmodel_t::iterate()
       par.wy = 5;
     if( par.g < 1 )
       par.g = 1;
-    par.setp(k,p);
+    par.setp(k,obj_param);
+  }
+  for(uint32_t kb=0;kb<sizey();kb++){
+    for(uint32_t kc=0;kc<sizex();kc++){
+      float psum(0.0f);
+      for(uint32_t ko=0;ko<nobj;ko++){
+        psum += (bayes_table[ko].val(kc,kb) = std::max(1e-3f,objval(kc,kb,param(ko))));
+      }
+      psum = 1.0f/psum;
+      for(uint32_t ko=0;ko<nobj;ko++){
+        bayes_table[ko].val(kc,kb) *= psum;
+      }
+    }
   }
 }
 
+void objmodel_t::bayes_prob(uint32_t kx,uint32_t ky,std::vector<float>& p)
+{
+  if( p.size() != nobj )
+    throw TASCAR::ErrMsg("Invalid bayes probability return vector size.");
+  for(uint32_t ko=0;ko<nobj;ko++)
+    p[ko] = bayes_table[ko].val(kx,ky);
+}
+  
 class az_hist_t : public HoS::wave_t
 {
 public:
   az_hist_t(uint32_t size);
   void update();
-  void add(float f, float az,float weight);
+  bool add(float f, float az,float weight);
   void add(float f, float _Complex W, float _Complex X, float _Complex Y, float weight);
   void set_tau(float tau,float fs);
   void draw(const Cairo::RefPtr<Cairo::Context>& cr,float scale);
@@ -342,14 +374,16 @@ void az_hist_t::update()
   *this *= c1;
 }
 
-void az_hist_t::add(float f, float az, float weight)
+bool az_hist_t::add(float f, float az, float weight)
 {
   if( (f >= fmin) && (f < fmax) ){
     az += M_PI;
     az *= (0.5*size()/M_PI);
     uint32_t iaz(std::max(0.0f,std::min((float)(size()-1),az)));
     operator[](iaz) += c2*weight;
+    return true;
   }
+  return false;
 }
 
 void az_hist_t::add(float f, float _Complex W, float _Complex X, float _Complex Y, float weight)
@@ -436,9 +470,7 @@ namespace HoSGUI {
     HoS::ola_t ola_w;
     HoS::ola_t ola_x;
     HoS::ola_t ola_y;
-    HoS::ola_t ola_inv_w;
-    HoS::ola_t ola_inv_x;
-    HoS::ola_t ola_inv_y;
+    std::vector<HoS::ola_t*> ola_obj;
     // low pass filter coefficients:
     HoS::wave_t lp_c1;
     HoS::wave_t lp_c2;
@@ -447,7 +479,7 @@ namespace HoSGUI {
     //HoS::spec_t ccoh2;
     // coherence functions:
     HoS::wave_t cohXY;
-    HoS::wave_t cohReXY;
+    //HoS::wave_t cohReXY;
     HoS::wave_t cohXWYW;
     HoS::wave_t az;
     std::vector<az_hist_t> haz;
@@ -466,6 +498,7 @@ namespace HoSGUI {
     float vmax;
     float objlp_c1;
     float objlp_c2;
+    std::vector<float> bayes_prob;
   };
 
 }
@@ -497,62 +530,49 @@ int foacoh_t::process(jack_nframes_t n, const std::vector<float*>& vIn, const st
     }
     cohXY[k] = cabs(ccohXY[k]);
     // Measure 2: real part of X/Y:
-    cohReXY[k] *= lp_c1[k];
-    if( cXYabs > 0 ){
-      cohReXY[k] += lp_c2[k]*fabsf(crealf(cXY))/cXYabs;
-    }
-    cohReXY[k] = fabsf(creal(ccohXY[k]));
-    // Measure 3: (X/W)^2 + (Y/W)^2 = 2
+    //cohReXY[k] *= lp_c1[k];
+    //if( cXYabs > 0 ){
+    //  cohReXY[k] += lp_c2[k]*fabsf(crealf(cXY))/cXYabs;
+    //}
+    //cohReXY[k] = fabsf(creal(ccohXY[k]));
+    //// Measure 3: (X/W)^2 + (Y/W)^2 = 2
     cohXWYW[k] = std::min(1.0f,cohXWYW[k]);
     cohXWYW[k] *= lp_c1[k];
-    //az[k] = atan2f(creal(cY),creal(cX));
     if( cabsf(cW) > 0 ){
       cX /= cW;
       cY /= cW;
       cohXWYW[k] += lp_c2[k]*0.25*cabsf(cX*conjf(cX) + cY*conjf(cY));
     }
     az[k] = cargf(cX+I*cY);
-    ////coh[k] *= coh[k];
-    //ola_inv_w.s[k] = ola_w.s[k];
-    //ola_inv_x.s[k] = ola_x.s[k];
-    //ola_inv_y.s[k] = ola_y.s[k];
-    //ola_w.s[k] *= coh[k];
-    //ola_x.s[k] *= coh[k];
-    //ola_y.s[k] *= coh[k];
-    //c = ola_x.s[k] * conjf(ola_y.s[k]);
-    //ccoh2[k] *= lp_c1[k];
-    //ccoh2[k] += lp_c2[k]*c;
-    ////ccoh2[k] = c;
-    ////az[k] = cargf(ccoh2[k]);
-    //
-    ////az[k] *= lp_c1[k];
-    ////az[k] += lp_c2[k]*azt;
-    //az[k] = azt;
-    //float w(powf(cohReXY[k]*cabsf(cW),2.0));
+    ola_w.s[k] *= 1.0f-cohXY[k];
+    ola_x.s[k] *= 1.0f-cohXY[k];
+    ola_y.s[k] *= 1.0f-cohXY[k];
     float w(powf(cabsf(cW)*cohXY[k],2.0));
-    //float w(powf(cohXY[k]*cabsf(cW),2.0));
-    //float w(powf(cohXWYW[k]*cabsf(cW),2.0));
-    //float w(powf(cohXY[k],2.0));
+    float l_az(az[k]+M_PI);
+    l_az *= (0.5*haz.size()/M_PI);
+    uint32_t iaz(std::max(0.0f,std::min((float)(haz.size()-1),l_az)));
+    for(uint32_t kobj=0;kobj<obj.size();kobj++)
+      bayes_prob[kobj] = 0;
     for(uint32_t kH=0;kH<haz.size();kH++)
-      haz[kH].add(freq,az[k],w);
-    //for(uint32_t kH=0;kH<haz.size();kH++)
-    //  haz[kH].add(freq,cW,cX,cY,1.0);
-    //ola_inv_w.s[k] *= 1.0f-coh[k];
-    //ola_inv_x.s[k] *= 1.0f-coh[k];
-    //ola_inv_y.s[k] *= 1.0f-coh[k];
+      if( haz[kH].add(freq,az[k],w) ){
+        obj.bayes_prob(iaz,kH,bayes_prob);
+      }
+    for(uint32_t kobj=0;kobj<obj.size();kobj++)
+      ola_obj[kobj]->s[k] = cohXY[k]*cW*bayes_prob[kobj];
   }
-  //HoS::wave_t ow(n,vOut[0]);
-  //HoS::wave_t ox(n,vOut[1]);
-  //HoS::wave_t oy(n,vOut[2]);
+  HoS::wave_t diffuse_w(n,vOut[0]);
+  HoS::wave_t diffuse_x(n,vOut[1]);
+  HoS::wave_t diffuse_y(n,vOut[2]);
   //HoS::wave_t inv_ow(n,vOut[3]);
   //HoS::wave_t inv_ox(n,vOut[4]);
   //HoS::wave_t inv_oy(n,vOut[5]);
-  //ola_w.ifft(ow);
-  //ola_x.ifft(ox);
-  //ola_y.ifft(oy);
-  //ola_inv_w.ifft(inv_ow);
-  //ola_inv_x.ifft(inv_ox);
-  //ola_inv_y.ifft(inv_oy);
+  ola_w.ifft(diffuse_w);
+  ola_x.ifft(diffuse_x);
+  ola_y.ifft(diffuse_y);
+  for(uint32_t kobj=0;kobj<obj.size();kobj++){
+    HoS::wave_t outW(n,vOut[kobj+3]);
+    ola_obj[kobj]->ifft(outW);
+  }
   for(uint32_t kb=0;kb<bands;kb++){
     for(uint32_t kc=0;kc<azchannels;kc++){
       obj.val(kc,kb) = 10.0f*log10f(std::max(1.0e-10f,haz[kb][kc]));
@@ -582,14 +602,10 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
     ola_w(fftlen,wndlen,chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
     ola_x(fftlen,wndlen,chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
     ola_y(fftlen,wndlen,chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
-    ola_inv_w(fftlen,wndlen,chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
-    ola_inv_x(fftlen,wndlen,chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
-    ola_inv_y(fftlen,wndlen,chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
     lp_c1(ola_x.s.size()),
     lp_c2(ola_x.s.size()),
     ccohXY(ola_x.s.size()),
     cohXY(ola_x.s.size()),
-    cohReXY(ola_x.s.size()),
     cohXWYW(ola_x.s.size()),
     az(ola_x.s.size()),
     name_(name),
@@ -604,12 +620,16 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
   add_input_port("in.0w");
   add_input_port("in.1x");
   add_input_port("in.1y");
-  add_output_port("out.0w");
-  add_output_port("out.1x");
-  add_output_port("out.1y");
-  add_output_port("inv_out.0w");
-  add_output_port("inv_out.1x");
-  add_output_port("inv_out.1y");
+  add_output_port("diffuse.0w");
+  add_output_port("diffuse.1x");
+  add_output_port("diffuse.1y");
+  for(uint32_t ko=0;ko<nobjects;ko++){
+    char ctmp[1024];
+    sprintf(ctmp,"out_%d",ko+1);
+    add_output_port(ctmp);
+    ola_obj.push_back(new HoS::ola_t(fftlen,wndlen,chunksize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING));
+    bayes_prob.push_back(0.0f);
+  }
   float frame_rate(get_srate()/get_fragsize());
   fscale = 0.5*get_srate()/lp_c1.size();
   // coherence/azimuth estimation smoothing: 40 ms
@@ -687,6 +707,8 @@ foacoh_t::~foacoh_t()
 {
   image.clear();
   image_mod.clear();
+  for(uint32_t k=0;k<ola_obj.size();k++)
+    delete ola_obj[k];
 }
   
 bool foacoh_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
@@ -734,6 +756,7 @@ bool foacoh_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
     cr->paint();
     Gdk::Cairo::set_source_pixbuf(cr, image_mod, azchannels,0);
     cr->paint();
+    cr->set_font_size(azchannels*0.1);
     for(uint32_t ko=0;ko<obj.size();ko++){
       objmodel_t::param_t par(obj.param(ko));
       //std::cout << " " << par.cx << " " << par.cy << " " << par.wx << " " << par.wy << " " << par.g;
@@ -745,6 +768,10 @@ bool foacoh_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
       cr->move_to(par.cx-0.5/par.wx,bands-par.cy-1);
       cr->line_to(par.cx+0.5/par.wx,bands-par.cy-1);
       cr->stroke();
+      cr->move_to(par.cx+0.3,bands-par.cy-2 );
+      char ctmp[16];
+      sprintf(ctmp,"%d",ko+1);
+      cr->show_text(ctmp);
     }
     //std::cout << std::endl;
     cr->restore();
