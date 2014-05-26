@@ -170,12 +170,15 @@ stft_t::stft_t(uint32_t fftlen, uint32_t wndlen, uint32_t chunksize, windowtype_
   case WND_RECT :
     for(k=0;k<wndlen;k++)
       window.b[k] = 1.0;
+    break;
   case WND_HANNING :
     for(k=0;k<wndlen;k++)
       window.b[k] = 0.5-0.5*cos(2.0*k*M_PI/wndlen);
+    break;
   case WND_SQRTHANN :
     for(k=0;k<wndlen;k++)
       window.b[k] = sqrt(0.5-0.5*cos(2.0*k*M_PI/wndlen));
+    break;
   }
 }
     
@@ -263,8 +266,12 @@ void ola_t::ifft(wave_t& wOut)
   wave_t w1(fftlen_-chunksize_,long_out.b);
   wave_t w2(fftlen_-chunksize_,&(long_out.b[chunksize_]));
   wave_t w3(chunksize_,long_out.b);
+  // store output:
   wOut.copy(w3);
+  // shift input:
+  //for(uint32_t k=0;k<fftlen_-chunksize_;k++)
   w1.copy(w2);
+  //long_out[k] = long_out[k+chunksize_];
   wave_t w4(chunksize_,&(long_out.b[fftlen_-chunksize_]));
   for(uint32_t k=0;k<w4.size();k++)
     w4[k] = 0;
