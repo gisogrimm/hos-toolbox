@@ -6,7 +6,7 @@ BINFILES = ommo_bridge hos_sphere_amb30 hos_sendosc hos_delay		\
 hos_cyclephase hos_visualize hos_visualize_sphere hos_cyclephasegui	\
 hos_sampler hos_scope hos_osc2jack hos_resfilt hos_tmcm			\
 hos_osc_marais hos_osc_house debug_midi hos_rtmdisplay hos_composer	\
-hos_rtm2midi test_duration hos_foacoh hos_mm hos_markerbroadcast	\
+hos_rtm2midi test_duration hos_foacasa hos_mm hos_markerbroadcast	\
 hos_marker2osc laserctl hos_sustain test_jack_db
 
 #BINFILES = hos_sustain
@@ -44,7 +44,7 @@ LOBIN = \
 
 ALSABIN = mm_midicc mm_hdsp
 
-GTKMMBIN = hos_oscrmsmeter hos_visualize mm_gui hos_visualize_sphere tascar_draw hos_cyclephasegui hos_scope hos_rtmdisplay hos_foacoh hos_mm
+GTKMMBIN = hos_oscrmsmeter hos_visualize mm_gui hos_visualize_sphere tascar_draw hos_cyclephasegui hos_scope hos_rtmdisplay hos_foacasa hos_mm
 
 ifeq "$(ARCH)" "x86_64"
 CXXFLAGS += -msse -msse2 -mfpmath=sse -ffast-math -fomit-frame-pointer -fno-finite-math-only
