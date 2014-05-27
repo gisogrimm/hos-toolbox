@@ -1,7 +1,7 @@
 /**
-   \file hos_foacoh.cc
+   \file hos_foacasa.cc
    \ingroup apphos
-   \brief First order ambisonics coherence filter and source decomposition
+   \brief First order ambisonics simple CASA algorithm
    \author Giso Grimm
    \date 2014
 
@@ -170,8 +170,8 @@ public:
   };
   objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj);
   float objval(float x,float y,param_t lp) const;
-  float objval(uint32_t x,uint32_t y,const std::vector<float>&) const;
-  float objval(uint32_t x,uint32_t y) const;
+  float objval(float x,float y,const std::vector<float>&) const;
+  float objval(float x,float y) const;
   static float errfun(const std::vector<float>&,void* data);
   float errfun(const std::vector<float>&);
   void iterate();
@@ -179,14 +179,15 @@ public:
   const std::vector<float>& param() const { return obj_param;};
   param_t param(uint32_t k) const { return param_t(k,obj_param);};
   float geterror() const{ return error;};
-  void bayes_prob(uint32_t kx,uint32_t ky,std::vector<float>& p);
+  //void bayes_prob(uint32_t kx,uint32_t ky,std::vector<float>& p);
+  float bayes_prob(float x,float y,uint32_t ko) const;
 private:
   float error;
   uint32_t nobj;
   std::vector<float> obj_param;
   std::vector<float> unitstep;
   float xscale;
-  std::vector<xyfield_t> bayes_table;
+  //std::vector<xyfield_t> bayes_table;
 };
 
 objmodel_t::param_t::param_t()
@@ -237,7 +238,7 @@ objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj)
     //unitstep[4*k+2] = 0.001;
     // bandwidth y:
     //unitstep[4*k+3] = 0.01;
-    bayes_table.push_back(xyfield_t(sx,sy));
+    //bayes_table.push_back(xyfield_t(sx,sy));
   }
 }
 
@@ -252,7 +253,7 @@ float objmodel_t::objval(float x,float y,param_t lp) const
   return lp.g*powf(0.5+0.5*cosf((x-lp.cx)*xscale),lp.wx)*expf(-lp.cy);
 }
 
-float objmodel_t::objval(uint32_t x,uint32_t y,const std::vector<float>& p) const
+float objmodel_t::objval(float x,float y,const std::vector<float>& p) const
 {
   float rv(0.0f);
   for(uint32_t k=0;k<nobj;k++)
@@ -260,9 +261,14 @@ float objmodel_t::objval(uint32_t x,uint32_t y,const std::vector<float>& p) cons
   return rv;
 }
 
-float objmodel_t::objval(uint32_t x,uint32_t y) const
+float objmodel_t::objval(float x,float y) const
 {
   return objval(x,y,obj_param);
+}
+
+float objmodel_t::bayes_prob(float x,float y,uint32_t ko) const
+{
+  return objval(x,y,param_t(ko,obj_param))/objval(x,y);
 }
 
 float objmodel_t::errfun(const std::vector<float>& p,void* data)
@@ -307,27 +313,27 @@ void objmodel_t::iterate()
       par.g = 1;
     par.setp(k,obj_param);
   }
-  for(uint32_t kb=0;kb<sizey();kb++){
-    for(uint32_t kc=0;kc<sizex();kc++){
-      float psum(0.0f);
-      for(uint32_t ko=0;ko<nobj;ko++){
-        psum += (bayes_table[ko].val(kc,kb) = std::max(1e-3f,objval(kc,kb,param(ko))));
-      }
-      psum = 1.0f/psum;
-      for(uint32_t ko=0;ko<nobj;ko++){
-        bayes_table[ko].val(kc,kb) *= psum;
-      }
-    }
-  }
+  //for(uint32_t kb=0;kb<sizey();kb++){
+  //  for(uint32_t kc=0;kc<sizex();kc++){
+  //    float psum(0.0f);
+  //    for(uint32_t ko=0;ko<nobj;ko++){
+  //      psum += (bayes_table[ko].val(kc,kb) = std::max(1e-3f,objval(kc,kb,param(ko))));
+  //    }
+  //    psum = 1.0f/psum;
+  //    for(uint32_t ko=0;ko<nobj;ko++){
+  //      bayes_table[ko].val(kc,kb) *= psum;
+  //    }
+  //  }
+  //}
 }
 
-void objmodel_t::bayes_prob(uint32_t kx,uint32_t ky,std::vector<float>& p)
-{
-  if( p.size() != nobj )
-    throw TASCAR::ErrMsg("Invalid bayes probability return vector size.");
-  for(uint32_t ko=0;ko<nobj;ko++)
-    p[ko] = bayes_table[ko].val(kx,ky);
-}
+//void objmodel_t::bayes_prob(uint32_t kx,uint32_t ky,std::vector<float>& p)
+//{
+//  if( p.size() != nobj )
+//    throw TASCAR::ErrMsg("Invalid bayes probability return vector size.");
+//  for(uint32_t ko=0;ko<nobj;ko++)
+//    p[ko] = bayes_table[ko].val(kx,ky);
+//}
   
 class az_hist_t : public HoS::wave_t
 {
@@ -436,10 +442,15 @@ public:
   uint32_t bands;
   std::vector<float> fc;
   std::vector<float> fe;
+  float band(float f_hz);
+private:
+  float bpo_;
+  float fmin_;
+  float fmax_;
 };
 
 freqinfo_t::freqinfo_t(float bpo,float fmin,float fmax)
-  : bands(bpo*log2(fmax/fmin)+1.0)
+  : bands(bpo*log2(fmax/fmin)+1.0),bpo_(bpo),fmin_(fmin),fmax_(fmax)
 {
   float f_ratio(pow(fmax/fmin,0.5/(double)(bands-1)));
   for(uint32_t k=0;k<bands;k++){
@@ -447,6 +458,11 @@ freqinfo_t::freqinfo_t(float bpo,float fmin,float fmax)
     fe.push_back(fc.back()/f_ratio);
   }
   fe.push_back(fc.back()*f_ratio);
+}
+
+float freqinfo_t::band(float f_hz)
+{
+  return bpo_*log2(std::max(40.0f,f_hz)/fmin_);
 }
 
 namespace HoSGUI {
@@ -497,7 +513,7 @@ namespace HoSGUI {
     float vmax;
     float objlp_c1;
     float objlp_c2;
-    std::vector<float> bayes_prob;
+    //std::vector<float> bayes_prob;
   };
 
 }
@@ -543,40 +559,31 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
       cohXWYW[k] += lp_c2[k]*0.25*cabsf(cX*conjf(cX) + cY*conjf(cY));
     }
     az[k] = cargf(cX+I*cY);
-    //ola_w.s[k] *= 1.0f-cohXY[k];
-    //ola_x.s[k] *= 1.0f-cohXY[k];
-    //ola_y.s[k] *= 1.0f-cohXY[k];
     float w(powf(cabsf(cW)*cohXY[k],2.0));
     float l_az(az[k]+M_PI);
     l_az *= (0.5*haz.size()/M_PI);
-    uint32_t iaz(std::max(0.0f,std::min((float)(haz.size()-1),l_az)));
-    for(uint32_t kobj=0;kobj<obj.size();kobj++)
-      bayes_prob[kobj] = 0;
+    //uint32_t iaz(std::max(0.0f,std::min((float)(haz.size()-1),l_az)));
+    //for(uint32_t kobj=0;kobj<obj.size();kobj++)
+    //  bayes_prob[kobj] = 0;
     for(uint32_t kH=0;kH<haz.size();kH++)
-      if( haz[kH].add(freq,az[k],w) ){
-        obj.bayes_prob(iaz,kH,bayes_prob);
-      }
+      haz[kH].add(freq,az[k],w);
+    //    obj.bayes_prob(iaz,kH,bayes_prob);
+    //  }
+    //// bin-wise Bayes classification:
     //for(uint32_t kobj=0;kobj<obj.size();kobj++)
       //ola_obj[kobj]->s[k] = cohXY[k]*cW*bayes_prob[kobj];
       //ola_obj[kobj]->s[k] = cW*bayes_prob[kobj];
   }
-  //HoS::wave_t diffuse_w(n,vOut[0]);
-  //HoS::wave_t diffuse_x(n,vOut[1]);
-  //HoS::wave_t diffuse_y(n,vOut[2]);
-  //HoS::wave_t inv_ow(n,vOut[3]);
-  //HoS::wave_t inv_ox(n,vOut[4]);
-  //HoS::wave_t inv_oy(n,vOut[5]);
-  //ola_w.ifft(diffuse_w);
-  //ola_x.ifft(diffuse_x);
-  //ola_y.ifft(diffuse_y);
   for(uint32_t kobj=0;kobj<obj.size();kobj++){
     HoS::wave_t outW(n,vOut[kobj]);
     objmodel_t::param_t par(obj.param(kobj));
     float az(PI2*par.cx/(float)azchannels-M_PI);
     float wx(cos(az));
     float wy(sin(az));
-    for(uint32_t k=0;k<ola_w.s.size();k++)
-      ola_obj[kobj]->s[k] = ola_w.s[k]+wx*ola_x.s[k]+wy*ola_y.s[k];
+    for(uint32_t k=0;k<ola_w.s.size();k++){
+      float freq(k*fscale);
+      ola_obj[kobj]->s[k] = (ola_w.s[k]+wx*ola_x.s[k]+wy*ola_y.s[k])*obj.bayes_prob(par.cx,band(freq),kobj);
+    }
       //ola_obj[kobj]->s[k] = ola_w.s[k];
     ola_obj[kobj]->s[0] = creal(ola_obj[kobj]->s[0]);
     ola_obj[kobj]->ifft(outW);
@@ -636,7 +643,7 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
     sprintf(ctmp,"out_%d",ko+1);
     add_output_port(ctmp);
     ola_obj.push_back(new HoS::ola_t(fftlen,wndlen,periodsize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING));
-    bayes_prob.push_back(0.0f);
+    //bayes_prob.push_back(0.0f);
   }
   float frame_rate(get_srate()/(float)periodsize);
   fscale = 0.5*get_srate()/lp_c1.size();
@@ -859,7 +866,7 @@ void lo_err_handler_cb(int num, const char *msg, const char *where)
 
 void usage(struct option * opt)
 {
-  std::cout << "Usage:\n\nhos_hoacoh [options]\n\nOptions:\n\n";
+  std::cout << "Usage:\n\nhos_foacasa [options]\n\nOptions:\n\n";
   while( opt->name ){
     std::cout << "  -" << (char)(opt->val) << " " << (opt->has_arg?"#":"") <<
       "\n  --" << opt->name << (opt->has_arg?"=#":"") << "\n\n";
@@ -871,7 +878,7 @@ int main(int argc, char** argv)
 {
   Gtk::Main kit(argc, argv);
   Gtk::Window win;
-  std::string jackname("foacoh");
+  std::string jackname("casa");
   uint32_t channels(8);
   float bpoctave(3);
   float fmin(125);
