@@ -36,6 +36,8 @@ private:
 
 pmf_t operator*(double a,const pmf_t& p);
 
+pmf_t gauss(double x,double sigma,double xmin,double xmax,double xstep);
+
 
 #endif
 

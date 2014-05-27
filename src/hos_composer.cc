@@ -5,6 +5,10 @@
 #include "hos_defs.h"
 #include <math.h>
 #include "errorhandling.h"
+#include "osc_helper.h"
+#include <stdio.h>
+
+#define NUM_VOICES 5
 
 class simple_timesig_t {
 public:
@@ -23,14 +27,16 @@ voice_t::voice_t()
   note.time = 0;
 }
 
-class composer_t {
+class composer_t : public TASCAR::osc_server_t {
 public:
-  composer_t(const std::string& url,const std::string& fname);
+  composer_t(const std::string& srv_addr,const std::string& srv_port,const std::string& url,const std::string& fname);
   bool process_timesig();
   int32_t get_key() const;
   int32_t get_mode() const;
   void process_time();
   void read_xml(const std::string& fname);
+  static int osc_set_pitch(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
+  void set_pitch(double c,double w);
 private:
   std::vector<voice_t> voice;
   harmony_model_t harmony;
@@ -42,6 +48,8 @@ private:
   pmf_t ptimesigbars;
   lo_address lo_addr;
   uint32_t timesigcnt;
+  std::vector<float> pcenter;
+  std::vector<float> pbandw;
 };
 
 int32_t composer_t::get_key() const
@@ -54,17 +62,26 @@ int32_t composer_t::get_mode() const
   return harmony.current().mode;
 }
 
-composer_t::composer_t(const std::string& url,const std::string& fname)
-  : timesig(0,2,0,0), time(0), lo_addr(lo_address_new_from_url(url.c_str())),timesigcnt(0)
+composer_t::composer_t(const std::string& srv_addr,const std::string& srv_port,const std::string& url,const std::string& fname)
+  : osc_server_t(srv_addr,srv_port), timesig(0,2,0,0), time(0), lo_addr(lo_address_new_from_url(url.c_str())),timesigcnt(0),
+    pcenter(NUM_VOICES,0.0),pbandw(NUM_VOICES,48.0)
 {
   lo_address_set_ttl( lo_addr, 1 );
-  voice.resize(5);
+  voice.resize(NUM_VOICES);
   read_xml(fname);
   lo_send(lo_addr,"/clear","");
   lo_send(lo_addr,"/key","fii",time,get_key(),get_mode());
   timesig = time_signature_t(ptimesig.rand());
   timesigcnt = ptimesigbars.rand();
   lo_send(lo_addr,"/timesig","fii",time,timesig.numerator,timesig.denominator);
+  for(uint32_t k=0;k<voice.size();k++){
+    char ctmp[1024];
+    sprintf(ctmp,"/obj%d/pitch",k+1);
+    add_float(ctmp,&(pcenter[k]));
+    sprintf(ctmp,"/obj%d/bw",k+1);
+    add_float(ctmp,&(pbandw[k]));
+  }
+  activate();
 }
 
 void composer_t::read_xml(const std::string& fname)
@@ -137,9 +154,9 @@ void composer_t::process_time()
       lo_send(lo_addr,"/timesig","fii",time,timesig.numerator,timesig.denominator);
     }
   }
-  for(unsigned int k=0;k<5;k++){
+  for(unsigned int k=0;k<voice.size();k++){
     if( voice[k].note.end_time() <= time ){
-      voice[k].note = voice[k].process(timesig.beat(time),harmony,timesig);
+      voice[k].note = voice[k].process(timesig.beat(time),harmony,timesig,pcenter[k],pbandw[k]);
       voice[k].note.time = time;
       lo_send(lo_addr,"/note","iiif",k,voice[k].note.pitch,voice[k].note.length,voice[k].note.time);
     }
@@ -151,7 +168,10 @@ int main(int argc, char** argv)
   if( argc < 2 )
     throw TASCAR::ErrMsg("No prob table given.");
   srandom(time(NULL));
-  composer_t c("osc.udp://239.255.1.7:9877/",argv[1]);
+  std::string serverport("6978");
+  std::string serveraddr("239.255.1.7");
+  std::string desturl("osc.udp://239.255.1.7:9877/");
+  composer_t c(serveraddr,serverport,desturl,argv[1]);
   while(true){
     usleep(15625);
     c.process_time();

@@ -168,19 +168,20 @@ public:
     float wy;
     float g;
   };
-  objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj);
-  float objval(float x,float y,param_t lp) const;
-  float objval(float x,float y,const std::vector<float>&) const;
-  float objval(float x,float y) const;
+  void send_osc(const lo_address& lo_addr);
+  objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float fmin);
+  float objval(float x,float y,param_t lp);
+  float objval(float x,float y,const std::vector<float>&);
+  float objval(float x,float y);
   static float errfun(const std::vector<float>&,void* data);
   float errfun(const std::vector<float>&);
   void iterate();
   uint32_t size() const {return nobj;};
   const std::vector<float>& param() const { return obj_param;};
   param_t param(uint32_t k) const { return param_t(k,obj_param);};
-  float geterror() const{ return error;};
+  float geterror(){ return error;};
   //void bayes_prob(uint32_t kx,uint32_t ky,std::vector<float>& p);
-  float bayes_prob(float x,float y,uint32_t ko) const;
+  float bayes_prob(float x,float y,uint32_t ko);
 private:
   float error;
   uint32_t nobj;
@@ -188,7 +189,31 @@ private:
   std::vector<float> unitstep;
   float xscale;
   //std::vector<xyfield_t> bayes_table;
+  uint32_t calls;
+  std::vector<std::string> paths_pitch;
+  std::vector<std::string> paths_bw;
+  std::vector<std::string> paths_az;
+  float bpo_;
+  float fmin_;
+  std::vector<param_t> vpar;
 };
+
+bool param_less(objmodel_t::param_t i,objmodel_t::param_t j){
+  return (i.cy>j.cy+1); 
+}
+
+void objmodel_t::send_osc(const lo_address& lo_addr)
+{
+  // 0 equals c in low pitch (a=415 Hz):
+  //float delta(bpo_*log2f(246.8f/fmin_));
+  float delta(bpo_*log2f(0.5*fmin_/246.8f));
+  for(uint32_t ko=0;ko<nobj;ko++){
+    param_t par(param(ko));
+    lo_send(lo_addr,paths_pitch[ko].c_str(),"f",12.0f/bpo_*(par.cy+delta));
+    lo_send(lo_addr,paths_bw[ko].c_str(),"f",12.0f/bpo_*par.wy);
+    lo_send(lo_addr,paths_az[ko].c_str(),"f",RAD2DEG*(PI2*par.cx/sizex()-M_PI));
+  }
+}
 
 objmodel_t::param_t::param_t()
   : cx(0),cy(0),wx(3),wy(2),g(1)
@@ -215,12 +240,20 @@ void objmodel_t::param_t::setp(uint32_t num,std::vector<float>& vp)
   vp[5*num+4] = g;
 }
 
-objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj)
-  : xyfield_t(sx,sy),error(0),nobj(numobj),xscale(PI2/(float)sx)
+objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float fmin)
+  : xyfield_t(sx,sy),error(0),nobj(numobj),xscale(PI2/(float)sx),bpo_(bpo),fmin_(fmin)
 {
+  calls = 0;
   obj_param.resize(5*nobj);
   unitstep.resize(5*nobj);
   for(uint32_t k=0;k<nobj;k++){
+    char ctmp[1024];
+    sprintf(ctmp,"/obj%d/pitch",k+1);
+    paths_pitch.push_back(ctmp);
+    sprintf(ctmp,"/obj%d/bw",k+1);
+    paths_bw.push_back(ctmp);
+    sprintf(ctmp,"/obj%d/az",k+1);
+    paths_az.push_back(ctmp);
     param_t par;
     // center x:
     par.cx = sx*drand();
@@ -240,10 +273,12 @@ objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj)
     //unitstep[4*k+3] = 0.01;
     //bayes_table.push_back(xyfield_t(sx,sy));
   }
+  vpar.resize(nobj);
 }
 
-float objmodel_t::objval(float x,float y,param_t lp) const
+float objmodel_t::objval(float x,float y,param_t lp) 
 {
+  calls++;
   //float g(val(std::max(0.0f,std::min(lp.cx,(float)(sizex()))),
   //            std::max(0.0f,std::min(lp.cy,(float)(sizey())))));
   lp.cy = y-lp.cy;
@@ -253,7 +288,7 @@ float objmodel_t::objval(float x,float y,param_t lp) const
   return lp.g*powf(0.5+0.5*cosf((x-lp.cx)*xscale),lp.wx)*expf(-lp.cy);
 }
 
-float objmodel_t::objval(float x,float y,const std::vector<float>& p) const
+float objmodel_t::objval(float x,float y,const std::vector<float>& p)
 {
   float rv(0.0f);
   for(uint32_t k=0;k<nobj;k++)
@@ -261,12 +296,12 @@ float objmodel_t::objval(float x,float y,const std::vector<float>& p) const
   return rv;
 }
 
-float objmodel_t::objval(float x,float y) const
+float objmodel_t::objval(float x,float y)
 {
   return objval(x,y,obj_param);
 }
 
-float objmodel_t::bayes_prob(float x,float y,uint32_t ko) const
+float objmodel_t::bayes_prob(float x,float y,uint32_t ko)
 {
   return objval(x,y,param_t(ko,obj_param))/objval(x,y);
 }
@@ -289,7 +324,9 @@ float objmodel_t::errfun(const std::vector<float>& p)
 
 void objmodel_t::iterate()
 {
-  error = downhill_iterate(0.0001,obj_param,&objmodel_t::errfun,this,unitstep);
+  //DEBUG(calls);
+  calls = 0;
+  error = downhill_iterate(0.0002,obj_param,&objmodel_t::errfun,this,unitstep);
   // constraints:
   for(uint32_t k=0;k<nobj;k++){
     param_t par(k,obj_param);
@@ -311,8 +348,13 @@ void objmodel_t::iterate()
       par.wy = 5;
     if( par.g < 1 )
       par.g = 1;
-    par.setp(k,obj_param);
+    vpar[k] = par;
   }
+  // sort:
+  std::sort(vpar.begin(),vpar.end(),param_less);
+  for(uint32_t k=0;k<nobj;k++)
+    vpar[k].setp(k,obj_param);
+  //DEBUG(calls);
   //for(uint32_t kb=0;kb<sizey();kb++){
   //  for(uint32_t kc=0;kc<sizex();kc++){
   //    float psum(0.0f);
@@ -452,6 +494,7 @@ private:
 freqinfo_t::freqinfo_t(float bpo,float fmin,float fmax)
   : bands(bpo*log2(fmax/fmin)+1.0),bpo_(bpo),fmin_(fmin),fmax_(fmax)
 {
+  DEBUG(bands);
   float f_ratio(pow(fmax/fmin,0.5/(double)(bands-1)));
   for(uint32_t k=0;k<bands;k++){
     fc.push_back(fmin*pow(fmax/fmin,(double)k/(double)(bands-1)));
@@ -470,7 +513,7 @@ namespace HoSGUI {
   class foacoh_t : public freqinfo_t, public Gtk::DrawingArea, public TASCAR::osc_server_t, public jackc_db_t
   {
   public:
-    foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,uint32_t nobjects,uint32_t periodsize);
+    foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,uint32_t nobjects,uint32_t periodsize,const std::string& url);
     virtual ~foacoh_t();
     virtual int inner_process(jack_nframes_t, const std::vector<float*>&, const std::vector<float*>&);
     void activate();
@@ -515,6 +558,7 @@ namespace HoSGUI {
     float objlp_c2;
     //std::vector<float> bayes_prob;
     std::vector<float> f2band;
+    lo_address lo_addr;
   };
 
 }
@@ -575,6 +619,7 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
       //ola_obj[kobj]->s[k] = cohXY[k]*cW*bayes_prob[kobj];
       //ola_obj[kobj]->s[k] = cW*bayes_prob[kobj];
   }
+  obj.send_osc(lo_addr);
   for(uint32_t kobj=0;kobj<obj.size();kobj++){
     HoS::wave_t outW(n,vOut[kobj]);
     objmodel_t::param_t par(obj.param(kobj));
@@ -582,6 +627,7 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
     float wx(cos(az));
     float wy(sin(az));
     for(uint32_t k=0;k<ola_w.s.size();k++){
+      // by not using W channel gain, this is max-rE FOA decoder:
       ola_obj[kobj]->s[k] = (ola_w.s[k]+wx*ola_x.s[k]+wy*ola_y.s[k])*obj.bayes_prob(par.cx,f2band[k],kobj);
     }
       //ola_obj[kobj]->s[k] = ola_w.s[k];
@@ -607,7 +653,7 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
   return 0;
 }
 
-foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,uint32_t nobjects,uint32_t periodsize_)
+foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,uint32_t nobjects,uint32_t periodsize_,const std::string& url)
   : freqinfo_t(bpo,fmin,fmax),
     osc_server_t(OSC_ADDR,OSC_PORT),
     jackc_db_t("foacoh",periodsize_),
@@ -628,9 +674,11 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
     draw_image(true),
     col(0),
     azchannels(channels),
-    obj(channels,bands,nobjects),
-    vmin(0),vmax(1)
+    obj(channels,bands,nobjects,bpo,fmin),
+    vmin(0),vmax(1),
+    lo_addr(lo_address_new_from_url(url.c_str()))
 {
+  lo_address_set_ttl( lo_addr, 1 );
   image = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB,false,8,channels,bands);
   image_mod = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB,false,8,channels,bands);
   add_input_port("in.0w");
@@ -882,21 +930,23 @@ int main(int argc, char** argv)
   Gtk::Main kit(argc, argv);
   Gtk::Window win;
   std::string jackname("casa");
+  std::string desturl("osc.udp://239.255.1.7:6987/");
   uint32_t channels(8);
   float bpoctave(3);
   float fmin(125);
   float fmax(8000);
   uint32_t nobjects(5);
-  uint32_t periodsize(512);
-  const char *options = "hj:c:b:l:u:o:p:";
+  uint32_t periodsize(1024);
+  const char *options = "hj:c:b:l:u:o:p:d:";
   struct option long_options[] = { 
-    { "help",     0, 0, 'h' },
-    { "jackname", 1, 0, 'j' },
-    { "channels", 1, 0, 'c' },
-    { "bpoctave", 1, 0, 'b' },
-    { "fmin",     1, 0, 'l' },
-    { "fmax",     1, 0, 'u' },
-    { "objects",  1, 0, 'o' },
+    { "help",      0, 0, 'h' },
+    { "jackname",  1, 0, 'j' },
+    { "desturl",   1, 0, 'd' },
+    { "channels",  1, 0, 'c' },
+    { "bpoctave",  1, 0, 'b' },
+    { "fmin",      1, 0, 'l' },
+    { "fmax",      1, 0, 'u' },
+    { "objects",   1, 0, 'o' },
     { "periodsize",1, 0, 'p'},
     { 0, 0, 0, 0 }
   };
@@ -910,6 +960,9 @@ int main(int argc, char** argv)
       return -1;
     case 'j':
       jackname = optarg;
+      break;
+    case 'd':
+      desturl = optarg;
       break;
     case 'c':
       channels = atoi(optarg);
@@ -932,7 +985,7 @@ int main(int argc, char** argv)
     }
   }
   win.set_title(jackname);
-  HoSGUI::foacoh_t c(jackname,channels,bpoctave,fmin,fmax,nobjects,periodsize);
+  HoSGUI::foacoh_t c(jackname,channels,bpoctave,fmin,fmax,nobjects,periodsize,desturl);
   win.add(c);
   win.set_default_size(640,480);
   //win.fullscreen();

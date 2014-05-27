@@ -149,6 +149,15 @@ double gauss(double x, double sigma )
   return 1.0/sqrt(2.0*M_PI*sigma*sigma)*exp(-(x*x)/(2*sigma*sigma));
 }
 
+pmf_t gauss(double x,double sigma,double xmin,double xmax,double xstep)
+{
+  pmf_t p;
+  for(double v=xmin;v<=xmax;v+=xstep)
+    p.set(v,gauss(v-x,sigma));
+  p.update();
+  return p;
+}
+
 /*
  * Local Variables:
  * mode: c++
