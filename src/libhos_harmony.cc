@@ -208,7 +208,7 @@ note_t melody_model_t::process(double beat,const harmony_model_t& harmony, const
   pmf_t notes(harmony.notes((double)onbeat*(1.0-onbeatscale) + (double)(!onbeat)*(1.0-offbeatscale)));
   //pmf_t notes(harmony.notes(1.0));
   notes *= pambitus;
-  notes *= gauss(center,bandw,pambitus.vmin(),pambitus.vmax(),1.0);
+  notes *= gauss(center,0.25*bandw,pambitus.vmin(),pambitus.vmax(),1.0);
   notes *= pstep.vadd(last_pitch);
   notes.update();
   int32_t pitch(PITCH_REST);

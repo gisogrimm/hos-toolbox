@@ -346,8 +346,8 @@ void objmodel_t::iterate()
       par.wy = 1;
     if( par.wy > 5 )
       par.wy = 5;
-    if( par.g < 1 )
-      par.g = 1;
+    if( par.g < 4 )
+      par.g = 4;
     vpar[k] = par;
   }
   // sort:
