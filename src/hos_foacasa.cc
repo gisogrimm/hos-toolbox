@@ -514,6 +514,7 @@ namespace HoSGUI {
     float objlp_c1;
     float objlp_c2;
     //std::vector<float> bayes_prob;
+    std::vector<float> f2band;
   };
 
 }
@@ -581,8 +582,7 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
     float wx(cos(az));
     float wy(sin(az));
     for(uint32_t k=0;k<ola_w.s.size();k++){
-      float freq(k*fscale);
-      ola_obj[kobj]->s[k] = (ola_w.s[k]+wx*ola_x.s[k]+wy*ola_y.s[k])*obj.bayes_prob(par.cx,band(freq),kobj);
+      ola_obj[kobj]->s[k] = (ola_w.s[k]+wx*ola_x.s[k]+wy*ola_y.s[k])*obj.bayes_prob(par.cx,f2band[k],kobj);
     }
       //ola_obj[kobj]->s[k] = ola_w.s[k];
     ola_obj[kobj]->s[0] = creal(ola_obj[kobj]->s[0]);
@@ -624,6 +624,7 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
     cohXWYW(ola_x.s.size()),
     az(ola_x.s.size()),
     name_(name),
+    fscale(get_srate()/(float)fftlen),
     draw_image(true),
     col(0),
     azchannels(channels),
@@ -638,6 +639,8 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
   //add_output_port("diffuse.0w");
   //add_output_port("diffuse.1x");
   //add_output_port("diffuse.1y");
+  for(uint32_t k=0;k<ola_w.s.size();k++)
+    f2band.push_back(band((float)k*fscale));
   for(uint32_t ko=0;ko<nobjects;ko++){
     char ctmp[1024];
     sprintf(ctmp,"out_%d",ko+1);
@@ -646,7 +649,7 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
     //bayes_prob.push_back(0.0f);
   }
   float frame_rate(get_srate()/(float)periodsize);
-  fscale = 0.5*get_srate()/lp_c1.size();
+  //fscale = 0.5*get_srate()/lp_c1.size();
   // coherence/azimuth estimation smoothing: 40 ms
   for(uint32_t k=0;k<lp_c1.size();k++){
     float f(fscale*std::max(k,1u));
