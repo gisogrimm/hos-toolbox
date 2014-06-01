@@ -22,6 +22,8 @@ public:
   double vmin() const;
   double vmax() const;
   double vpmax() const;
+  double pmax() const;
+  bool icdfempty() const { return icdf.empty();};
   pmf_t& operator*=(const pmf_t& p2);
   friend std::ostream& operator<<(std::ostream& o, const pmf_t& p){
     o << "\n[--\n";

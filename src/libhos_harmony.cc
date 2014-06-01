@@ -95,7 +95,7 @@ void harmony_model_t::update_tables()
       }
     }
     ptab.update();
-    if( ptab.empty() ){
+    if( ptab.icdfempty() ){
       DEBUG(basekey);
       throw TASCAR::ErrMsg("No relative key table for key "+basekey.name()+".");
     }
@@ -123,7 +123,12 @@ bool harmony_model_t::process(double beat)
       keysig_t old_key(key_current);
       key_current = key_next;
       //DEBUG(key_current);
-      key_next = keysig_t(pkeyrel[key_current.hash()].rand());
+      try{
+        key_next = keysig_t(pkeyrel[key_current.hash()].rand());
+      }
+      catch( const std::exception& e ){
+        DEBUG(e.what());
+      }
       return !(key_current == old_key);
     }
   }
@@ -197,29 +202,58 @@ pmf_t harmony_model_t::notes(double triadw) const
 {
   triad_t triad;
   scale_t scale;
+  //DEBUG(triadw);
+  //DEBUG(triad[key_current.mode]);
   pmf_t n(triad[key_current.mode]*triadw+scale[key_current.mode]*(1.0-triadw));
+  //DEBUG(n.vadd(key_current.pitch()));
   return n.vadd(key_current.pitch());
 }
 
-note_t melody_model_t::process(double beat,const harmony_model_t& harmony, const time_signature_t& timesig,double center,double bandw)
+note_t melody_model_t::process(double beat,const harmony_model_t& harmony, const time_signature_t& timesig,double center,double bandw,double harmonyweight,double beatweight)
 {
   beat = rint(BEATRES*beat)/BEATRES;
-  bool onbeat(frac(beat)==0);
-  pmf_t notes(harmony.notes((double)onbeat*(1.0-onbeatscale) + (double)(!onbeat)*(1.0-offbeatscale)));
+  bool onbeat(fabs(frac(beat))<EPS);
+  double triadw(1.0);
+  if( onbeat )
+    triadw = 1.0-onbeatscale;
+  else
+    triadw = 1.0-offbeatscale;
+  pmf_t notes(harmony.notes(triadw));
   //pmf_t notes(harmony.notes(1.0));
-  notes *= pambitus;
-  notes *= gauss(center,0.25*bandw,pambitus.vmin(),pambitus.vmax(),1.0);
+  // medoly model step processing:
   notes *= pstep.vadd(last_pitch);
+  //DEBUG(notes);
+  // release of rules:
+  if( harmonyweight != 1.0 ){
+    pmf_t equal;
+    for(int32_t n=notes.vmin();n<=notes.vmax();n++)
+      equal.set(n,1);
+    equal.update();
+    notes = notes*harmonyweight + equal*(1.0-harmonyweight);
+  }
+  // limit to instrument ambitus:
+  notes *= pambitus;
+  // tilt/center by input range:
+  notes *= gauss(center,0.25*bandw,pambitus.vmin(),pambitus.vmax(),1.0);
   notes.update();
   int32_t pitch(PITCH_REST);
-  if( !notes.empty() ){
+  if( !notes.icdfempty() ){
     pitch = notes.rand();
   }
   pmf_t dur(pduration);
-  dur *= (pbeat.vadd(-beat)+pbeat.vadd(-beat+timesig.numerator)).vthreshold(0).vscale(1.0/timesig.denominator);
+  pmf_t valid_times(pbeat);
+  //valid_times.update();
+  pmf_t all_valid_times;
+  double pmax(valid_times.pmax());
+  for(uint32_t k=0;k<8*timesig.numerator;k++)
+    all_valid_times.set(0.125*k,pmax);
+  all_valid_times.update();
+  valid_times = valid_times*beatweight + all_valid_times*((1.0-beatweight)*0.125);
+  dur *= ((valid_times.vadd(-beat)+valid_times.vadd(-beat+timesig.numerator)).vthreshold(0).vscale(1.0/timesig.denominator));
+  
   dur.update();
   double duration(0);
-  if( dur.empty() ){
+  if( dur.icdfempty() ){
     pmf_t p1(pbeat.vadd(-beat));
     std::cout << p1;
     pmf_t p2(pbeat.vadd(-beat+timesig.numerator));
@@ -230,12 +264,22 @@ note_t melody_model_t::process(double beat,const harmony_model_t& harmony, const
     std::cout << p4;
     pmf_t p5(p4.vscale(1.0/timesig.denominator));
     std::cout << p5;
-    duration = pduration.rand();
+    try{
+      duration = pduration.rand();
+    }
+    catch(const std::exception& e){
+      DEBUG(e.what());
+      duration = 0.25;
+    }
+    pitch = PITCH_REST;
     DEBUG(duration);
     DEBUG(beat);
     DEBUG(frac(beat));
   }else{
     duration = dur.rand();
+    //DEBUG(duration);
+    //DEBUG(beat);
+    //DEBUG(frac(beat));
   }
   if( pitch != PITCH_REST )
     last_pitch = pitch;
@@ -283,13 +327,13 @@ void melody_model_t::read_xml(xmlpp::Element* e)
       pbeat.set(get_attribute_double(eBeat,"v"),get_attribute_double(eBeat,"p"));
   }
   pbeat.update();
-  if( pduration.empty() )
+  if( pduration.icdfempty() )
     throw TASCAR::ErrMsg("No valid durations in table.");
-  if( pbeat.empty() )
+  if( pbeat.icdfempty() )
     throw TASCAR::ErrMsg("No valid beats in table.");
-  if( pambitus.empty() )
+  if( pambitus.icdfempty() )
     throw TASCAR::ErrMsg("No valid ambitus.");
-  if( pstep.empty() )
+  if( pstep.icdfempty() )
     throw TASCAR::ErrMsg("No valid step size table.");
 }
 

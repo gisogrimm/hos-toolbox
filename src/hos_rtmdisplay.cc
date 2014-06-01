@@ -9,6 +9,8 @@
 #include "hos_defs.h"
 #include "errorhandling.h"
 
+#define DRAWKEY
+
 class clef_t {
 public:
   std::string symbol;
@@ -518,7 +520,8 @@ void score_t::set_time_signature(uint32_t numerator,uint32_t denominator,double 
 }
 
 score_t::score_t()
-  : TASCAR::osc_server_t("239.255.1.7","9877"),timescale(20),history(6),time(0),x_left(-105),prev_tpos(0),xshift(0)
+  //: TASCAR::osc_server_t("239.255.1.7","9877"),timescale(20),history(6),time(0),x_left(-105),prev_tpos(0),xshift(0)
+  : TASCAR::osc_server_t("239.255.1.7","9877"),timescale(20),history(3),time(0),x_left(-105),prev_tpos(0),xshift(0)
 {
   pthread_mutex_init( &mutex, NULL );
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &score_t::on_timeout), 20 );
@@ -645,21 +648,23 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
       bar_endtime = std::min(it->second.starttime,tpos);
     }
   }
-  //nokey//// draw key signature here:
-  //nokey//for( std::map<double,keysig_t>::iterator ks=keysig.begin();ks!=keysig.end();++ks){
-  //nokey//  if( (ks->first >= prev_tpos) && (ks->first <= tpos) ){
-  //nokey//    double xpos(get_xpos(ks->first));
-  //nokey//    std::map<double,graphical_time_signature_t>::iterator ts(timesig.find(ks->first));
-  //nokey//    if( ts != timesig.end() )
-  //nokey//      xpos += ts->second.space(cr);
-  //nokey//    cr->save();
-  //nokey//    cr->move_to(x_left+xpos,-staves.rbegin()->y_0+12);
-  //nokey//    cr->select_font_face("Arial",Cairo::FONT_SLANT_NORMAL,Cairo::FONT_WEIGHT_BOLD);
-  //nokey//    cr->set_font_size(6);
-  //nokey//    cr->show_text(ks->second.name().c_str());
-  //nokey//    cr->restore();
-  //nokey//  }
-  //nokey//}
+#ifdef DRAWKEY
+  // draw key signature here:
+  for( std::map<double,keysig_t>::iterator ks=keysig.begin();ks!=keysig.end();++ks){
+    if( (ks->first >= prev_tpos) && (ks->first <= tpos) ){
+      double xpos(get_xpos(ks->first));
+      std::map<double,graphical_time_signature_t>::iterator ts(timesig.find(ks->first));
+      if( ts != timesig.end() )
+        xpos += ts->second.space(cr);
+      cr->save();
+      cr->move_to(x_left+xpos,-staves.rbegin()->y_0+12);
+      cr->select_font_face("Arial",Cairo::FONT_SLANT_NORMAL,Cairo::FONT_WEIGHT_BOLD);
+      cr->set_font_size(6);
+      cr->show_text(ks->second.name().c_str());
+      cr->restore();
+    }
+  }
+#endif
   pthread_mutex_unlock( &mutex );
 }
 

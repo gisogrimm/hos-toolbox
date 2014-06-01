@@ -266,7 +266,7 @@ objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float f
     unitstep[5*k+1] = 0.1;
     unitstep[5*k+2] = 0.01;
     unitstep[5*k+3] = 0.01;
-    unitstep[5*k+4] = 1;
+    unitstep[5*k+4] = 10;
     // exponent x:
     //unitstep[4*k+2] = 0.001;
     // bandwidth y:
@@ -326,6 +326,18 @@ void objmodel_t::iterate()
 {
   //DEBUG(calls);
   calls = 0;
+  //// constraints:
+  //for(uint32_t k=0;k<nobj;k++){
+  //  param_t par(k,obj_param);
+  //  if( par.g <= 2 ){
+  //    DEBUG(k);
+  //    DEBUG(par.g);
+  //    par.cx = sizex()*drand();
+  //    par.cy = sizey()*drand();
+  //    //par.g = 20;
+  //    par.setp(k,obj_param);
+  //  }
+  //}
   error = downhill_iterate(0.0002,obj_param,&objmodel_t::errfun,this,unitstep);
   // constraints:
   for(uint32_t k=0;k<nobj;k++){
@@ -336,7 +348,7 @@ void objmodel_t::iterate()
       par.cx -= sizex();
     if( par.cy < 0.0f )
       par.cy = 0.0f;
-    if( par.cy >= sizey() )
+    if( par.cy > sizey()-1 )
       par.cy = sizey()-1.0f;
     if( par.wx < 0.5 )
       par.wx = 0.5;
@@ -346,8 +358,8 @@ void objmodel_t::iterate()
       par.wy = 1;
     if( par.wy > 5 )
       par.wy = 5;
-    if( par.g < 4 )
-      par.g = 4;
+    if( par.g < 20 )
+      par.g = 20;
     vpar[k] = par;
   }
   // sort:
@@ -827,13 +839,13 @@ bool foacoh_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
       //std::cout << " " << par.cx << " " << par.cy << " " << par.wx << " " << par.wy << " " << par.g;
       cr->set_line_width(0.2);
       cr->set_source_rgb( 1, 1, 1 );
-      cr->move_to(par.cx,bands-(par.cy-0.5*par.wy)-1);
-      cr->line_to(par.cx,bands-(par.cy+0.5*par.wy)-1);
+      cr->move_to(par.cx+0.5,bands-(par.cy-0.5*par.wy)-1);
+      cr->line_to(par.cx+0.5,bands-(par.cy+0.5*par.wy)-1);
       cr->stroke();
-      cr->move_to(par.cx-0.5/par.wx,bands-par.cy-1);
-      cr->line_to(par.cx+0.5/par.wx,bands-par.cy-1);
+      cr->move_to(par.cx-0.5/par.wx+0.5,bands-par.cy-1);
+      cr->line_to(par.cx+0.5/par.wx+0.5,bands-par.cy-1);
       cr->stroke();
-      cr->move_to(par.cx+0.3,bands-par.cy-2 );
+      cr->move_to(par.cx+0.3+0.5,bands-par.cy-2 );
       char ctmp[16];
       sprintf(ctmp,"%d",ko+1);
       cr->show_text(ctmp);
@@ -930,11 +942,11 @@ int main(int argc, char** argv)
   Gtk::Main kit(argc, argv);
   Gtk::Window win;
   std::string jackname("casa");
-  std::string desturl("osc.udp://239.255.1.7:6987/");
+  std::string desturl("osc.udp://239.255.1.7:6978/");
   uint32_t channels(8);
   float bpoctave(3);
   float fmin(125);
-  float fmax(8000);
+  float fmax(4000);
   uint32_t nobjects(5);
   uint32_t periodsize(1024);
   const char *options = "hj:c:b:l:u:o:p:d:";

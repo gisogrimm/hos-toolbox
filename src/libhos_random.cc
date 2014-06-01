@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include "errorhandling.h"
+#include "hos_defs.h"
 
 double drand()
 {
@@ -22,7 +23,7 @@ void pmf_t::update()
     it->second /= psum;
   double p(0);
   for( iterator it=begin();it!=end();++it){
-    if( it->second != 0 ){
+    if( fabs(it->second) > EPS ){
       p+=it->second;
       icdf[p] = it->first;
     }
@@ -141,6 +142,20 @@ double pmf_t::vpmax() const
     }
   }
   return vm;
+}
+
+
+double pmf_t::pmax() const
+{
+  if( empty() )
+    return 0;
+  double pm(begin()->second);
+  for(const_iterator v=begin();v!=end();++v){
+    if( v->second > pm ){
+      pm = v->second;
+    }
+  }
+  return pm;
 }
 
 
