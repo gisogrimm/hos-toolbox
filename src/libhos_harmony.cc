@@ -291,6 +291,7 @@ note_t melody_model_t::process(double beat,const harmony_model_t& harmony, const
 
 void melody_model_t::read_xml(xmlpp::Element* e)
 {
+  name = e->get_attribute_value("name");
   onbeatscale = get_attribute_double(e,"onbeatscale",0.0);
   offbeatscale = get_attribute_double(e,"offbeatscale",0.0);
   // ambitus:

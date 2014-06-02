@@ -46,14 +46,14 @@ namespace OSC {
     std::cerr << "lo error " << num << ": " << msg << " (" << where << ")\n";
   }
 
-  int handler_f(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
-  {
-    if( (argc == 1) && (types[0] == 'f') ){
-      *((float*)user_data) = argv[0]->f;
-      return 0;
-    }
-    return 1;
-  }
+  //int handler_f(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
+  //{
+  //  if( (argc == 1) && (types[0] == 'f') ){
+  //    *((float*)user_data) = argv[0]->f;
+  //    return 0;
+  //  }
+  //  return 1;
+  //}
 
   int handler_angle_f(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
   {
@@ -80,12 +80,6 @@ namespace OSC {
       return 0;
     }
     return 1;
-  }
-
-  int _quit(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
-  {
-    ((HoS::parameter_t*)user_data)->set_quit();
-    return 0;
   }
 
   int _locate(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
@@ -133,6 +127,16 @@ namespace OSC {
     //DEBUG(1);
     if( (argc == 1) && (types[0] == 'f') ){
       ((HoS::parameter_t*)user_data)->apply(argv[0]->f);
+      return 0;
+    }
+    return 1;
+  }
+
+  int _az(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
+  {
+    //DEBUG(1);
+    if( (argc == 1) && (types[0] == 'f') ){
+      ((HoS::parameter_t*)user_data)->az(argv[0]->f);
       return 0;
     }
     return 1;
@@ -217,6 +221,12 @@ par_t::par_t()
 {
 }
 
+void parameter_t::az(float az_)
+{
+  par_osc.phi0 = DEG2RAD*az_;
+  locate0(0);
+}
+
 void parameter_t::locate0(float time)
 {
   //DEBUG(time);
@@ -259,7 +269,8 @@ void parameter_t::apply(float time)
 }
 
 parameter_t::parameter_t(const std::string& name)
-  : stopat(0),
+  : TASCAR::osc_server_t(OSC_ADDR,OSC_PORT),
+    stopat(0),
     b_stopat(false),
     applyat(0),
     applyat_time(0),
@@ -276,10 +287,15 @@ parameter_t::parameter_t(const std::string& name)
   lo_address_set_ttl( lo_addr, 1 );
   //set_preset();
   std::string s;
-  lost = lo_server_thread_new_multicast(OSC_ADDR,OSC_PORT,OSC::lo_err_handler_cb);
-#define REGISTER_FLOAT_VAR(x) s = osc_prefix+#x;lo_server_thread_add_method(lost,s.c_str(),"f",OSC::handler_f,&(par_osc.x))
-#define REGISTER_FLOAT_VAR_DEGREE(x) s = osc_prefix+#x;lo_server_thread_add_method(lost,s.c_str(),"f",OSC::handler_angle_f,&(par_osc.x))
-#define REGISTER_CALLBACK(x,fmt) s=osc_prefix+#x;lo_server_thread_add_method(lost,s.c_str(),fmt,OSC::_ ## x,this)
+  //lost = lo_server_thread_new_multicast(OSC_ADDR,OSC_PORT,OSC::lo_err_handler_cb);
+  set_prefix(osc_prefix);
+  add_bool_true("quit",&b_quit);
+//#define REGISTER_FLOAT_VAR(x) s = osc_prefix+#x;lo_server_thread_add_method(lost,s.c_str(),"f",OSC::handler_f,&(par_osc.x))
+//#define REGISTER_FLOAT_VAR_DEGREE(x) s = osc_prefix+#x;lo_server_thread_add_method(lost,s.c_str(),"f",OSC::handler_angle_f,&(par_osc.x))
+//#define REGISTER_CALLBACK(x,fmt) s=osc_prefix+#x;lo_server_thread_add_method(lost,s.c_str(),fmt,OSC::_ ## x,this)
+#define REGISTER_FLOAT_VAR(x) add_float(#x,&(par_osc.x))
+#define REGISTER_FLOAT_VAR_DEGREE(x) add_method(#x,"f",OSC::handler_angle_f,&(par_osc.x))
+#define REGISTER_CALLBACK(x,fmt) add_method(#x,fmt,OSC::_ ## x,this)
   REGISTER_FLOAT_VAR_DEGREE(phi0);
   REGISTER_FLOAT_VAR_DEGREE(elev);
   REGISTER_FLOAT_VAR_DEGREE(rvbelev);
@@ -301,23 +317,24 @@ parameter_t::parameter_t(const std::string& name)
   REGISTER_FLOAT_VAR(map_f);
   //REGISTER_FLOAT_VAR(locate);
   REGISTER_CALLBACK(feedbackaddr,"s");
-  REGISTER_CALLBACK(quit,"");
   REGISTER_CALLBACK(sendphi,"s");
   REGISTER_CALLBACK(locate,"f");
   REGISTER_CALLBACK(setelev,"f");
   REGISTER_CALLBACK(apply,"f");
   REGISTER_CALLBACK(stopat,"f");
   REGISTER_CALLBACK(applyat,"ff");
+  REGISTER_CALLBACK(az,"f");
 #undef REGISTER_FLOAT_VAR
 #undef REGISTER_CALLBACK
-  lo_server_thread_start(lost);
+  //lo_server_thread_start(lost);
+  activate();
   //set_feedback_osc_addr( OSC_ADDR );
 }
 
 parameter_t::~parameter_t()
 {
-  lo_server_thread_stop(lost);
-  lo_server_thread_free(lost);
+  //lo_server_thread_stop(lost);
+  //lo_server_thread_free(lost);
 }
 
 

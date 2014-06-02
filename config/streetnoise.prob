@@ -26,7 +26,7 @@
   <timesig v="4/2" p="0.1"/-->
   <timesigbars v="8" p="1"/>
   <timesigbars v="16" p="1"/>
-  <voice id="4" name="Giso" lowest="-24" highest="-2" central="-12" dev="24" offbeatscale="0.5" onbeatscale="0">
+  <voice id="4" name="giso" lowest="-24" highest="-2" central="-12" dev="24" offbeatscale="0.5" onbeatscale="0">
     <!--
     <step v="-12" p="1"/>
     <step v="-7" p="1"/>
@@ -79,7 +79,7 @@
     <beat v="4.50" p="1"/>
     <beat v="4.75" p="0.05"/>
   </voice>
-  <voice id="3" name="Claas" lowest="-7" highest="7" central="0" dev="24" offbeatscale="0.5" onbeatscale="0">
+  <voice id="3" name="claas" lowest="-7" highest="7" central="0" dev="24" offbeatscale="0.5" onbeatscale="0">
 <!--
     <step v="-1" p="8"/>
     <step v="-2" p="7"/>
@@ -133,7 +133,7 @@
     <beat v="3" p="1"/>
     <beat v="4" p="1"/>
   </voice>
-  <voice id="2" name="Marthe" lowest="-2" highest="12" central="7" dev="28" offbeatscale="0.5" onbeatscale="0">
+  <voice id="2" name="marthe" lowest="-2" highest="12" central="7" dev="28" offbeatscale="0.5" onbeatscale="0">
     <!--
     <step v="-1" p="8"/>
     <step v="-2" p="7"/>
@@ -201,7 +201,7 @@
     <beat v="1" p="10"/>
     <beat v="4" p="10"/>
   </voice>
-  <voice id="1" name="Hille" lowest="2" highest="22" central="12" dev="12" offbeatscale="0.5" onbeatscale="0">
+  <voice id="1" name="hille" lowest="2" highest="22" central="12" dev="12" offbeatscale="0.5" onbeatscale="0">
     <step v="-1" p="12"/>
     <step v="-2" p="8"/>
     <step v="-3" p="6"/>
@@ -246,7 +246,7 @@
     <beat v="0" p="10"/>
     <beat v="2.5" p="10"/>
   </voice>
-  <voice id="0" name="Julia" lowest="2" highest="22" central="12" dev="6" offbeatscale="0.75" onbeatscale="0">
+  <voice id="0" name="julia" lowest="2" highest="22" central="12" dev="6" offbeatscale="0.75" onbeatscale="0">
     <step v="-1" p="32"/>
     <step v="-2" p="8"/>
     <step v="-3" p="1"/>

@@ -281,11 +281,11 @@ int sphere_amb30_t::process(jack_nframes_t nframes,const std::vector<float*>& in
 
 void sphere_amb30_t::run()
 {
-  activate();
+  jackc_t::activate();
   while( !b_quit ){
     sleep( 1 );
   }
-  deactivate();
+  jackc_t::deactivate();
 }
 
 int main(int argc, char** argv)

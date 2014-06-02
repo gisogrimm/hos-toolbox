@@ -259,7 +259,7 @@ public:
     float g;
   };
   void send_osc(const lo_address& lo_addr);
-  objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float fmin);
+  objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float fmin,const std::vector<std::string>& names);
   float objval(float x,float y,param_t lp);
   float objval(float x,float y,const std::vector<float>&);
   float objval(float x,float y);
@@ -330,20 +330,16 @@ void objmodel_t::param_t::setp(uint32_t num,std::vector<float>& vp)
   vp[5*num+4] = g;
 }
 
-objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float fmin)
+objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float fmin,const std::vector<std::string>& names)
   : xyfield_t(sx,sy),error(0),nobj(numobj),xscale(PI2/(float)sx),bpo_(bpo),fmin_(fmin)
 {
   calls = 0;
   obj_param.resize(5*nobj);
   unitstep.resize(5*nobj);
   for(uint32_t k=0;k<nobj;k++){
-    char ctmp[1024];
-    sprintf(ctmp,"/obj%d/pitch",k+1);
-    paths_pitch.push_back(ctmp);
-    sprintf(ctmp,"/obj%d/bw",k+1);
-    paths_bw.push_back(ctmp);
-    sprintf(ctmp,"/obj%d/az",k+1);
-    paths_az.push_back(ctmp);
+    paths_pitch.push_back(std::string("/")+names[k]+std::string("/pitch"));
+    paths_bw.push_back(std::string("/")+names[k]+std::string("/bw"));
+    paths_az.push_back(std::string("/")+names[k]+std::string("/az"));
     param_t par;
     // center x:
     par.cx = sx*drand();
@@ -602,7 +598,7 @@ namespace HoSGUI {
   class foacoh_t : public freqinfo_t, public Gtk::DrawingArea, public TASCAR::osc_server_t, public jackc_db_t
   {
   public:
-    foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,uint32_t nobjects,uint32_t periodsize,const std::string& url);
+    foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,const std::vector<std::string>& objnames,uint32_t periodsize,const std::string& url);
     virtual ~foacoh_t();
     virtual int inner_process(jack_nframes_t, const std::vector<float*>&, const std::vector<float*>&);
     void activate();
@@ -649,6 +645,7 @@ namespace HoSGUI {
     //std::vector<float> bayes_prob;
     std::vector<float> f2band;
     lo_address lo_addr;
+    std::vector<std::string> names;
     std::vector<std::string> paths_modf;
     std::vector<std::string> paths_modbw;
   };
@@ -754,7 +751,7 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
   return 0;
 }
 
-foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,uint32_t nobjects,uint32_t periodsize_,const std::string& url)
+foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,const std::vector<std::string>& objnames,uint32_t periodsize_,const std::string& url)
   : freqinfo_t(bpo,fmin,fmax),
     osc_server_t(OSC_ADDR,OSC_PORT),
     jackc_db_t("foacoh",periodsize_),
@@ -775,9 +772,10 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
     draw_image(true),
     col(0),
     azchannels(channels),
-    obj(channels,bands,nobjects,bpo,fmin),
+    obj(channels,bands,objnames.size(),bpo,fmin,objnames),
     vmin(0),vmax(1),
-    lo_addr(lo_address_new_from_url(url.c_str()))
+    lo_addr(lo_address_new_from_url(url.c_str())),
+    names(objnames)
 {
   lo_address_set_ttl( lo_addr, 1 );
   image = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB,false,8,channels,bands);
@@ -791,17 +789,13 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
   for(uint32_t k=0;k<ola_w.s.size();k++)
     f2band.push_back(band((float)k*fscale));
   float frame_rate(get_srate()/(float)periodsize);
-  for(uint32_t ko=0;ko<nobjects;ko++){
-    char ctmp[1024];
-    sprintf(ctmp,"out_%d",ko+1);
-    add_output_port(ctmp);
+  for(uint32_t ko=0;ko<objnames.size();ko++){
+    add_output_port(names[ko].c_str());
     ola_obj.push_back(new HoS::ola_t(fftlen,wndlen,periodsize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING));
     //bayes_prob.push_back(0.0f);
     modflt.push_back(mod_analyzer_t(frame_rate,4,1));
-    sprintf(ctmp,"/obj%d/modf",ko+1);
-    paths_modf.push_back(ctmp);
-    sprintf(ctmp,"/obj%d/modbw",ko+1);
-    paths_modbw.push_back(ctmp);
+    paths_modf.push_back(std::string("/")+names[ko]+std::string("/modf"));
+    paths_modbw.push_back(std::string("/")+names[ko]+std::string("/modbw"));
   }
   //fscale = 0.5*get_srate()/lp_c1.size();
   // coherence/azimuth estimation smoothing: 40 ms
@@ -1041,9 +1035,9 @@ int main(int argc, char** argv)
   float bpoctave(3);
   float fmin(125);
   float fmax(4000);
-  uint32_t nobjects(5);
   uint32_t periodsize(1024);
-  const char *options = "hj:c:b:l:u:o:p:d:";
+  std::vector<std::string> objnames;
+  const char *options = "hj:c:b:l:u:p:d:";
   struct option long_options[] = { 
     { "help",      0, 0, 'h' },
     { "jackname",  1, 0, 'j' },
@@ -1052,7 +1046,6 @@ int main(int argc, char** argv)
     { "bpoctave",  1, 0, 'b' },
     { "fmin",      1, 0, 'l' },
     { "fmax",      1, 0, 'u' },
-    { "objects",   1, 0, 'o' },
     { "periodsize",1, 0, 'p'},
     { 0, 0, 0, 0 }
   };
@@ -1073,9 +1066,6 @@ int main(int argc, char** argv)
     case 'c':
       channels = atoi(optarg);
       break;
-    case 'o':
-      nobjects = atoi(optarg);
-      break;
     case 'b':
       bpoctave = atof(optarg);
       break;
@@ -1090,8 +1080,17 @@ int main(int argc, char** argv)
       break;
     }
   }
+  while( optind < argc )
+    objnames.push_back(argv[optind++]);
+  if( objnames.empty() ){
+    for(uint32_t k=0;k<5;k++){
+      char ctmp[1024];
+      sprintf(ctmp,"obj%d",k+1);
+      objnames.push_back(ctmp);
+    }
+  }
   win.set_title(jackname);
-  HoSGUI::foacoh_t c(jackname,channels,bpoctave,fmin,fmax,nobjects,periodsize,desturl);
+  HoSGUI::foacoh_t c(jackname,channels,bpoctave,fmin,fmax,objnames,periodsize,desturl);
   win.add(c);
   win.set_default_size(640,480);
   //win.fullscreen();

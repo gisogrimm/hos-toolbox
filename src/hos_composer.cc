@@ -78,13 +78,9 @@ composer_t::composer_t(const std::string& srv_addr,const std::string& srv_port,c
   timesigcnt = ptimesigbars.rand();
   lo_send(lo_addr,"/timesig","fii",time,timesig.numerator,timesig.denominator);
   for(uint32_t k=0;k<voice.size();k++){
-    char ctmp[1024];
-    sprintf(ctmp,"/obj%d/pitch",k+1);
-    add_float(ctmp,&(pcenter[k]));
-    sprintf(ctmp,"/obj%d/bw",k+1);
-    add_float(ctmp,&(pbandw[k]));
-    sprintf(ctmp,"/obj%d/modf",k+1);
-    add_float(ctmp,&(pmodf[k]));
+    add_float(std::string("/")+voice[k].get_name()+std::string("/pitch"),&(pcenter[k]));
+    add_float(std::string("/")+voice[k].get_name()+std::string("/bw"),&(pbandw[k]));
+    add_float(std::string("/")+voice[k].get_name()+std::string("/modf"),&(pmodf[k]));
   }
   add_float("/pitchchaos",&pitchchaos);
   add_float("/beatchaos",&beatchaos);

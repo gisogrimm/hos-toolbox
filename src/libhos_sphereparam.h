@@ -28,7 +28,8 @@
 #define SPHERE_PARAM_H
 
 #include <string>
-#include <lo/lo.h>
+#include "osc_helper.h"
+//#include <lo/lo.h>
 #include "defs.h"
 
 /**
@@ -66,14 +67,14 @@ namespace HoS {
     float map_f;    // frequency in Hz
   };
 
-  class parameter_t {
+  class parameter_t : public TASCAR::osc_server_t {
   public:
     parameter_t(const std::string& name);
     ~parameter_t();
-    void set_quit() { b_quit=true; };
     //void set_preset();
     void locate0( float time );
     void setelev( float time );
+    void az(float az_);
     void apply( float time );
     void set_stopat( float sa ){
       stopat = sa;
@@ -124,7 +125,7 @@ namespace HoS {
     float lastphi;
   private:
     //int osc_preset;
-    lo_server_thread lost;
+    //lo_server_thread lost;
     std::string osc_prefix;
   };
 
