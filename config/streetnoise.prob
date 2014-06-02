@@ -51,6 +51,7 @@
     <step v="-7" p="1"/>
     <step v="-12" p="4"/>
     <!--notelength v="1.5" p="0.66667"/-->
+    <notelength v="2.0" p="0.5"/>
     <notelength v="1.0" p="1"/>
     <notelength v="0.5" p="2"/>
     <notelength v="0.75" p="1.33333"/>
@@ -105,6 +106,7 @@
     <notelength v="0.5" p="2"/>
     <notelength v="1.0" p="1"/>
     <notelength v="1.5" p="0.66667"/>
+    <notelength v="2.0" p="0.5"/>
     <!-- any other 1/4 position possible -->
     <beat v="0.00" p="0.05"/><!--
     <beat v="0.25" p="0.05"/>

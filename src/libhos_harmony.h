@@ -48,7 +48,7 @@ private:
 
 class melody_model_t {
 public:
-  note_t process(double beat,const harmony_model_t& harmony, const time_signature_t& timesig,double center,double bandw,double harmonyweight,double beatweight);
+  note_t process(double beat,const harmony_model_t& harmony, const time_signature_t& timesig,double center,double bandw,double harmonyweight,double beatweight,double modf);
   void read_xml(xmlpp::Element* e);
 private:
   pmf_t pambitus;

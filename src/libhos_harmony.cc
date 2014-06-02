@@ -209,7 +209,7 @@ pmf_t harmony_model_t::notes(double triadw) const
   return n.vadd(key_current.pitch());
 }
 
-note_t melody_model_t::process(double beat,const harmony_model_t& harmony, const time_signature_t& timesig,double center,double bandw,double harmonyweight,double beatweight)
+note_t melody_model_t::process(double beat,const harmony_model_t& harmony, const time_signature_t& timesig,double center,double bandw,double harmonyweight,double beatweight,double modf)
 {
   beat = rint(BEATRES*beat)/BEATRES;
   bool onbeat(fabs(frac(beat))<EPS);
@@ -251,6 +251,9 @@ note_t melody_model_t::process(double beat,const harmony_model_t& harmony, const
   valid_times = valid_times*beatweight + all_valid_times*((1.0-beatweight)*0.125);
   dur *= ((valid_times.vadd(-beat)+valid_times.vadd(-beat+timesig.numerator)).vthreshold(0).vscale(1.0/timesig.denominator));
   
+  for(pmf_t::iterator it=dur.begin();it!=dur.end();++it){
+    it->second *= gauss(1.0/it->first-2*modf,4.0);
+  }
   dur.update();
   double duration(0);
   if( dur.icdfempty() ){

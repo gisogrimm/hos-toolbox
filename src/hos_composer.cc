@@ -50,6 +50,7 @@ private:
   uint32_t timesigcnt;
   std::vector<float> pcenter;
   std::vector<float> pbandw;
+  std::vector<float> pmodf;
   float pitchchaos;
   float beatchaos;
 };
@@ -66,7 +67,7 @@ int32_t composer_t::get_mode() const
 
 composer_t::composer_t(const std::string& srv_addr,const std::string& srv_port,const std::string& url,const std::string& fname)
   : osc_server_t(srv_addr,srv_port), timesig(0,2,0,0), time(0), lo_addr(lo_address_new_from_url(url.c_str())),timesigcnt(0),
-    pcenter(NUM_VOICES,0.0),pbandw(NUM_VOICES,48.0),pitchchaos(0.0),beatchaos(0.0)
+    pcenter(NUM_VOICES,0.0),pbandw(NUM_VOICES,48.0),pmodf(NUM_VOICES,1.0),pitchchaos(0.0),beatchaos(0.0)
 {
   lo_address_set_ttl( lo_addr, 1 );
   voice.resize(NUM_VOICES);
@@ -82,6 +83,8 @@ composer_t::composer_t(const std::string& srv_addr,const std::string& srv_port,c
     add_float(ctmp,&(pcenter[k]));
     sprintf(ctmp,"/obj%d/bw",k+1);
     add_float(ctmp,&(pbandw[k]));
+    sprintf(ctmp,"/obj%d/modf",k+1);
+    add_float(ctmp,&(pmodf[k]));
   }
   add_float("/pitchchaos",&pitchchaos);
   add_float("/beatchaos",&beatchaos);
@@ -170,7 +173,7 @@ void composer_t::process_time()
   }
   for(unsigned int k=0;k<voice.size();k++){
     if( voice[k].note.end_time() <= time ){
-      voice[k].note = voice[k].process(timesig.beat(time),harmony,timesig,pcenter[k],pbandw[k],1.0-pow(pitchchaos,2.0),1.0-pow(beatchaos,1.0));
+      voice[k].note = voice[k].process(timesig.beat(time),harmony,timesig,pcenter[k],pbandw[k],1.0-pow(pitchchaos,2.0),1.0-pow(beatchaos,1.0),pmodf[k]);
       voice[k].note.time = time;
       lo_send(lo_addr,"/note","iiif",k,voice[k].note.pitch,voice[k].note.length,voice[k].note.time);
     }

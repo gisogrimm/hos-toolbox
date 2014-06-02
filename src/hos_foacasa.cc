@@ -58,7 +58,7 @@
 #include "lininterp.h"
 #include "libhos_random.h"
 #include "errorhandling.h"
-
+#include "gammatone.h"
 
 #define OSC_ADDR "239.255.1.7"
 #define OSC_PORT "6978"
@@ -76,6 +76,96 @@ float downhill_iterate(float eps,std::vector<float>& param,float (*err)(const st
   }
   return errv;
 }
+
+class freqinfo_t {
+public:
+  freqinfo_t(float bpo,float fmin,float fmax);
+  uint32_t bands;
+  std::vector<float> fc;
+  std::vector<float> fe;
+  float band(float f_hz);
+private:
+  float bpo_;
+  float fmin_;
+  float fmax_;
+};
+
+class mod_analyzer_t {
+public:
+  mod_analyzer_t(float fs,uint32_t nchannels,float bpo);
+  void update(float x);
+  float get_modoct() const { return param[0];};
+  float get_modbw() const { return param[1];};
+  static float errfun(const std::vector<float>&,void* data);
+  float errfun(const std::vector<float>&);
+private:
+  std::vector<gammatone_t> fb;
+  std::vector<float> param;
+  std::vector<float> val;
+  std::vector<float> unitstep;
+  float oval;
+};
+
+mod_analyzer_t::mod_analyzer_t(float fs,uint32_t nchannels,float bpo)
+  : oval(0)
+{
+  for(uint32_t k=0;k<nchannels;k++){
+    
+    float f(0.5*fs / pow(2.0,(float)k/bpo));
+    float bw(pow(2.0,0.5*bpo));
+    bw = f*(bw-1.0/bw);
+    fb.push_back(gammatone_t(f,bw,fs,3));
+  }
+  param.resize(3);
+  param[1] = 1;
+  param[2] = 1;
+  unitstep.resize(3);
+  unitstep[0] = 0.1;
+  unitstep[1] = 0.1;
+  unitstep[2] = 0.1;
+  val.resize(nchannels);
+}
+
+void mod_analyzer_t::update(float x)
+{
+  float tmp(x);
+  x = x-oval;
+  oval = tmp;
+  // update filterbank:
+  float vsum(0);
+  for(uint32_t k=0;k<fb.size();k++)
+    vsum += (val[k] = cabs(fb[k].filter(x)));
+  if( vsum > 0 )
+    for(uint32_t k=0;k<fb.size();k++)
+      val[k] /= vsum;
+  // parameter fitting:
+  downhill_iterate(1,param,&mod_analyzer_t::errfun,this,unitstep);
+  param[0] = std::max(0.0f,std::min((float)(fb.size()-1),param[0]));
+  param[1] = std::max(0.1f,std::min((float)(fb.size()),param[1]));
+  param[2] = std::max(0.1f,std::min(10.0f,param[2]));
+  //for(uint32_t k=0;k<val.size();k++)
+  //  std::cout << val[k] << " ";
+  //std::cout << std::endl;
+  //for(uint32_t k=0;k<param.size();k++)
+  //  std::cout << param[k] << " ";
+  //std::cout << std::endl;
+}
+
+float mod_analyzer_t::errfun(const std::vector<float>& p,void* data)
+{
+  return ((mod_analyzer_t*)(data))->errfun(p);
+}
+
+float mod_analyzer_t::errfun(const std::vector<float>& p)
+{
+  float err(0.0);
+  for(uint32_t k=0;k<val.size();k++){
+    float lerr(val[k]-p[2]*gauss((double)k-p[0],p[1]));
+    err += lerr*lerr;
+  }
+  return err;
+}
+
 
 class xyfield_t {
 public:
@@ -490,19 +580,6 @@ void az_hist_t::draw(const Cairo::RefPtr<Cairo::Context>& cr,float scale)
   cr->stroke();
 }
 
-class freqinfo_t {
-public:
-  freqinfo_t(float bpo,float fmin,float fmax);
-  uint32_t bands;
-  std::vector<float> fc;
-  std::vector<float> fe;
-  float band(float f_hz);
-private:
-  float bpo_;
-  float fmin_;
-  float fmax_;
-};
-
 freqinfo_t::freqinfo_t(float bpo,float fmin,float fmax)
   : bands(bpo*log2(fmax/fmin)+1.0),bpo_(bpo),fmin_(fmin),fmax_(fmax)
 {
@@ -564,6 +641,7 @@ namespace HoSGUI {
     colormap_t col;
     uint32_t azchannels;
     objmodel_t obj;
+    std::vector<mod_analyzer_t> modflt;
     float vmin;
     float vmax;
     float objlp_c1;
@@ -571,6 +649,8 @@ namespace HoSGUI {
     //std::vector<float> bayes_prob;
     std::vector<float> f2band;
     lo_address lo_addr;
+    std::vector<std::string> paths_modf;
+    std::vector<std::string> paths_modbw;
   };
 
 }
@@ -638,14 +718,23 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
     float az(PI2*par.cx/(float)azchannels-M_PI);
     float wx(cos(az));
     float wy(sin(az));
+    float env(0);
     for(uint32_t k=0;k<ola_w.s.size();k++){
       // by not using W channel gain, this is max-rE FOA decoder:
       ola_obj[kobj]->s[k] = (ola_w.s[k]+wx*ola_x.s[k]+wy*ola_y.s[k])*obj.bayes_prob(par.cx,f2band[k],kobj);
+      float aspec(cabs(ola_obj[kobj]->s[k]));
+      env += aspec*aspec;
     }
-      //ola_obj[kobj]->s[k] = ola_w.s[k];
+    env = sqrt(env);
+    modflt[kobj].update(env);
+    lo_send(lo_addr,paths_modf[kobj].c_str(),"f",modflt[kobj].get_modoct());
+    lo_send(lo_addr,paths_modbw[kobj].c_str(),"f",modflt[kobj].get_modbw());
+    //std::cout << " " << modflt[kobj].get_modoct();
+    //ola_obj[kobj]->s[k] = ola_w.s[k];
     ola_obj[kobj]->s[0] = creal(ola_obj[kobj]->s[0]);
     ola_obj[kobj]->ifft(outW);
   }
+  //std::cout << "\n";
   for(uint32_t kb=0;kb<bands;kb++){
     for(uint32_t kc=0;kc<azchannels;kc++){
       obj.val(kc,kb) = 10.0f*log10f(std::max(1.0e-10f,haz[kb][kc]));
@@ -701,14 +790,19 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
   //add_output_port("diffuse.1y");
   for(uint32_t k=0;k<ola_w.s.size();k++)
     f2band.push_back(band((float)k*fscale));
+  float frame_rate(get_srate()/(float)periodsize);
   for(uint32_t ko=0;ko<nobjects;ko++){
     char ctmp[1024];
     sprintf(ctmp,"out_%d",ko+1);
     add_output_port(ctmp);
     ola_obj.push_back(new HoS::ola_t(fftlen,wndlen,periodsize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING));
     //bayes_prob.push_back(0.0f);
+    modflt.push_back(mod_analyzer_t(frame_rate,4,1));
+    sprintf(ctmp,"/obj%d/modf",ko+1);
+    paths_modf.push_back(ctmp);
+    sprintf(ctmp,"/obj%d/modbw",ko+1);
+    paths_modbw.push_back(ctmp);
   }
-  float frame_rate(get_srate()/(float)periodsize);
   //fscale = 0.5*get_srate()/lp_c1.size();
   // coherence/azimuth estimation smoothing: 40 ms
   for(uint32_t k=0;k<lp_c1.size();k++){
