@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include "osc_helper.h"
 #include "filter.h"
+#include <signal.h>
 
 static bool b_quit(false);
 
@@ -51,7 +52,9 @@ private:
   float sigma0;
   float tau_std;
   float tau_gain;
+  float extgain;
   bool b_invert;
+  int32_t debugchannel;
 };
 
 if_filter_t::if_filter_t(const std::string& server_addr,const std::string& server_port,const std::string& jackname,uint32_t fragsize)
@@ -60,17 +63,27 @@ if_filter_t::if_filter_t(const std::string& server_addr,const std::string& serve
     ola(4*fragsize,2*fragsize,fragsize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
     dtfft(4*fragsize,2*fragsize,fragsize,HoS::stft_t::WND_HANNING),
     d1(fragsize),
-    ifscale(srate/(PI2)),
+    ifscale(-srate/(PI2)),
     mean_lp(ola.s.n_,srate/(double)fragsize),
     std_lp(ola.s.n_,srate/(double)fragsize),
     pow_lp(2,srate/(double)fragsize),
-    sigma0(500.0),
-    tau_std(0.004),
+    sigma0(30.0),
+    tau_std(0.05),
     tau_gain(0.4),
-    b_invert(true)
+    extgain(1.0),
+    b_invert(false),
+    debugchannel(4)
 {
   set_prefix("/"+jackname+"/");
   add_bool_true("quit",&b_quit);
+  add_float("sigma",&sigma0);
+  add_float("tau",&tau_std);
+  add_float("taugain",&tau_gain);
+  add_float_db("gain",&extgain);
+  add_bool("invert",&b_invert);
+  add_int("debug",&debugchannel);
+  add_input_port("in");
+  add_output_port("out");
 }
 
 void if_filter_t::activate()
@@ -103,8 +116,8 @@ int if_filter_t::inner_process(jack_nframes_t n,const std::vector<float*>& inBuf
   d1.process(w_in);
   ola.process(w_in);
   dtfft.process(d1);
-  float pow_in(1e-10f);
-  float pow_out(1e-10f);
+  double pow_in(1e-20);
+  double pow_out(1e-20);
   for(unsigned int k=0;k<dtfft.s.n_;k++){
     dtfft.s.b[k] *= conj(ola.s.b[k]);
     float ifreq(cargf(dtfft.s.b[k])*ifscale);
@@ -113,6 +126,9 @@ int if_filter_t::inner_process(jack_nframes_t n,const std::vector<float*>& inBuf
     ifreq_diff *= ifreq_diff;
     float ifreq_std(sqrtf(std::max(0.0f,std_lp.filter( k, ifreq_diff ))));
     float gain = 1.0f - expf(-ifreq_std * sigma0_corr);
+    //if( k==debugchannel ){
+    //  std::cout << ifreq << " " << ifreq_mean << " " << ifreq_std << " " << gain << "\n";
+    //}
     if( gain < 1e-4 )
       gain = 1e-4;
     if( b_invert )
@@ -122,9 +138,14 @@ int if_filter_t::inner_process(jack_nframes_t n,const std::vector<float*>& inBuf
     pow_out += sqr(cabsf(ola.s[k]));
   }
   float bbgain(sqrtf(pow_lp.filter(0,pow_in)/pow_lp.filter(1,pow_out)));
-  ola.s *= bbgain;
+  ola.s *= (bbgain*extgain);
   ola.ifft(w_out);
   return 0;
+}
+
+static void sighandler(int sig)
+{
+  b_quit = true;
 }
 
 void usage(struct option * opt)
@@ -139,8 +160,11 @@ void usage(struct option * opt)
 
 int main(int argc,char** argv)
 {
+  signal(SIGABRT, &sighandler);
+  signal(SIGTERM, &sighandler);
+  signal(SIGINT, &sighandler);
   std::string jackname("iff");
-  uint32_t periodsize(1024);
+  uint32_t periodsize(512);
   std::string serverport("6978");
   std::string serveraddr("239.255.1.7");
   const char *options = "hj:s:m:p:";

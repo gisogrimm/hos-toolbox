@@ -110,6 +110,12 @@ void spec_t::operator*=(const spec_t& o)
     b[k] *= o.b[k];
 }
 
+void spec_t::operator*=(const float& o)
+{
+  for(unsigned int k=0;k<n_;k++)
+    b[k] *= o;
+}
+
 void spec_t::conj()
 {
   for(uint32_t k=0;k<n_;k++)

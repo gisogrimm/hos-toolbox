@@ -37,6 +37,7 @@ namespace HoS {
     void copy(const spec_t& src);
     void operator/=(const spec_t& o);
     void operator*=(const spec_t& o);
+    void operator*=(const float& o);
     void conj();
     inline float _Complex & operator[](uint32_t k){return b[k];};
     inline const float _Complex & operator[](uint32_t k) const{return b[k];};
