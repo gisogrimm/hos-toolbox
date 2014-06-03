@@ -24,7 +24,8 @@
 #define HOSFILTER_H
 
 #include <math.h>
-#include "defs.h"
+#include "libhos_audiochunks.h"
+#include "hos_defs.h"
 
 namespace HoS {
 
@@ -38,10 +39,10 @@ namespace HoS {
        \param tr release time constant
        \param fs sampling rate
     */
-    arflt(double ta, double tr, double fs) : z(0) 
+    arflt(double ta, double tr, double fs) : fs_(fs),z(0) 
     {
-      tau2c(ta,fs,c1a,c2a);
-      tau2c(tr,fs,c1r,c2r);
+      tau2c(ta,c1a,c2a);
+      tau2c(tr,c1r,c2r);
     };
     /**
        \brief Apply filter
@@ -55,17 +56,43 @@ namespace HoS {
         z = c1r * z + c2r * x;
       return z;
     };
-  private:
-    inline void tau2c( double tau, double fs, double &c1, double &c2)
+    void set_lowpass(double tau )
+    {
+      tau2c(tau,c1a,c2a);
+      tau2c(tau,c1r,c2r);
+    }
+    void set_attack_release(double tau_a,double tau_r )
+    {
+      tau2c(tau_a,c1a,c2a);
+      tau2c(tau_r,c1r,c2r);
+    }
+  protected:
+    inline void tau2c( double tau, double &c1, double &c2)
     {
       if( tau > 0.0)
-        c1 = exp( -1.0/(tau * fs) );
+        c1 = exp( -1.0/(tau * fs_) );
       else
         c1 = 0;
       c2 = 1.0-c1;
     };
+    double fs_;
     double z;
     double c1a, c1r, c2a, c2r;
+  };
+
+  class filter_array_t : public arflt {
+  public:
+    filter_array_t(uint32_t n,double fs) : arflt(1,1,fs),state(n) {};
+    inline float filter(uint32_t k, float x)
+    {
+      if( x >= state.b[k] )
+        state.b[k] = c1a * state.b[k] + c2a * x;
+      else
+        state.b[k] = c1r * state.b[k] + c2r * x;
+      return state.b[k];
+    };
+  private:
+    HoS::wave_t state;
   };
 
 

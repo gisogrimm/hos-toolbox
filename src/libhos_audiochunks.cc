@@ -277,6 +277,11 @@ void ola_t::ifft(wave_t& wOut)
     w4[k] = 0;
 }
 
+/**
+   \brief Constructor
+   
+   \param n Fragment size
+ */
 delay1_t::delay1_t(uint32_t n)
   : wave_t(n),
     state(0.0)

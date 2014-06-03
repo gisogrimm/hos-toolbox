@@ -113,6 +113,11 @@ namespace HoS {
     wave_t long_out;
   };
 
+  /**
+     \brief Unit delay
+
+     Delay a signal by one sample. The input is taken in the process() method, the result is stored in the class itself.
+   */
   class delay1_t : public wave_t {
   public:
     delay1_t(uint32_t n);
