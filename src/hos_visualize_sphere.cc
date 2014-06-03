@@ -64,9 +64,9 @@ int main(int argc, char** argv)
   addr = lo_address_new_from_url("osc.udp://localhost:9999/");
   lo_address_set_ttl( addr, 1 );
   pAddr.push_back("/pos/hille");
+  pAddr.push_back("/pos/julia");
   pAddr.push_back("/pos/marthe");
   pAddr.push_back("/pos/claas");
-  pAddr.push_back("/pos/julia");
   pAddr.push_back("/pos/giso");
   //pAddr.push_back("/pos/extra");
   visualize_t c(pAddr,lost);
