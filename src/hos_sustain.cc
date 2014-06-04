@@ -121,6 +121,7 @@ public:
   sustain_t(const std::string& server_addr,const std::string& server_port,const std::string& name,uint32_t wlen);
   virtual ~sustain_t();
   virtual int inner_process(jack_nframes_t, const std::vector<float*>&, const std::vector<float*>&);
+  virtual int process(jack_nframes_t, const std::vector<float*>&, const std::vector<float*>&);
   void activate();
   void deactivate();
 protected:
@@ -131,6 +132,27 @@ protected:
   double Lin;
   double Lout;
 };
+
+int sustain_t::process(jack_nframes_t n, const std::vector<float*>& vIn, const std::vector<float*>& vOut)
+{
+  jackc_db_t::process(n,vIn,vOut);
+  HoS::wave_t w_in(n,vIn[0]);
+  HoS::wave_t w_out(n,vOut[0]);
+  float env_c1(0);
+  if( tau_envelope > 0 )
+    env_c1 = exp( -1.0/(tau_envelope*(double)srate));
+  float env_c2(1.0f-env_c1);
+  // envelope reconstruction:
+  for(uint32_t k=0;k<w_in.size();k++){
+    Lin *= env_c1;
+    Lin += env_c2*w_in[k]*w_in[k];
+    Lout *= env_c1;
+    Lout += env_c2*w_out[k]*w_out[k];
+    if( Lout > 0 )
+      w_out[k] *= sqrt(Lin/Lout);
+  }
+  return 0;
+}
 
 
 int sustain_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, const std::vector<float*>& vOut)
