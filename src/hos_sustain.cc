@@ -38,93 +38,91 @@
 
 static bool b_quit;
 
-class doublebuffer_t {
-public:
-  doublebuffer_t(uint32_t fifolen,uint32_t inner_size);
-  ~doublebuffer_t();
-  virtual void inner_process(HoS::wave_t &) = 0;
-  void start_service();
-  void stop_service();
-private:
-  void service();
-  static void * service(void* h);
-  pthread_t srv_thread;
-  bool service_running;
-  bool run_service;
-  HoS::wave_t audio;
-protected:
-  TASCAR::ringbuffer_t in2out;
-  TASCAR::ringbuffer_t out2in;
-};
+//class doublebuffer_t {
+//public:
+//  doublebuffer_t(uint32_t fifolen,uint32_t inner_size);
+//  ~doublebuffer_t();
+//  virtual void inner_process(HoS::wave_t &) = 0;
+//  void start_service();
+//  void stop_service();
+//private:
+//  void service();
+//  static void * service(void* h);
+//  //pthread_t srv_thread;
+//  //bool service_running;
+//  //bool run_service;
+//  HoS::wave_t audio;
+//protected:
+//  TASCAR::ringbuffer_t in2out;
+//  TASCAR::ringbuffer_t out2in;
+//};
+//
+//doublebuffer_t::doublebuffer_t(uint32_t fifolen,uint32_t inner_size)
+//  : service_running(false),
+//    run_service(true),
+//    audio(inner_size),
+//    in2out(fifolen,1),
+//    out2in(fifolen,1)
+//{
+//  in2out.write_zeros( 2*audio.size() );
+//}
+//
+//
+//void doublebuffer_t::start_service()
+//{
+//  if( !service_running){
+//    run_service = true;
+//    int err = pthread_create( &srv_thread, NULL, &doublebuffer_t::service, this);
+//    if( err < 0 )
+//      throw TASCAR::ErrMsg("pthread_create failed");
+//    service_running = true;
+//  }
+//}
+//
+//void doublebuffer_t::stop_service()
+//{
+//  if( service_running){
+//    run_service = false;
+//    pthread_join( srv_thread, NULL );
+//    service_running = false;
+//  }
+//}
+//
+//void * doublebuffer_t::service(void* h)
+//{
+//  ((doublebuffer_t*)h)->service();
+//  return NULL;
+//}
+//
+//void doublebuffer_t::service()
+//{
+//  while( run_service ){
+//    usleep( 500 );
+//    if( out2in.read_space() >= audio.size() ){
+//      // enough data to process inner chunk:
+//      out2in.read(audio.b,audio.size());
+//      inner_process(audio);
+//      if( in2out.write_space() < audio.size() ){
+//        DEBUG(in2out.write_space());
+//        DEBUG(audio.size());
+//      }
+//      in2out.write(audio.b,audio.size());
+//    }
+//  }
+//}
+//
+//doublebuffer_t::~doublebuffer_t()
+//{
+//  stop_service();
+//}
 
-doublebuffer_t::doublebuffer_t(uint32_t fifolen,uint32_t inner_size)
-  : service_running(false),
-    run_service(true),
-    audio(inner_size),
-    in2out(fifolen,1),
-    out2in(fifolen,1)
-{
-  in2out.write_zeros( 2*audio.size() );
-}
-
-
-void doublebuffer_t::start_service()
-{
-  if( !service_running){
-    run_service = true;
-    int err = pthread_create( &srv_thread, NULL, &doublebuffer_t::service, this);
-    if( err < 0 )
-      throw TASCAR::ErrMsg("pthread_create failed");
-    service_running = true;
-  }
-}
-
-void doublebuffer_t::stop_service()
-{
-  if( service_running){
-    run_service = false;
-    pthread_join( srv_thread, NULL );
-    service_running = false;
-  }
-}
-
-void * doublebuffer_t::service(void* h)
-{
-  ((doublebuffer_t*)h)->service();
-  return NULL;
-}
-
-void doublebuffer_t::service()
-{
-  while( run_service ){
-    usleep( 500 );
-    if( out2in.read_space() >= audio.size() ){
-      // enough data to process inner chunk:
-      out2in.read(audio.b,audio.size());
-      inner_process(audio);
-      if( in2out.write_space() < audio.size() ){
-        DEBUG(in2out.write_space());
-        DEBUG(audio.size());
-      }
-      in2out.write(audio.b,audio.size());
-    }
-  }
-}
-
-doublebuffer_t::~doublebuffer_t()
-{
-  stop_service();
-}
-
-class sustain_t : public TASCAR::osc_server_t, public jackc_t, public doublebuffer_t
-{
+class sustain_t : public TASCAR::osc_server_t, public jackc_db_t {
 public:
   sustain_t(const std::string& server_addr,const std::string& server_port,const std::string& name,uint32_t wlen);
   virtual ~sustain_t();
-  virtual int process(jack_nframes_t, const std::vector<float*>&, const std::vector<float*>&);
+  virtual int inner_process(jack_nframes_t, const std::vector<float*>&, const std::vector<float*>&);
   void activate();
   void deactivate();
-  virtual void inner_process(HoS::wave_t &);
 protected:
   HoS::ola_t ola;
   HoS::wave_t absspec;
@@ -135,42 +133,14 @@ protected:
 };
 
 
-int sustain_t::process(jack_nframes_t n, const std::vector<float*>& vIn, const std::vector<float*>& vOut)
+int sustain_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, const std::vector<float*>& vOut)
 {
-  HoS::wave_t in(n,vIn[0]);
-  HoS::wave_t out(n,vOut[0]);
-  uint32_t wspace(out2in.write(in.b,in.size()));
-  if( wspace < in.size() ){
-    DEBUG(wspace);
-    DEBUG(in.size());
-  }
-  uint32_t rspace(in2out.read(out.b,out.size()));
-  if( rspace < out.size() ){
-    DEBUG(rspace);
-    DEBUG(out.size());
-  }
-  float env_c1(0);
-  if( tau_envelope > 0 )
-    env_c1 = exp( -1.0/(tau_envelope*(double)srate));
-  float env_c2(1.0f-env_c1);
-  // envelope reconstruction:
-  for(uint32_t k=0;k<in.size();k++){
-    Lin *= env_c1;
-    Lin += env_c2*in[k]*in[k];
-    Lout *= env_c1;
-    Lout += env_c2*out[k]*out[k];
-    if( Lout > 0 )
-      out[k] *= sqrt(Lin/Lout);
-  }
-  return 0;
-}
-
-void sustain_t::inner_process(HoS::wave_t & audio)
-{
-  ola.process(audio);
+  HoS::wave_t w_in(n,vIn[0]);
+  HoS::wave_t w_out(n,vOut[0]);
+  ola.process(w_in);
   float sus_c1(0);
   if( tau_sustain > 0 )
-    sus_c1 = exp( -1.0/(tau_sustain*(double)srate/(double)(audio.size())));
+    sus_c1 = exp( -1.0/(tau_sustain*(double)srate/(double)(w_in.size())));
   float sus_c2(1.0f-sus_c1);
   ola.s *= sus_c2;
   absspec *= sus_c1;
@@ -178,13 +148,14 @@ void sustain_t::inner_process(HoS::wave_t & audio)
     absspec[k] += cabsf(ola.s[k]);
     ola.s[k] = absspec[k]*cexpf(I*drand()*PI2);
   }
-  ola.ifft(audio);
+  ola.ifft(w_out);
+  return 0;
 }
 
 sustain_t::sustain_t(const std::string& server_addr,const std::string& server_port,const std::string& name,uint32_t wlen)
   : osc_server_t(server_addr,server_port),
-    jackc_t(name),
-    doublebuffer_t(4*wlen,wlen),
+    jackc_db_t(name,wlen),
+    //doublebuffer_t(4*wlen,wlen),
     ola(2*wlen,2*wlen,wlen,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_RECT,HoS::stft_t::WND_SQRTHANN),
     absspec(ola.s.size()),
     tau_sustain(20),
@@ -201,24 +172,23 @@ sustain_t::sustain_t(const std::string& server_addr,const std::string& server_po
 
 void sustain_t::activate()
 {
-  jackc_t::activate();
+  jackc_db_t::activate();
   osc_server_t::activate();
-  doublebuffer_t::start_service();
-  try{
-    connect_in(0,"Rhythmbox:out_autoaudiosink0-actual-sink-jackaudio_1");
-    connect_out(0,"system:playback_1");
-  }
-  catch( const std::exception& e ){
-    std::cerr << "Warning: " << e.what() << std::endl;
-  };
+  //try{
+  //  connect_in(0,"Rhythmbox:out_autoaudiosink0-actual-sink-jackaudio_1");
+  //  connect_out(0,"system:playback_1");
+  //}
+  //catch( const std::exception& e ){
+  //  std::cerr << "Warning: " << e.what() << std::endl;
+  //};
 }
 
 
 void sustain_t::deactivate()
 {
-  doublebuffer_t::stop_service();
+  //doublebuffer_t::stop_service();
   osc_server_t::deactivate();
-  jackc_t::deactivate();
+  jackc_db_t::deactivate();
 }
 
 sustain_t::~sustain_t()
@@ -238,7 +208,7 @@ static void sighandler(int sig)
 
 void usage(struct option * opt)
 {
-  std::cout << "Usage:\n\nhos_osc2jack [options] path [ path .... ]\n\nOptions:\n\n";
+  std::cout << "Usage:\n\nhos_sustain [options] path [ path .... ]\n\nOptions:\n\n";
   while( opt->name ){
     std::cout << "  -" << (char)(opt->val) << " " << (opt->has_arg?"#":"") <<
       "\n  --" << opt->name << (opt->has_arg?"=#":"") << "\n\n";
