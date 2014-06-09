@@ -7,6 +7,7 @@
 #include "errorhandling.h"
 #include "osc_helper.h"
 #include <stdio.h>
+#include "jackclient.h"
 
 #define NUM_VOICES 5
 
@@ -29,7 +30,7 @@ voice_t::voice_t()
   note.time = 0;
 }
 
-class composer_t : public TASCAR::osc_server_t {
+class composer_t : public TASCAR::osc_server_t, public jackc_db_t {
 public:
   composer_t(const std::string& srv_addr,const std::string& srv_port,const std::string& url,const std::string& fname);
   bool process_timesig();
@@ -39,6 +40,7 @@ public:
   void read_xml(const std::string& fname);
   static int osc_set_pitch(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   void set_pitch(double c,double w);
+  int inner_process(jack_nframes_t n,const std::vector<float*>& inBuff,const std::vector<float*>& outBuff);
 private:
   std::vector<voice_t> voice;
   harmony_model_t harmony;
@@ -69,7 +71,9 @@ int32_t composer_t::get_mode() const
 }
 
 composer_t::composer_t(const std::string& srv_addr,const std::string& srv_port,const std::string& url,const std::string& fname)
-  : osc_server_t(srv_addr,srv_port), timesig(0,2,0,0), time(0), lo_addr(lo_address_new_from_url(url.c_str())),timesigcnt(0),
+  : osc_server_t(srv_addr,srv_port), 
+    jackc_db_t("composer",512),
+    timesig(0,2,0,0), time(0), lo_addr(lo_address_new_from_url(url.c_str())),timesigcnt(0),
     pcenter(NUM_VOICES,0.0),pbandw(NUM_VOICES,48.0),pmodf(NUM_VOICES,1.0),pitchchaos(0.0),beatchaos(0.0),
     timeincrement(1.0/256.0)
 {
@@ -91,7 +95,7 @@ composer_t::composer_t(const std::string& srv_addr,const std::string& srv_port,c
   add_float("/timeincrement",&timeincrement);
   add_double("/abstime",&time);
   add_bool_true("/composer/quit",&b_quit);
-  activate();
+  osc_server_t::activate();
 }
 
 void composer_t::read_xml(const std::string& fname)
@@ -199,6 +203,11 @@ void composer_t::process_time()
   }
 }
 
+int composer_t::inner_process(jack_nframes_t n,const std::vector<float*>& inBuff,const std::vector<float*>& outBuff)
+{
+process_time();
+}
+
 int main(int argc, char** argv)
 {
   if( argc < 2 )
@@ -208,12 +217,13 @@ int main(int argc, char** argv)
   std::string serveraddr("239.255.1.7");
   std::string desturl("osc.udp://239.255.1.7:9877/");
   composer_t c(serveraddr,serverport,desturl,argv[1]);
+  c.jackc_db_t::activate();
   while(!b_quit){
     //usleep(15625);
     //usleep(10625);
-    usleep(9625);
-    c.process_time();
+    usleep(99625);
   }
+  c.jackc_db_t::deactivate();
   return 0;
 }
 
