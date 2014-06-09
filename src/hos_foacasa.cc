@@ -648,6 +648,7 @@ namespace HoSGUI {
     std::vector<std::string> names;
     std::vector<std::string> paths_modf;
     std::vector<std::string> paths_modbw;
+    uint32_t send_cnt;
   };
 
 }
@@ -708,7 +709,11 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
       //ola_obj[kobj]->s[k] = cohXY[k]*cW*bayes_prob[kobj];
       //ola_obj[kobj]->s[k] = cW*bayes_prob[kobj];
   }
-  obj.send_osc(lo_addr);
+  if( send_cnt == 0 ){
+    obj.send_osc(lo_addr);
+    send_cnt = 10;
+  }else
+    send_cnt--;
   for(uint32_t kobj=0;kobj<obj.size();kobj++){
     HoS::wave_t outW(n,vOut[kobj]);
     objmodel_t::param_t par(obj.param(kobj));
@@ -724,8 +729,8 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
     }
     env = sqrt(env);
     modflt[kobj].update(env);
-    lo_send(lo_addr,paths_modf[kobj].c_str(),"f",modflt[kobj].get_modoct());
-    lo_send(lo_addr,paths_modbw[kobj].c_str(),"f",modflt[kobj].get_modbw());
+    //lo_send(lo_addr,paths_modf[kobj].c_str(),"f",modflt[kobj].get_modoct());
+    //lo_send(lo_addr,paths_modbw[kobj].c_str(),"f",modflt[kobj].get_modbw());
     //std::cout << " " << modflt[kobj].get_modoct();
     //ola_obj[kobj]->s[k] = ola_w.s[k];
     ola_obj[kobj]->s[0] = creal(ola_obj[kobj]->s[0]);
@@ -775,7 +780,8 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
     obj(channels,bands,objnames.size(),bpo,fmin,objnames),
     vmin(0),vmax(1),
     lo_addr(lo_address_new_from_url(url.c_str())),
-    names(objnames)
+    names(objnames),
+    send_cnt(2)
 {
   lo_address_set_ttl( lo_addr, 1 );
   image = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB,false,8,channels,bands);
