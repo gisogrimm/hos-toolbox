@@ -98,14 +98,14 @@ double time_signature_t::beat(double time) const
 {
   if( numerator == 0 )
     return 1.0*(time-starttime)*denominator;
-  return frac(bar(time))*numerator;
+  return frac(bar(time),numerator*8192)*numerator;
 }
 
 double time_signature_t::bar(double time) const
 {
   if( numerator == 0 )
     return 0;
-  return 1.0*(time-starttime)*(double)denominator/(double)numerator + (double)addbar;
+  return ((time-starttime)*(double)denominator)/(double)numerator + (double)addbar;
 }
 
 
@@ -239,9 +239,13 @@ std::string keysig_t::name() const
     return minor_name[std::max(0,std::min(fifths+7,14))];
 }
 
-double frac(double x)
+double frac(double x,double eps)
 {
-  return x-floor(x);
+  x = x-floor(x);
+  x = round(x*eps)/eps;
+  if( x == 1 )
+    x = 0;
+  return x;
 }
 
 

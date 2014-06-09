@@ -201,7 +201,7 @@
     <beat v="1" p="10"/>
     <beat v="4" p="10"/>
   </voice>
-  <voice id="1" name="hille" lowest="2" highest="22" central="12" dev="12" offbeatscale="0.5" onbeatscale="0">
+  <voice id="1" name="julia" lowest="2" highest="22" central="12" dev="12" offbeatscale="0.5" onbeatscale="0">
     <step v="-1" p="12"/>
     <step v="-2" p="8"/>
     <step v="-3" p="6"/>
@@ -246,7 +246,7 @@
     <beat v="0" p="10"/>
     <beat v="2.5" p="10"/>
   </voice>
-  <voice id="0" name="julia" lowest="2" highest="22" central="12" dev="6" offbeatscale="0.75" onbeatscale="0">
+  <voice id="0" name="hille" lowest="2" highest="22" central="12" dev="6" offbeatscale="0.75" onbeatscale="0">
     <step v="-1" p="32"/>
     <step v="-2" p="8"/>
     <step v="-3" p="1"/>

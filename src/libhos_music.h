@@ -12,7 +12,7 @@ int32_t closest_key(int32_t pitch, int32_t key);
 std::string notename(int32_t pitch);
 uint32_t closest_length(double len);
 double duration(uint32_t len);
-double frac(double x);
+double frac(double x,double eps=8192.0);
 
 #define PITCH_REST 1000
 #define MAXLEN 12

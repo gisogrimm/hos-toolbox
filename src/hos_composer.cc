@@ -10,6 +10,8 @@
 
 #define NUM_VOICES 5
 
+static bool  b_quit(false);
+
 class simple_timesig_t {
 public:
   uint32_t num;
@@ -53,6 +55,7 @@ private:
   std::vector<float> pmodf;
   float pitchchaos;
   float beatchaos;
+  float timeincrement;
 };
 
 int32_t composer_t::get_key() const
@@ -67,7 +70,8 @@ int32_t composer_t::get_mode() const
 
 composer_t::composer_t(const std::string& srv_addr,const std::string& srv_port,const std::string& url,const std::string& fname)
   : osc_server_t(srv_addr,srv_port), timesig(0,2,0,0), time(0), lo_addr(lo_address_new_from_url(url.c_str())),timesigcnt(0),
-    pcenter(NUM_VOICES,0.0),pbandw(NUM_VOICES,48.0),pmodf(NUM_VOICES,1.0),pitchchaos(0.0),beatchaos(0.0)
+    pcenter(NUM_VOICES,0.0),pbandw(NUM_VOICES,48.0),pmodf(NUM_VOICES,1.0),pitchchaos(0.0),beatchaos(0.0),
+    timeincrement(1.0/256.0)
 {
   lo_address_set_ttl( lo_addr, 1 );
   voice.resize(NUM_VOICES);
@@ -84,6 +88,9 @@ composer_t::composer_t(const std::string& srv_addr,const std::string& srv_port,c
   }
   add_float("/pitchchaos",&pitchchaos);
   add_float("/beatchaos",&beatchaos);
+  add_float("/timeincrement",&timeincrement);
+  add_double("/abstime",&time);
+  add_bool_true("/composer/quit",&b_quit);
   activate();
 }
 
@@ -143,6 +150,8 @@ bool composer_t::process_timesig()
       DEBUG(e.what());
     }
     timesig.starttime = time;
+    //DEBUG(time);
+    //DEBUG(frac(time));
     try{
       timesigcnt = ptimesigbars.rand();
     }
@@ -157,19 +166,33 @@ bool composer_t::process_timesig()
 void composer_t::process_time()
 {
   //time += 1.0/128.0;
-  time += 1.0/256.0;
+  //time += 1.0/256.0;
+  time += timeincrement;
+  time = round(256*time)/256;
+  //DEBUG(frac(time));
+  //DEBUG(time);
+  //DEBUG(timesig.bar(time));
   lo_send(lo_addr,"/time","f",time);
-  if( harmony.process(timesig.beat(time)) )
-    lo_send(lo_addr,"/key","fii",time,get_key(),get_mode());
-  if( (timesig.beat(time) == 0) || ((timesig.numerator==0)&&(frac(timesig.beat(time))==0)) ){
+  double beat(timesig.beat(time));
+  double beat_frac(frac(beat));
+  if( (beat == 0) || ((timesig.numerator==0)&&(beat_frac==0)) ){
     // new bar, optionally update time signature:
     if( process_timesig() ){
       lo_send(lo_addr,"/timesig","fii",time,timesig.numerator,timesig.denominator);
     }
   }
+  beat = timesig.beat(time);
+  beat_frac = frac(beat);
+  //DEBUG(beat);
+  if( beat_frac == 0 ){
+    //DEBUG(beat);
+    lo_send(lo_addr,"/beat","f",beat);
+  }
+  if( harmony.process(beat) )
+    lo_send(lo_addr,"/key","fii",time,get_key(),get_mode());
   for(unsigned int k=0;k<voice.size();k++){
     if( voice[k].note.end_time() <= time ){
-      voice[k].note = voice[k].process(timesig.beat(time),harmony,timesig,pcenter[k],pbandw[k],1.0-pow(pitchchaos,2.0),1.0-pow(beatchaos,1.0),pmodf[k]);
+      voice[k].note = voice[k].process(beat,harmony,timesig,pcenter[k],pbandw[k],1.0-pow(pitchchaos,2.0),1.0-pow(beatchaos,1.0),pmodf[k]);
       voice[k].note.time = time;
       lo_send(lo_addr,"/note","iiif",k,voice[k].note.pitch,voice[k].note.length,voice[k].note.time);
     }
@@ -185,7 +208,7 @@ int main(int argc, char** argv)
   std::string serveraddr("239.255.1.7");
   std::string desturl("osc.udp://239.255.1.7:9877/");
   composer_t c(serveraddr,serverport,desturl,argv[1]);
-  while(true){
+  while(!b_quit){
     //usleep(15625);
     //usleep(10625);
     usleep(9625);

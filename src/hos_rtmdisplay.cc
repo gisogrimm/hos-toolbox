@@ -521,7 +521,7 @@ void score_t::set_time_signature(uint32_t numerator,uint32_t denominator,double 
 
 score_t::score_t()
   //: TASCAR::osc_server_t("239.255.1.7","9877"),timescale(20),history(6),time(0),x_left(-105),prev_tpos(0),xshift(0)
-  : TASCAR::osc_server_t("239.255.1.7","9877"),timescale(20),history(3),time(0),x_left(-105),prev_tpos(0),xshift(0)
+  : TASCAR::osc_server_t("239.255.1.7","9877"),timescale(20),history(6),time(0),x_left(-105),prev_tpos(0),xshift(0)
 {
   pthread_mutex_init( &mutex, NULL );
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &score_t::on_timeout), 20 );
@@ -568,6 +568,19 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
   for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff)
     staff->clear_music(t0);
   // process graphical timing positions:
+  // playhead marker:
+  cr->save();
+  double x_marker(get_xpos(time-5.1));
+  for(uint32_t k=1;k<5;k++){
+    double w(3.0);
+    w = w/(w+k);
+    cr->set_source_rgb( 1,w,w );
+    cr->set_line_width(18*w);
+    cr->move_to(x_left+x_marker,-(staves.begin()->y_0+18));
+    cr->line_to(x_left+x_marker,-(staves.rbegin()->y_0-18));
+    cr->stroke();
+  }
+  cr->restore();
   // draw empty staff:
   for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff)
     staff->draw_empty(cr);
