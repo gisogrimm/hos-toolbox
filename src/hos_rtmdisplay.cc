@@ -524,7 +524,7 @@ score_t::score_t()
   : TASCAR::osc_server_t("239.255.1.7","9877"),timescale(20),history(6),time(0),x_left(-105),prev_tpos(0),xshift(0)
 {
   pthread_mutex_init( &mutex, NULL );
-  Glib::signal_timeout().connect( sigc::mem_fun(*this, &score_t::on_timeout), 20 );
+  Glib::signal_timeout().connect( sigc::mem_fun(*this, &score_t::on_timeout), 40 );
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
   //Connect the signal handler if it isn't already a virtual method override:  signal_expose_event().connect(sigc::mem_fun(*this, &score_t::on_expose_event), false);
 #endif //GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
@@ -592,7 +592,7 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
   if( (tpos != prev_tpos) && (prev_tpos != 0) ){
     xshift = xpositions[tpos];
   }
-  xshift -= 0.03*xshift;
+  xshift -= 0.05*xshift;
   // main music draw section:
   double xpos(0);
   for(std::map<double,double>::iterator xp=xpositions.begin();xp!=xpositions.end();++xp){
