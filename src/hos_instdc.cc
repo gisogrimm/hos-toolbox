@@ -28,6 +28,10 @@ int dc_t::process(jack_nframes_t n,const std::vector<float*>& inBuf,const std::v
   for(uint32_t ch=0;ch<inBuf.size();ch++){
     for(uint32_t k=0;k<n;k++){
       float v(inBuf[ch][k]);
+      if( v > 1.0f )
+        v = 1.0f;
+      if( v > -1.0f )
+        v = -1.0f;
       outBuf[ch][k] = v*c_/(c_+v*v);
     }
   }
