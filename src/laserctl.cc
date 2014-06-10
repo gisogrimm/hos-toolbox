@@ -30,8 +30,8 @@ private:
 class tasten_t : public SerialPort, public TASCAR::osc_server_t {
 public:
   tasten_t(const std::string& dev,
-                   const std::string& server_address,
-                   const std::string& server_port);
+           const std::string& server_address,
+           const std::string& server_port);
   ~tasten_t() throw();
   void run();
   //void process(const std::string& cmd);
