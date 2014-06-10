@@ -12,8 +12,8 @@ static bool b_quit;
 class dc_t : public jackc_t, public TASCAR::osc_server_t {
 public:
   dc_t(const std::string& jackname,
-           const std::string& server_address,
-           const std::string& server_port,const std::vector<std::string>& names,float c);
+       const std::string& server_address,
+       const std::string& server_port,const std::vector<std::string>& names,float c,float fc);
   int process(jack_nframes_t n,const std::vector<float*>& inBuf,const std::vector<float*>& outBuf);
 private:
   float c_;
@@ -26,8 +26,8 @@ private:
 
 dc_t::dc_t(const std::string& jackname,
            const std::string& server_address,
-           const std::string& server_port,const std::vector<std::string>& names,float c)
-  : jackc_t(jackname), osc_server_t(server_address,server_port), c_(c), fcut(1400.0), statex(names.size()), statey(names.size())
+           const std::string& server_port,const std::vector<std::string>& names,float c,float fc)
+  : jackc_t(jackname), osc_server_t(server_address,server_port), c_(c), fcut(fc), statex(names.size()), statey(names.size())
 {
   for(uint32_t k=0;k<names.size();k++){
     add_input_port("in."+names[k]);
@@ -85,10 +85,12 @@ int main(int argc, char** argv)
   std::string serveraddr("");
   std::string jackname("instdc");
   float c(0.5);
+  float fcut(1200);
   std::vector<std::string> objnames;
-  const char *options = "hn:c:m:p:";
+  const char *options = "hn:c:m:p:f:";
   struct option long_options[] = { 
     { "help",       0, 0, 'h' },
+    { "fcut",       1, 0, 'f' },
     { "scale",      1, 0, 'c' },
     { "multicast",  1, 0, 'm' },
     { "port",       1, 0, 'p' },
@@ -102,6 +104,9 @@ int main(int argc, char** argv)
     switch(opt){
     case 'c':
       c = atof(optarg);
+      break;
+    case 'f':
+      fcut = atof(optarg);
       break;
     case 'h':
       usage(long_options);
@@ -122,7 +127,7 @@ int main(int argc, char** argv)
   if( objnames.empty() ){
     objnames.push_back("0");
   }
-  dc_t dc(jackname,serveraddr,serverport,objnames,c);
+  dc_t dc(jackname,serveraddr,serverport,objnames,c,fcut);
   dc.jackc_t::activate();
   dc.osc_server_t::activate();
   while( !b_quit )
