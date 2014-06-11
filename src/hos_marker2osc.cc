@@ -31,6 +31,8 @@
 #include <stdlib.h>
 #include <lo/lo.h>
 #include <getopt.h>
+#include <unistd.h>
+
 
 static bool b_quit;
 

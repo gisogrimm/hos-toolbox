@@ -8,6 +8,8 @@
 #include <signal.h>
 #include <string.h>
 #include "hos_defs.h"
+#include <unistd.h>
+
 
 static bool b_quit;
 

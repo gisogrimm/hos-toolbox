@@ -8,6 +8,8 @@
 #include "hos_defs.h"
 #include <math.h>
 #include <getopt.h>
+#include <unistd.h>
+
 
 using namespace HoS;
 

@@ -10,6 +10,8 @@
 #include <fstream>
 #include "hos_defs.h"
 #include <math.h>
+#include <unistd.h>
+
 
 static bool b_quit;
 

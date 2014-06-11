@@ -6,6 +6,7 @@
 #include <math.h>
 #include "libhos_audiochunks.h"
 #include "osc_helper.h"
+#include <unistd.h>
 
 static bool b_quit;
 

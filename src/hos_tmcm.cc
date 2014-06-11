@@ -9,6 +9,8 @@
 #include "errorhandling.h"
 #include "hos_defs.h"
 #include "osc_helper.h"
+#include <unistd.h>
+
 
 class hos_spokes_t : public tmcm6110_t, public TASCAR::osc_server_t {
 public:

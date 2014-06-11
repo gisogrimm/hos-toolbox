@@ -30,6 +30,7 @@
 #include <string.h>
 #include "jackclient.h"
 #include "osc_helper.h"
+#include <unistd.h>
 
 #define MAXDELAY 480000
 #define OSC_ADDR "239.255.1.7"

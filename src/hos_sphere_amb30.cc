@@ -31,7 +31,7 @@
 #include "filter.h"
 #include "ambpan.h"
 #include "libhos_sphereparam.h"
-
+#include <unistd.h>
 using namespace HoS;
 
 namespace HoS {

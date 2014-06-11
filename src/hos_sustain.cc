@@ -35,6 +35,7 @@
 #include "errorhandling.h"
 #include <getopt.h>
 #include <signal.h>
+#include <unistd.h>
 
 static bool b_quit;
 

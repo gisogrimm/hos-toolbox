@@ -32,6 +32,7 @@
 #include "osc_helper.h"
 #include "filter.h"
 #include <signal.h>
+#include <unistd.h>
 
 static bool b_quit(false);
 

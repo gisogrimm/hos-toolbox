@@ -5,6 +5,8 @@
 #include <complex.h>
 #include <math.h>
 #include "hos_defs.h"
+#include <unistd.h>
+
 
 #define PI2 6.283185307179586232
 #define PI2INV 0.15915494309189534561
