@@ -27,6 +27,7 @@
 /**
  */
 #include "hosgui_sphere.h"
+#include "hos_defs.h"
 #include <math.h>
 
 using namespace HoSGUI;
@@ -163,10 +164,10 @@ void pos_tail_t::draw(const Cairo::RefPtr<Cairo::Context>& cr)
 }
 
 visualize_t::visualize_t(const std::vector<std::string>& paddr, lo_server_thread & l)
-  : lost(l)
+  : lost(l),names(paddr),rotate(0)
 {
   for(unsigned int k=0;k<paddr.size();k++){
-    vTail.push_back(new pos_tail_t(paddr[k],lost,k));
+    vTail.push_back(new pos_tail_t("/pos/"+paddr[k],lost,k));
   }
   
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &visualize_t::on_timeout), 100 );
@@ -188,6 +189,7 @@ visualize_t::~visualize_t()
 
 void visualize_t::set_rotate(double r)
 {
+  rotate = r;
   for(unsigned int k=0;k<vTail.size();k++)
     vTail[k]->set_rotate(r);
 }
@@ -225,8 +227,20 @@ bool visualize_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
   cr->move_to( 0, -0.3 );
   cr->line_to( 0,  0.3 );
   cr->stroke();
-  for(unsigned int k=0;k<vTail.size();k++)
+    cr->save();
+  cr->set_line_width(0.1);
+  cr->set_font_size(0.5);
+  for(unsigned int k=0;k<vTail.size();k++){
+    set_hoscolor( k, cr, 1 );
+    cr->move_to(0,0);
+    pos_t p( 6, PI2*((double)k+0.75)/vTail.size()-rotate);
+    cr->line_to(p.get_x(),p.get_y());
+    cr->stroke();
+    cr->move_to(p.get_x(),p.get_y());
+    cr->show_text(names[k]);
     vTail[k]->draw(cr);
+  }
+    cr->restore();
   return true;
 }
 

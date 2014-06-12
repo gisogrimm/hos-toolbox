@@ -9,6 +9,8 @@ hos_osc_marais hos_osc_house hos_rtmdisplay hos_composer hos_rtm2midi	\
 test_duration hos_foacasa hos_mm hos_markerbroadcast hos_marker2osc	\
 laserctl hos_sustain hos_if_filter hos_instdc
 
+#BINFILES = hos_visualize_sphere
+
 # debug_midi
 
 #test_jack_db

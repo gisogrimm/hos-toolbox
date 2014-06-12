@@ -205,7 +205,8 @@ void composer_t::process_time()
 
 int composer_t::inner_process(jack_nframes_t n,const std::vector<float*>& inBuff,const std::vector<float*>& outBuff)
 {
-process_time();
+  process_time();
+  return 0;
 }
 
 int main(int argc, char** argv)

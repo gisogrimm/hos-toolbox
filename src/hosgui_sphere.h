@@ -76,6 +76,8 @@ namespace HoSGUI {
     bool on_timeout();
     std::vector<pos_tail_t*> vTail;
     lo_server_thread & lost;
+    std::vector<std::string> names;
+    double rotate;
   };
 
 }
