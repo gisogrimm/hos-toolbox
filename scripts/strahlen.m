@@ -1,4 +1,9 @@
 function strahlen( N )
+% STRAHLEN - create star for fast Ambisonics setups
+%
+% strahlen( N )
+%
+% N : number of speaker (optional, default: 24)
   if nargin < 1
     N = 24;
   end
