@@ -259,7 +259,7 @@ public:
     float g;
   };
   void send_osc(const lo_address& lo_addr);
-  objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float fmin,const std::vector<std::string>& names);
+  objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float fmin,const std::vector<std::string>& names,bool nosortobjects_);
   float objval(float x,float y,param_t lp);
   float objval(float x,float y,const std::vector<float>&);
   float objval(float x,float y);
@@ -286,10 +286,15 @@ private:
   float bpo_;
   float fmin_;
   std::vector<param_t> vpar;
+  bool nosortobjects;
 };
 
-bool param_less(objmodel_t::param_t i,objmodel_t::param_t j){
+bool param_less_y(objmodel_t::param_t i,objmodel_t::param_t j){
   return (i.cy>j.cy+1); 
+}
+
+bool param_less_x(objmodel_t::param_t i,objmodel_t::param_t j){
+  return (i.cx>j.cx); 
 }
 
 void objmodel_t::send_osc(const lo_address& lo_addr)
@@ -330,8 +335,8 @@ void objmodel_t::param_t::setp(uint32_t num,std::vector<float>& vp)
   vp[5*num+4] = g;
 }
 
-objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float fmin,const std::vector<std::string>& names)
-  : xyfield_t(sx,sy),error(0),nobj(numobj),xscale(PI2/(float)sx),bpo_(bpo),fmin_(fmin)
+objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float fmin,const std::vector<std::string>& names,bool nosortobjects_)
+  : xyfield_t(sx,sy),error(0),nobj(numobj),xscale(PI2/(float)sx),bpo_(bpo),fmin_(fmin),nosortobjects(nosortobjects_)
 {
   calls = 0;
   obj_param.resize(5*nobj);
@@ -410,20 +415,7 @@ float objmodel_t::errfun(const std::vector<float>& p)
 
 void objmodel_t::iterate()
 {
-  //DEBUG(calls);
   calls = 0;
-  //// constraints:
-  //for(uint32_t k=0;k<nobj;k++){
-  //  param_t par(k,obj_param);
-  //  if( par.g <= 2 ){
-  //    DEBUG(k);
-  //    DEBUG(par.g);
-  //    par.cx = sizex()*drand();
-  //    par.cy = sizey()*drand();
-  //    //par.g = 20;
-  //    par.setp(k,obj_param);
-  //  }
-  //}
   error = downhill_iterate(0.0002,obj_param,&objmodel_t::errfun,this,unitstep);
   // constraints:
   for(uint32_t k=0;k<nobj;k++){
@@ -436,45 +428,41 @@ void objmodel_t::iterate()
       par.cy = 0.0f;
     if( par.cy > sizey()-1 )
       par.cy = sizey()-1.0f;
-    if( par.wx < 0.5 )
-      par.wx = 0.5;
-    if( par.wx > 4 )
-      par.wx = 4;
-    if( par.wy < 1 )
-      par.wy = 1;
-    if( par.wy > 5 )
-      par.wy = 5;
+    if( par.wx < 3 )
+      par.wx = 3;
+    if( par.wx > 8 )
+      par.wx = 8;
+    if( par.wy < 4 )
+      par.wy = 4;
+    if( par.wy > 32 )
+      par.wy = 32;
     if( par.g < 20 )
       par.g = 20;
+    //par.wx = 2;
+    //par.wy = 32;
     vpar[k] = par;
   }
+  // average gains to describe similar sources:
+  if( true ){
+    double avg_g(vpar[0].g);
+    for(uint32_t k=1;k<nobj;k++){
+      avg_g += vpar[k].g;
+    }
+    avg_g /= nobj;
+    for(uint32_t k=0;k<nobj;k++){
+      vpar[k].g = avg_g;
+    }
+  }
   // sort:
-  std::sort(vpar.begin(),vpar.end(),param_less);
+  if( !nosortobjects ){
+    std::sort(vpar.begin(),vpar.end(),param_less_y);
+  }else{
+    std::sort(vpar.begin(),vpar.end(),param_less_x);
+  }
   for(uint32_t k=0;k<nobj;k++)
     vpar[k].setp(k,obj_param);
-  //DEBUG(calls);
-  //for(uint32_t kb=0;kb<sizey();kb++){
-  //  for(uint32_t kc=0;kc<sizex();kc++){
-  //    float psum(0.0f);
-  //    for(uint32_t ko=0;ko<nobj;ko++){
-  //      psum += (bayes_table[ko].val(kc,kb) = std::max(1e-3f,objval(kc,kb,param(ko))));
-  //    }
-  //    psum = 1.0f/psum;
-  //    for(uint32_t ko=0;ko<nobj;ko++){
-  //      bayes_table[ko].val(kc,kb) *= psum;
-  //    }
-  //  }
-  //}
 }
 
-//void objmodel_t::bayes_prob(uint32_t kx,uint32_t ky,std::vector<float>& p)
-//{
-//  if( p.size() != nobj )
-//    throw TASCAR::ErrMsg("Invalid bayes probability return vector size.");
-//  for(uint32_t ko=0;ko<nobj;ko++)
-//    p[ko] = bayes_table[ko].val(kx,ky);
-//}
-  
 class az_hist_t : public HoS::wave_t
 {
 public:
@@ -598,7 +586,7 @@ namespace HoSGUI {
   class foacoh_t : public freqinfo_t, public Gtk::DrawingArea, public TASCAR::osc_server_t, public jackc_db_t
   {
   public:
-    foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,const std::vector<std::string>& objnames,uint32_t periodsize,const std::string& url);
+    foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,const std::vector<std::string>& objnames,uint32_t periodsize,const std::string& url,bool nosortobjects);
     virtual ~foacoh_t();
     virtual int inner_process(jack_nframes_t, const std::vector<float*>&, const std::vector<float*>&);
     void activate();
@@ -756,7 +744,7 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
   return 0;
 }
 
-foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,const std::vector<std::string>& objnames,uint32_t periodsize_,const std::string& url)
+foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,const std::vector<std::string>& objnames,uint32_t periodsize_,const std::string& url,bool nosortobjects)
   : freqinfo_t(bpo,fmin,fmax),
     osc_server_t(OSC_ADDR,OSC_PORT),
     jackc_db_t("foacoh",periodsize_),
@@ -777,7 +765,7 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
     draw_image(true),
     col(0),
     azchannels(channels),
-    obj(channels,bands,objnames.size(),bpo,fmin,objnames),
+  obj(channels,bands,objnames.size(),bpo,fmin,objnames,nosortobjects),
     vmin(0),vmax(1),
     lo_addr(lo_address_new_from_url(url.c_str())),
     names(objnames),
@@ -1042,8 +1030,9 @@ int main(int argc, char** argv)
   float fmin(125);
   float fmax(4000);
   uint32_t periodsize(1024);
+  bool nosortobjects(false);
   std::vector<std::string> objnames;
-  const char *options = "hj:c:b:l:u:p:d:";
+  const char *options = "hj:c:b:l:u:p:d:o";
   struct option long_options[] = { 
     { "help",      0, 0, 'h' },
     { "jackname",  1, 0, 'j' },
@@ -1053,6 +1042,7 @@ int main(int argc, char** argv)
     { "fmin",      1, 0, 'l' },
     { "fmax",      1, 0, 'u' },
     { "periodsize",1, 0, 'p'},
+    { "nosortobjects",0, 0, 'o'},
     { 0, 0, 0, 0 }
   };
   int opt(0);
@@ -1084,6 +1074,9 @@ int main(int argc, char** argv)
     case 'p':
       periodsize = atoi(optarg);
       break;
+    case 'o':
+      nosortobjects = true;
+      break;
     }
   }
   while( optind < argc )
@@ -1096,7 +1089,7 @@ int main(int argc, char** argv)
     }
   }
   win.set_title(jackname);
-  HoSGUI::foacoh_t c(jackname,channels,bpoctave,fmin,fmax,objnames,periodsize,desturl);
+  HoSGUI::foacoh_t c(jackname,channels,bpoctave,fmin,fmax,objnames,periodsize,desturl,nosortobjects);
   win.add(c);
   win.set_default_size(640,480);
   //win.fullscreen();
