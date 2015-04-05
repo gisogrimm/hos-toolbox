@@ -8,6 +8,21 @@
 #include "osc_helper.h"
 #include <unistd.h>
 #include <complex.h>
+#include <string.h>
+#include <limits>
+
+template<class T> void make_friendly_number_limited(T& x)
+{
+  if( (-1000 <= x) && (x <= 1000 ) ){
+    if( (0 < x) && (x < std::numeric_limits<T>::min()) )
+      x = 0;
+    if( (0 > x) && (x > -std::numeric_limits<T>::min()) )
+      x = 0;
+    return;
+  }
+  x = 0;
+}
+
 
 static bool b_quit;
 
@@ -16,16 +31,18 @@ public:
   dc_t(const std::string& jackname,
        const std::string& server_address,
        const std::string& server_port,const std::vector<std::string>& names,float c_,float fc,float q_);
+  ~dc_t();
   int process(jack_nframes_t n,const std::vector<float*>& inBuf,const std::vector<float*>& outBuf);
 private:
-  float c;
-  float f;
-  float q;
+  double c;
+  double f;
+  double q;
+  double g;
   double b1;
   double b2;
-  HoS::wave_t statex;
-  HoS::wave_t statey1;
-  HoS::wave_t statey2;
+  double* statex;
+  double* statey1;
+  double* statey2;
 };
 
 dc_t::dc_t(const std::string& jackname,
@@ -36,44 +53,59 @@ dc_t::dc_t(const std::string& jackname,
     c(c_), 
     f(fc), 
     q(q_),
-    statex(names.size()),
-    statey1(names.size()),
-    statey2(names.size())
+    g(0),
+    statex(new double[names.size()]),
+    statey1(new double[names.size()]),
+    statey2(new double[names.size()])
 {
+  memset(statex,0,sizeof(double)*names.size());
+  memset(statey1,0,sizeof(double)*names.size());
+  memset(statey2,0,sizeof(double)*names.size());
   for(uint32_t k=0;k<names.size();k++){
     add_input_port("in."+names[k]);
     add_output_port("out."+names[k]);
   }
   set_prefix("/"+jackname+"/");
-  add_float("f",&f);
-  add_float("c",&c);
-  add_float("q",&q);
+  add_double("f",&f);
+  add_double("c",&c);
+  add_double("q",&q);
+  add_double("g",&g);
+}
+
+dc_t::~dc_t()
+{
+  delete [] statex;
+  delete [] statey1;
+  delete [] statey2;
 }
 
 int dc_t::process(jack_nframes_t n,const std::vector<float*>& inBuf,const std::vector<float*>& outBuf)
 {
   b1 = 2.0*q*cos(2.0*M_PI*f/srate);
   b2 = -q*q;
-  float complex z(cexpf(I*2*M_PI*f/srate));
-  float complex z0(q*cexpf(-I*2*M_PI*f/srate));
-  float a1((1.0f-q)*(cabsf(z-z0))*srate/(2.0*M_PI*f));
-  //if( fcut > 0 ){
-  //  c1 = exp( -fcut/srate);
-  //  c2 = 1.0-c1;
-  //}
+  double complex z(cexpf(I*2*M_PI*f/srate));
+  double complex z0(q*cexp(-I*2*M_PI*f/srate));
+  double a1((1.0-q)*(cabs(z-z0)));
+  double og(pow(10.0,0.05*g));
   for(uint32_t ch=0;ch<inBuf.size();ch++){
     float* vx(inBuf[ch]);
     float* vy(outBuf[ch]);
     for(uint32_t k=0;k<n;k++){
       // input resonance filter:
-      float y(a1*vx[k]+b1*statey1[ch]+b2*statey2[ch]);
+      make_friendly_number_limited(vx[k]);
+     double y(a1*vx[k]+b1*statey1[ch]+b2*statey2[ch]);
+      make_friendly_number_limited(y);
       statey2[ch] = statey1[ch];
       statey1[ch] = y;
       // non-linearity:
-      y = y*c/(c+fabsf(y));
+      y *= c/(c+fabs(y));
       // air coupling to velocity:
-      statex[ch] = y - statex[ch];
-      vy[k] = statex[ch];
+      vy[k] = og*(y - statex[ch]);
+      statex[ch] = y;
+      //statex[ch] = std::max(std::min(y - statex[ch],10.0),-10.0);
+      //make_friendly_number_limited(statex[ch]);
+      ////vy[k] = statex[ch];
+      //vy[k] = y;
     }
   }
   return 0;
