@@ -108,6 +108,7 @@ namespace MM {
   class namematrix_t : public gainmatrix_t {
   public:
     namematrix_t(unsigned int nout, unsigned int nin);
+    virtual ~namematrix_t(){};
     void set_name_in(unsigned int kin, const std::string& name);
     void set_name_out(unsigned int kout, const std::string& name);
     std::string get_name_in(unsigned int kin);

@@ -59,6 +59,7 @@
 #include "libhos_random.h"
 #include "errorhandling.h"
 #include "gammatone.h"
+#include "gammatone.cc"
 
 #define OSC_ADDR "239.255.1.7"
 #define OSC_PORT "6978"
