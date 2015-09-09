@@ -313,11 +313,36 @@ void cyclephase_t::run()
 {
   TASCAR::osc_server_t::activate();
   jackc_t::activate();
-  connect_in(0,"system:capture_17");
-  connect_in(1,"system:capture_18");
+  try{
+    connect_in(0,"system:capture_17");
+  }
+  catch( const std::exception& e){
+    std::cerr << "Warning: " << e.what() << std::endl;
+  }
+  try{
+    connect_in(1,"system:capture_18");
+  }
+  catch( const std::exception& e){
+    std::cerr << "Warning: " << e.what() << std::endl;
+  }
+  try{
   connect_in(2,"system:capture_19");
+  }
+  catch( const std::exception& e){
+    std::cerr << "Warning: " << e.what() << std::endl;
+  }
+  try{
   connect_in(3,"system:capture_20");
+  }
+  catch( const std::exception& e){
+    std::cerr << "Warning: " << e.what() << std::endl;
+  }
+  try{
   connect_out(0,"hos_scope:in_1",true);
+  }
+  catch( const std::exception& e){
+    std::cerr << "Warning: " << e.what() << std::endl;
+  }
   while( !b_quit ){
     sleep( 1 );
   }
