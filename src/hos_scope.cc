@@ -34,6 +34,8 @@
 #include <iostream>
 //#include "audiochunks.h"
 
+#include "defs.h"
+
 #define OSC_ADDR "239.255.1.7"
 #define OSC_PORT "6978"
 #define HIST_SIZE 256
@@ -47,7 +49,8 @@ namespace HoSGUI {
     virtual ~scope_t();
     virtual int process(jack_nframes_t, const std::vector<float*>&, const std::vector<float*>&);
   protected:
-    virtual bool on_expose_event(GdkEventExpose* event);
+    virtual bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr);
+    //virtual bool on_expose_event(GdkEventExpose* event);
     bool on_timeout();
     uint32_t channels_;
     uint32_t period_;
@@ -101,9 +104,10 @@ scope_t::scope_t(const std::string& name,uint32_t channels,uint32_t period,uint3
     col_b[k] = 0.5+0.5*cos(k*M_PI*2.0/channels+4.0/3.0*M_PI);
   }
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &scope_t::on_timeout), 40 );
+  signal_draw().connect(sigc::mem_fun(*this, &scope_t::on_draw), false);
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
   //Connect the signal handler if it isn't already a virtual method override:
-  signal_expose_event().connect(sigc::mem_fun(*this, &scope_t::on_expose_event), false);
+  //signal_expose_event().connect(sigc::mem_fun(*this, &scope_t::on_expose_event), false);
 #endif //GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
   for(uint32_t ch=0;ch<channels_;ch++){
     char ctmp[1024];
@@ -118,47 +122,35 @@ scope_t::~scope_t()
 //    delete vCycle[k];
 }
 
-bool scope_t::on_expose_event(GdkEventExpose* event)
+bool scope_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 {
-  Glib::RefPtr<Gdk::Window> window = get_window();
-  if(window)
-    {
-      Gtk::Allocation allocation = get_allocation();
-      const int width = allocation.get_width();
-      const int height = allocation.get_height();
-      //double ratio = (double)width/(double)height;
-      Cairo::RefPtr<Cairo::Context> cr = window->create_cairo_context();
-      if(event)
-        {
-          // clip to the area indicated by the expose event so that we only
-          // redraw the portion of the window that needs to be redrawn
-          cr->rectangle(event->area.x, event->area.y,
-                        event->area.width, event->area.height);
-          cr->clip();
-        }
-      cr->save();
-      cr->set_source_rgb( 1.0, 1.0, 1.0 );
-      cr->paint();
-      cr->restore();
-      cr->save();
-      cr->move_to(t*(double)width/(double)period_,0);
-      cr->line_to(t*(double)width/(double)period_,height);
-      cr->stroke();
-      cr->restore();
-      for(uint32_t ch=0;ch<channels_;ch++){
-        cr->set_source_rgb( col_r[ch], col_g[ch], col_b[ch] );
-        cr->save();
-        cr->move_to(0,height-data[ch][0]*height);
-        for(uint32_t ti=1;ti<period_;ti++){
-          cr->line_to(ti*(double)width/(double)period_,height-data[ch][ti]*height);
-        }
-        cr->stroke();
-        cr->restore();
-      }
-      // end bg
-      //for(unsigned int k=0;k<vCycle.size();k++)
-      //  vCycle[k]->draw(cr,phase);
+  Gtk::Allocation allocation = get_allocation();
+  const int width = allocation.get_width();
+  const int height = allocation.get_height();
+  //double ratio = (double)width/(double)height;
+  //cr->clip();
+  cr->save();
+  cr->set_source_rgb( 1.0, 1.0, 1.0 );
+  cr->paint();
+  cr->restore();
+  cr->save();
+  cr->move_to(t*(double)width/(double)period_,0);
+  cr->line_to(t*(double)width/(double)period_,height);
+  cr->stroke();
+  cr->restore();
+  for(uint32_t ch=0;ch<channels_;ch++){
+    cr->set_source_rgb( col_r[ch], col_g[ch], col_b[ch] );
+    cr->save();
+    cr->move_to(0,height-data[ch][0]*height);
+    for(uint32_t ti=1;ti<period_;ti++){
+      cr->line_to(ti*(double)width/(double)period_,height-data[ch][ti]*height);
     }
+    cr->stroke();
+    cr->restore();
+  }
+  // end bg
+  //for(unsigned int k=0;k<vCycle.size();k++)
+  //  vCycle[k]->draw(cr,phase);
   return true;
 }
 

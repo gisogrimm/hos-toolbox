@@ -146,7 +146,7 @@ namespace HoS {
   class cyclephase_t : public jackc_t, public TASCAR::osc_server_t {
   public:
     cyclephase_t(const std::string& name);
-    ~cyclephase_t();
+    ~cyclephase_t() throw();
     void set_t0(double t0);
     void run();
     void quit() { b_quit = true;};
@@ -171,6 +171,9 @@ namespace HoS {
     clp_t lp_drift;
     clp_t lp_if;
     uint32_t loop;
+    double rpm;
+    double rpmscale;
+    double targetrpm;
   };
 
 }
@@ -226,7 +229,10 @@ cyclephase_t::cyclephase_t(const std::string& name)
     cphase_if(1.0),
     cdrift_raw(0.0),
     cdrift_lp(0.0),
-    loop(0)
+    loop(0),
+    rpm(0),
+    rpmscale(60.0*srate/PI2),
+    targetrpm(0)
 {
   add_input_port("L1");
   add_input_port("L2");
@@ -238,6 +244,7 @@ cyclephase_t::cyclephase_t(const std::string& name)
   add_method("/t0","f",cyclephase_t::osc_set_t0,this);
   add_method("/loop","i",osc_set_int32,&loop);
   add_method("/quit","",cyclephase_t::osc_quit,this);
+  add_double("/rpm",&targetrpm);
   p0.resize(4);
   p0[0] = 0.0;
   p0[1] = 10.2/36.0;
@@ -248,7 +255,7 @@ cyclephase_t::cyclephase_t(const std::string& name)
   lp_drift.set_tau(4.0*srate);
 }
 
-cyclephase_t::~cyclephase_t()
+cyclephase_t::~cyclephase_t() throw() 
 {
 }
 
@@ -295,6 +302,7 @@ int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBu
     cdphase *= cphase_lp;
     cdphase_lp = lp_if.filter(cdphase);
     cphase_if *= cexp(I*carg(cdphase_lp));
+    rpm = carg(cdphase_lp)*rpmscale;
     cphase_lpdrift = cphase_if*cdrift_lp;
     double current_phase(c2normphase(cphase_lpdrift));
     v_phase_lp[i] = current_phase;
@@ -314,37 +322,43 @@ void cyclephase_t::run()
   TASCAR::osc_server_t::activate();
   jackc_t::activate();
   try{
-    connect_in(0,"system:capture_17");
+    connect_in(0,"system:capture_9");
   }
   catch( const std::exception& e){
     std::cerr << "Warning: " << e.what() << std::endl;
   }
   try{
-    connect_in(1,"system:capture_18");
+    connect_in(1,"system:capture_10");
   }
   catch( const std::exception& e){
     std::cerr << "Warning: " << e.what() << std::endl;
   }
   try{
-  connect_in(2,"system:capture_19");
+    connect_in(2,"system:capture_11");
   }
   catch( const std::exception& e){
     std::cerr << "Warning: " << e.what() << std::endl;
   }
   try{
-  connect_in(3,"system:capture_20");
+    connect_in(3,"system:capture_12");
   }
   catch( const std::exception& e){
     std::cerr << "Warning: " << e.what() << std::endl;
   }
   try{
-  connect_out(0,"hos_scope:in_1",true);
+    connect_out(0,"hos_scope:in_1",true);
   }
   catch( const std::exception& e){
     std::cerr << "Warning: " << e.what() << std::endl;
   }
+  int vel(0);
+  lo_address lo_addr(lo_address_new_from_url("osc.udp://239.255.1.7:6978/"));
   while( !b_quit ){
-    sleep( 1 );
+    vel += (targetrpm - rpm);
+    vel = std::max(std::min(vel,255),0);
+    lo_send(lo_addr,"/cycledrv/vel","i",vel);
+    std::cout << rpm << " " << targetrpm << " " << vel << std::endl;
+    usleep( 100000 );
   }
   jackc_t::deactivate();
   TASCAR::osc_server_t::deactivate();
