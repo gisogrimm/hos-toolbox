@@ -174,6 +174,10 @@ namespace HoS {
     double rpm;
     double rpmscale;
     double targetrpm;
+    double epsilon;
+    double alpha;
+    double v0;
+    double epsscale;
   };
 
 }
@@ -232,7 +236,11 @@ cyclephase_t::cyclephase_t(const std::string& name)
     loop(0),
     rpm(0),
     rpmscale(60.0*srate/PI2),
-    targetrpm(0)
+    targetrpm(0),
+    epsilon(0.5),
+    alpha(1.0),
+    v0(0),
+    epsscale((double)get_fragsize()/get_srate())
 {
   add_input_port("L1");
   add_input_port("L2");
@@ -245,6 +253,9 @@ cyclephase_t::cyclephase_t(const std::string& name)
   add_method("/loop","i",osc_set_int32,&loop);
   add_method("/quit","",cyclephase_t::osc_quit,this);
   add_double("/rpm",&targetrpm);
+  add_double("/eps",&epsilon);
+  add_double("/alpha",&alpha);
+  add_double("/v0",&v0);
   p0.resize(4);
   p0[0] = 0.0;
   p0[1] = 10.2/36.0;
@@ -277,6 +288,18 @@ int cyclephase_t::osc_quit(const char *path, const char *types, lo_arg **argv, i
 void cyclephase_t::set_t0(double t0)
 {
   unwrap.set(t0-1.0);
+}
+
+double sign(double x)
+{
+  if( x < 0 )
+    return -1.0;
+  return 1.0;
+}
+
+double sqr(double x)
+{
+  return x*x;
 }
 
 int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBuffer,const std::vector<float*>& outBuffer)
@@ -314,6 +337,8 @@ int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBu
     v_time[i] = current_time;
   }
   cphase_if /= cabs(cphase_if);
+  v0 += sign(targetrpm - rpm)*pow(abs(targetrpm-rpm),alpha)*epsilon*epsscale;
+  v0 = std::max(std::min(v0,255.0),0.0);
   return 0;
 }
 
@@ -351,13 +376,10 @@ void cyclephase_t::run()
   catch( const std::exception& e){
     std::cerr << "Warning: " << e.what() << std::endl;
   }
-  int vel(0);
   lo_address lo_addr(lo_address_new_from_url("osc.udp://239.255.1.7:6978/"));
   while( !b_quit ){
-    vel += (targetrpm - rpm);
-    vel = std::max(std::min(vel,255),0);
-    lo_send(lo_addr,"/cycledrv/vel","i",vel);
-    std::cout << rpm << " " << targetrpm << " " << vel << std::endl;
+    lo_send(lo_addr,"/cycledrv/vel","i",(int32_t)v0);
+    std::cout << rpm << " " << targetrpm << " " << (int32_t)v0 << std::endl;
     usleep( 100000 );
   }
   jackc_t::deactivate();
