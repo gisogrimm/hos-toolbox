@@ -145,7 +145,7 @@ namespace HoS {
   */
   class cyclephase_t : public jackc_t, public TASCAR::osc_server_t {
   public:
-    cyclephase_t(const std::string& name);
+    cyclephase_t(const std::string& name, const std::string& target);
     ~cyclephase_t() throw();
     void set_t0(double t0);
     void run();
@@ -178,6 +178,8 @@ namespace HoS {
     double alpha;
     double v0;
     double epsscale;
+    double otime;
+    lo_address lo_addr;
   };
 
 }
@@ -222,7 +224,7 @@ drift_filter_t::drift_filter_t()
 {
 }
 
-cyclephase_t::cyclephase_t(const std::string& name)
+cyclephase_t::cyclephase_t(const std::string& name, const std::string& target)
   : jackc_t(name),
     TASCAR::osc_server_t(OSC_ADDR,OSC_PORT),
     b_quit(false),
@@ -240,7 +242,9 @@ cyclephase_t::cyclephase_t(const std::string& name)
     epsilon(0.5),
     alpha(1.0),
     v0(0),
-    epsscale((double)get_fragsize()/get_srate())
+    epsscale((double)get_fragsize()/get_srate()),
+  otime(0.0),
+  lo_addr(lo_address_new_from_url(target.c_str()))
 {
   add_input_port("L1");
   add_input_port("L2");
@@ -268,6 +272,7 @@ cyclephase_t::cyclephase_t(const std::string& name)
 
 cyclephase_t::~cyclephase_t() throw() 
 {
+  lo_address_free(lo_addr);
 }
 
 int cyclephase_t::osc_set_t0(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
@@ -336,9 +341,12 @@ int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBu
     }
     v_time[i] = current_time;
   }
+  otime = v_time[nframes-1];
   cphase_if /= cabs(cphase_if);
   v0 += sign(targetrpm - rpm)*pow(abs(targetrpm-rpm),alpha)*epsilon*epsscale;
-  v0 = std::max(std::min(v0,255.0),0.0);
+  v0 = std::max(std::min(v0,255.0), 0.0);
+  lo_send(lo_addr,"/cycledrv/vel","i", (int32_t)v0);
+  lo_send(lo_addr,"/*/bicycle*/zyxeuler","fff", (float)(360.0*v_time[nframes-1]), 0.0f, 0.0f);
   return 0;
 }
 
@@ -376,10 +384,8 @@ void cyclephase_t::run()
   catch( const std::exception& e){
     std::cerr << "Warning: " << e.what() << std::endl;
   }
-  lo_address lo_addr(lo_address_new_from_url("osc.udp://239.255.1.7:6978/"));
   while( !b_quit ){
-    lo_send(lo_addr,"/cycledrv/vel","i",(int32_t)v0);
-    std::cout << rpm << " " << targetrpm << " " << (int32_t)v0 << std::endl;
+    std::cout << rpm << " " << targetrpm << " " << (int32_t)v0 << " " << otime << std::endl;
     usleep( 100000 );
   }
   jackc_t::deactivate();
@@ -391,7 +397,10 @@ int main(int argc, char** argv)
   std::string name("phase");
   if( argc > 1 )
     name = argv[1];
-  cyclephase_t S(name);
+  std::string target("osc.udp://" OSC_ADDR ":" OSC_PORT "/");
+  if( argc > 2 )
+    target = argv[2];
+  cyclephase_t S(name, target);
   S.run();
 }
 
