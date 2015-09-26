@@ -41,6 +41,8 @@
 #define PI2 6.283185307179586232
 #define PI2INV 0.15915494309189534561
 
+#define NUMSPOKES 18
+
 namespace HoS {
 
   inline double c2normphase(double complex p)
@@ -156,6 +158,7 @@ namespace HoS {
     int process(jack_nframes_t nframes,const std::vector<float*>& inBuffer,const std::vector<float*>& outBuffer);
     bool b_quit;
     std::vector<maxtrack_t> mt;
+    maxtrack_t mtspokes;
     std::vector<uint32_t> phase_i;
     std::vector<double> p0;
     double complex cphase_raw;
@@ -176,10 +179,17 @@ namespace HoS {
     double targetrpm;
     double epsilon;
     double alpha;
+    double beta;
     double v0;
     double epsscale;
     double otime;
     lo_address lo_addr;
+    uint32_t spkcnt[NUMSPOKES];
+    uint32_t spoke;
+    uint32_t ccnt;
+    double rot;
+    double roteps;
+    int32_t targetcnt;
   };
 
 }
@@ -229,6 +239,7 @@ cyclephase_t::cyclephase_t(const std::string& name, const std::string& target)
     TASCAR::osc_server_t(OSC_ADDR,OSC_PORT),
     b_quit(false),
     mt(std::vector<maxtrack_t>(4,maxtrack_t(srate,0.3,8.0))),
+    mtspokes(srate,0.05,8.0),
     phase_i(std::vector<uint32_t>(4,0)),
     cphase_raw(0.0),
     cphase_lp(0.0),
@@ -241,17 +252,27 @@ cyclephase_t::cyclephase_t(const std::string& name, const std::string& target)
     targetrpm(0),
     epsilon(0.5),
     alpha(1.0),
+    beta(-1.7),
     v0(0),
     epsscale((double)get_fragsize()/get_srate()),
   otime(0.0),
-  lo_addr(lo_address_new_from_url(target.c_str()))
+  lo_addr(lo_address_new_from_url(target.c_str())),
+  spoke(0),
+  ccnt(0),
+  rot(0),
+  roteps(-0.00005),
+  targetcnt(0)
 {
+  for(uint32_t k=0;k<NUMSPOKES;k++)
+    spkcnt[k] = 0;
   add_input_port("L1");
   add_input_port("L2");
   add_input_port("L3");
   add_input_port("L4");
+  add_input_port("spokedet");
   add_output_port("phase");
   add_output_port("time");
+  add_output_port("spokes");
   set_prefix("/"+name);
   add_method("/t0","f",cyclephase_t::osc_set_t0,this);
   add_method("/loop","i",osc_set_int32,&loop);
@@ -259,7 +280,10 @@ cyclephase_t::cyclephase_t(const std::string& name, const std::string& target)
   add_double("/rpm",&targetrpm);
   add_double("/eps",&epsilon);
   add_double("/alpha",&alpha);
+  add_double("/beta",&beta);
   add_double("/v0",&v0);
+  add_int("/cnt",&targetcnt);
+  add_double("/roteps",&roteps);
   p0.resize(4);
   p0[0] = 0.0;
   p0[1] = 10.2/36.0;
@@ -311,6 +335,7 @@ int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBu
 {
   float* v_phase_lp(outBuffer[0]);
   float* v_time(outBuffer[1]);
+  float* v_spokes(outBuffer[2]);
   // main loop:
   for (jack_nframes_t i = 0; i < nframes; ++i){
     for( uint32_t ch=0;ch<4;ch++){
@@ -340,12 +365,33 @@ int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBu
       current_time = 0;
     }
     v_time[i] = current_time;
+    uint32_t current_spoke(std::min(NUMSPOKES-1u,uint32_t(current_phase*NUMSPOKES)));
+    if( spoke != current_spoke ){
+      ccnt -= spkcnt[current_spoke];
+      spkcnt[current_spoke] = 0;
+      spoke = current_spoke;
+    }
+    if( targetcnt < 0 )
+      targetcnt = 0;
+    if( targetcnt > NUMSPOKES )
+      targetcnt = NUMSPOKES;
+    uint32_t click(mtspokes.filter(fabsf(inBuffer[4][i])));
+    v_spokes[i] = click;
+    if( rpm > 5.0 ){
+      spkcnt[spoke] += click;
+      ccnt += click;
+      if( targetcnt > (int)ccnt )
+        rot += roteps;
+      if( targetcnt < (int)ccnt )
+        rot -= roteps;
+    }
   }
   otime = v_time[nframes-1];
   cphase_if /= cabs(cphase_if);
   v0 += sign(targetrpm - rpm)*pow(abs(targetrpm-rpm),alpha)*epsilon*epsscale;
   v0 = std::max(std::min(v0,255.0), 0.0);
   lo_send(lo_addr,"/cycledrv/vel","i", (int32_t)v0);
+  lo_send(lo_addr,"/cycledrv/rot","i", (int32_t)(rot + beta*targetcnt));
   lo_send(lo_addr,"/*/bicycle*/zyxeuler","fff", (float)(360.0*v_time[nframes-1]), 0.0f, 0.0f);
   return 0;
 }
@@ -379,13 +425,19 @@ void cyclephase_t::run()
     std::cerr << "Warning: " << e.what() << std::endl;
   }
   try{
+    connect_in(4,"system:capture_13");
+  }
+  catch( const std::exception& e){
+    std::cerr << "Warning: " << e.what() << std::endl;
+  }
+  try{
     connect_out(0,"hos_scope:in_1",true);
   }
   catch( const std::exception& e){
     std::cerr << "Warning: " << e.what() << std::endl;
   }
   while( !b_quit ){
-    std::cout << rpm << " " << targetrpm << " " << (int32_t)v0 << " " << otime << std::endl;
+    std::cout << rpm << " " << targetrpm << " " << (int32_t)v0 << " " << otime << "   " << ccnt << " " << rot << std::endl;
     usleep( 100000 );
   }
   jackc_t::deactivate();
