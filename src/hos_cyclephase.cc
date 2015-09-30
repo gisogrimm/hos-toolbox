@@ -69,7 +69,7 @@ namespace HoS {
 
   class maxtrack_t {
   public:
-    maxtrack_t(double fs, double tau, double tau2);
+    maxtrack_t(double fs, double tau, double tau2, double eps_ = 2e-4);
     inline bool filter(double val){
       if( val >= state2 ){
         state2 = val;
@@ -84,7 +84,7 @@ namespace HoS {
       }else{
         state *= c1;
         state += c2*val;
-        emit = was_rising && (cnt==0) && (state >= 0.5*state2) && (state > 2e-4);
+        emit = was_rising && (cnt==0) && (state >= 0.5*state2) && (state > eps);
         was_rising = false;
         if( emit )
           cnt = timeout;
@@ -102,6 +102,7 @@ namespace HoS {
     double state2;
     uint32_t timeout;
     uint32_t cnt;
+    double eps;
   };
 
   class drift_filter_t {
@@ -209,7 +210,7 @@ void clp_t::set_tau(double tau)
   c2 = 1.0 - c1;
 }
 
-maxtrack_t::maxtrack_t(double fs,double tau, double tau2)
+maxtrack_t::maxtrack_t(double fs,double tau, double tau2,double eps_)
   : state(0.0f),
     emit(false),
     was_rising(false),
@@ -219,7 +220,8 @@ maxtrack_t::maxtrack_t(double fs,double tau, double tau2)
     c4(1.0f-c3),
     state2(0.0f),
     timeout(fs*tau),
-    cnt(0)
+    cnt(0),
+    eps(eps_)
 {
 }
 
@@ -239,7 +241,7 @@ cyclephase_t::cyclephase_t(const std::string& name, const std::string& target)
     TASCAR::osc_server_t(OSC_ADDR,OSC_PORT),
     b_quit(false),
     mt(std::vector<maxtrack_t>(4,maxtrack_t(srate,0.3,8.0))),
-    mtspokes(srate,0.05,8.0),
+    mtspokes(srate,0.05,8.0,3e-2),
     phase_i(std::vector<uint32_t>(4,0)),
     cphase_raw(0.0),
     cphase_lp(0.0),
