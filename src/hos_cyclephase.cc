@@ -378,7 +378,11 @@ int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBu
     if( targetcnt > NUMSPOKES )
       targetcnt = NUMSPOKES;
     uint32_t click(mtspokes.filter(fabsf(inBuffer[4][i])));
-    v_spokes[i] = click;
+    if( click )
+      v_spokes[i] = 1.0f;
+    else
+      v_spokes[i] = mtspokes.state;
+    
     if( rpm > 5.0 ){
       spkcnt[spoke] += click;
       ccnt += click;
@@ -403,31 +407,31 @@ void cyclephase_t::run()
   TASCAR::osc_server_t::activate();
   jackc_t::activate();
   try{
-    connect_in(0,"system:capture_9");
+    connect_in(0,"system:capture_1");
   }
   catch( const std::exception& e){
     std::cerr << "Warning: " << e.what() << std::endl;
   }
   try{
-    connect_in(1,"system:capture_10");
+    connect_in(1,"system:capture_2");
   }
   catch( const std::exception& e){
     std::cerr << "Warning: " << e.what() << std::endl;
   }
   try{
-    connect_in(2,"system:capture_11");
+    connect_in(2,"system:capture_3");
   }
   catch( const std::exception& e){
     std::cerr << "Warning: " << e.what() << std::endl;
   }
   try{
-    connect_in(3,"system:capture_12");
+    connect_in(3,"system:capture_4");
   }
   catch( const std::exception& e){
     std::cerr << "Warning: " << e.what() << std::endl;
   }
   try{
-    connect_in(4,"system:capture_13");
+    connect_in(4,"system:capture_5");
   }
   catch( const std::exception& e){
     std::cerr << "Warning: " << e.what() << std::endl;
