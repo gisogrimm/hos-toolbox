@@ -7,7 +7,8 @@ hos_cyclephase hos_visualize hos_visualize_sphere hos_cyclephasegui	\
 hos_sampler hos_scope hos_osc2jack hos_resfilt hos_tmcm			\
 hos_osc_marais hos_osc_house hos_rtmdisplay hos_composer hos_rtm2midi	\
 test_duration hos_foacasa hos_mm hos_markerbroadcast hos_marker2osc	\
-laserctl hos_sustain hos_if_filter hos_instdc hos_spksim hos_cycledriver
+laserctl hos_sustain hos_if_filter hos_instdc hos_spksim		\
+hos_cycledriver hos_mainmix
 
 #BINFILES = hos_visualize_sphere
 

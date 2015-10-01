@@ -186,6 +186,7 @@ private:
   std::vector<looped_sndfile_t*> sounds;
   std::vector<std::string> soundnames;
   std::vector<note_event_t> notes;
+  double timescale;
   double current_time;
   double last_phase;
   bool b_quit;
@@ -203,6 +204,7 @@ private:
 sampler_t::sampler_t(const std::string& jname,const std::string& announce)
   : jackc_t(jname),
     osc_server_t("239.255.1.7","6978"),
+    timescale(1.0),
     current_time(0),
     last_phase(0),
     b_quit(false),
@@ -222,6 +224,7 @@ sampler_t::sampler_t(const std::string& jname,const std::string& announce)
   add_method("/loop","f",sampler_t::osc_set_loop_time,this);
   add_method("/gain","f",osc_set_double,&mastergain);
   add_method("/gain","ff",osc_set_gain,this);
+  add_double("/timescale",&timescale);
   add_method("/quit","",sampler_t::osc_quit,this);
   if( b_announce )
     lo_addr = lo_address_new_from_url( announce.c_str() );
@@ -311,7 +314,7 @@ int sampler_t::process(jack_nframes_t n, const std::vector<float*>& sIn, const s
       dphase += 1.0;
     if( dphase > 0.5 )
       dphase -= 1.0;
-    current_time += dphase;
+    current_time += timescale * dphase;
     if( (loop_time > 0) && (current_time >= loop_time) )
       current_time = 0.0;
     last_phase = vPhase[k];
@@ -346,6 +349,8 @@ int sampler_t::process(jack_nframes_t n, const std::vector<float*>& sIn, const s
 void sampler_t::open_sounds(const std::string& fname)
 {
   std::ifstream fh(fname.c_str());
+  if( !fh.good() )
+    throw TASCAR::ErrMsg("Unable to open soundfont file \""+fname+"\".");
   while(!fh.eof() ){
     char ctmp[1024];
     memset(ctmp,0,1024);
@@ -363,6 +368,8 @@ void sampler_t::open_sounds(const std::string& fname)
 void sampler_t::open_notes(const std::string& fname)
 {
   std::ifstream fh(fname.c_str());
+  if( !fh.good() )
+    throw TASCAR::ErrMsg("Unable to open pitch file \""+fname+"\".");
   while(!fh.eof() ){
     char ctmp[1024];
     memset(ctmp,0,1024);

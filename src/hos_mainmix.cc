@@ -44,12 +44,16 @@ int mainmix_t::process(jack_nframes_t nframes,const std::vector<float*>& inBuffe
 
 void mainmix_t::run()
 {
+  uint32_t cnt(20);
   while(!b_quit){
     usleep(30000);
-    if( gain != oldgain ){
+    if( (gain != oldgain)||(!cnt) ){
       upload(gain);
       oldgain = gain;
+      cnt = 20;
     }
+    if( cnt )
+      cnt--;
   }
 }
 
