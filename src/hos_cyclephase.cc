@@ -394,7 +394,7 @@ int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBu
   }
   otime = v_time[nframes-1];
   cphase_if /= cabs(cphase_if);
-  v0 += sign(targetrpm - rpm)*pow(abs(targetrpm-rpm),alpha)*epsilon*epsscale;
+  v0 += sign(targetrpm - rpm)*pow(abs(targetrpm-rpm),alpha)*epsilon*epsscale*(1.0+3*(fabs(v0)<50.0)*(targetrpm>rpm));
   v0 = std::max(std::min(v0,255.0), 0.0);
   lo_send(lo_addr,"/cycledrv/vel","i", (int32_t)v0);
   lo_send(lo_addr,"/cycledrv/rot","i", (int32_t)(rot + beta*targetcnt));
