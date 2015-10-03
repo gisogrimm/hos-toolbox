@@ -1,3 +1,4 @@
+
 /*
  * hos_mainmix - read gain from jack port, create direct mapping in
  * HDSP 9652 from software output to hardware output with gain from
@@ -29,6 +30,32 @@ mainmix_t::mainmix_t(const std::string& jackname)
 {
   add_input_port("gain");
   activate();
+  snd_ctl_elem_id_t *id;
+  snd_ctl_elem_id_alloca(&id);
+  snd_ctl_elem_id_set_name(id, "Mixer");
+  snd_ctl_elem_id_set_interface(id, SND_CTL_ELEM_IFACE_HWDEP);
+  snd_ctl_elem_id_set_device(id, 0);
+  snd_ctl_elem_id_set_index(id, 0);
+  snd_ctl_elem_value_t *ctl;
+  snd_ctl_elem_value_alloca(&ctl);
+  snd_ctl_elem_value_set_id(ctl, id);
+  snd_ctl_t *handle;
+  int err;
+  if ((err = snd_ctl_open(&handle, "hw:DSP", SND_CTL_NONBLOCK)) < 0) {
+    fprintf(stderr, "Alsa error: %s\n", snd_strerror(err));
+    return;
+  }
+  for( uint32_t k_in=0;k_in<52;k_in++ ){
+    for( uint32_t k_out=0;k_out<26;k_out++ ){
+      snd_ctl_elem_value_set_integer(ctl, 0, k_in);
+      snd_ctl_elem_value_set_integer(ctl, 1, k_out);
+      snd_ctl_elem_value_set_integer(ctl, 2, 0);
+      if ((err = snd_ctl_elem_write(handle, ctl)) < 0) {
+        fprintf(stderr, "Alsa error: %s\n", snd_strerror(err));
+      }
+    }
+  }
+  snd_ctl_close(handle);
 }
 
 mainmix_t::~mainmix_t()
