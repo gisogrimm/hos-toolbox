@@ -39,84 +39,6 @@
 
 static bool b_quit;
 
-//class doublebuffer_t {
-//public:
-//  doublebuffer_t(uint32_t fifolen,uint32_t inner_size);
-//  ~doublebuffer_t();
-//  virtual void inner_process(HoS::wave_t &) = 0;
-//  void start_service();
-//  void stop_service();
-//private:
-//  void service();
-//  static void * service(void* h);
-//  //pthread_t srv_thread;
-//  //bool service_running;
-//  //bool run_service;
-//  HoS::wave_t audio;
-//protected:
-//  TASCAR::ringbuffer_t in2out;
-//  TASCAR::ringbuffer_t out2in;
-//};
-//
-//doublebuffer_t::doublebuffer_t(uint32_t fifolen,uint32_t inner_size)
-//  : service_running(false),
-//    run_service(true),
-//    audio(inner_size),
-//    in2out(fifolen,1),
-//    out2in(fifolen,1)
-//{
-//  in2out.write_zeros( 2*audio.size() );
-//}
-//
-//
-//void doublebuffer_t::start_service()
-//{
-//  if( !service_running){
-//    run_service = true;
-//    int err = pthread_create( &srv_thread, NULL, &doublebuffer_t::service, this);
-//    if( err < 0 )
-//      throw TASCAR::ErrMsg("pthread_create failed");
-//    service_running = true;
-//  }
-//}
-//
-//void doublebuffer_t::stop_service()
-//{
-//  if( service_running){
-//    run_service = false;
-//    pthread_join( srv_thread, NULL );
-//    service_running = false;
-//  }
-//}
-//
-//void * doublebuffer_t::service(void* h)
-//{
-//  ((doublebuffer_t*)h)->service();
-//  return NULL;
-//}
-//
-//void doublebuffer_t::service()
-//{
-//  while( run_service ){
-//    usleep( 500 );
-//    if( out2in.read_space() >= audio.size() ){
-//      // enough data to process inner chunk:
-//      out2in.read(audio.b,audio.size());
-//      inner_process(audio);
-//      if( in2out.write_space() < audio.size() ){
-//        DEBUG(in2out.write_space());
-//        DEBUG(audio.size());
-//      }
-//      in2out.write(audio.b,audio.size());
-//    }
-//  }
-//}
-//
-//doublebuffer_t::~doublebuffer_t()
-//{
-//  stop_service();
-//}
-
 class sustain_t : public TASCAR::osc_server_t, public jackc_db_t {
 public:
   sustain_t(const std::string& server_addr,const std::string& server_port,const std::string& name,uint32_t wlen);
@@ -125,6 +47,8 @@ public:
   virtual int process(jack_nframes_t, const std::vector<float*>&, const std::vector<float*>&);
   void activate();
   void deactivate();
+  static int osc_apply(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
+  void set_apply(float t);
 protected:
   HoS::ola_t ola;
   HoS::wave_t absspec;
@@ -132,7 +56,28 @@ protected:
   float tau_envelope;
   double Lin;
   double Lout;
+  float wet;
+  uint32_t t_apply;
+  float deltaw;
+  float currentw;
 };
+
+int sustain_t::osc_apply(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
+{
+  ((sustain_t*)user_data)->set_apply(argv[0]->f);
+  return 0;
+}
+
+void sustain_t::set_apply(float t)
+{
+  deltaw = 0;
+  t_apply = 0;
+  if( t >= 0 ){
+    uint32_t tau(std::max(1,(int32_t)(srate*t)));
+    deltaw = (wet-currentw)/(float)tau;
+    t_apply = tau;
+  }
+}
 
 int sustain_t::process(jack_nframes_t n, const std::vector<float*>& vIn, const std::vector<float*>& vOut)
 {
@@ -144,13 +89,19 @@ int sustain_t::process(jack_nframes_t n, const std::vector<float*>& vIn, const s
     env_c1 = exp( -1.0/(tau_envelope*(double)srate));
   float env_c2(1.0f-env_c1);
   // envelope reconstruction:
-  for(uint32_t k=0;k<w_in.size();k++){
+  for(uint32_t k=0;k<w_in.size();++k){
     Lin *= env_c1;
     Lin += env_c2*w_in[k]*w_in[k];
     Lout *= env_c1;
     Lout += env_c2*w_out[k]*w_out[k];
     if( Lout > 0 )
       w_out[k] *= sqrt(Lin/Lout);
+    if( t_apply ){
+      t_apply--;
+      currentw += deltaw;
+    }
+    w_out[k] *= currentw;
+    w_out[k] += (1.0f-currentw)*w_in[k];
   }
   return 0;
 }
@@ -184,13 +135,19 @@ sustain_t::sustain_t(const std::string& server_addr,const std::string& server_po
     tau_sustain(20),
     tau_envelope(1),
     Lin(0),
-    Lout(0)
+    Lout(0),
+    wet(1.0f),
+    t_apply(0),
+    deltaw(0),
+    currentw(0)
 {
   set_prefix("/"+name);
   add_input_port("in");
   add_output_port("out");
   add_float("/tau_sus",&tau_sustain);
   add_float("/tau_env",&tau_envelope);
+  add_float("/wet",&wet);
+  add_method("/wetapply","f",&sustain_t::osc_apply,this);
 }
 
 void sustain_t::activate()
