@@ -174,6 +174,7 @@ public:
   void set_t0(double t0);
   void set_loop_time(double tloop){ loop_time = tloop;};
   void set_gain(float newgain,double duration) { dgain = (newgain-mastergain)/(duration*srate);tfader = srate*duration;};
+  void set_auxgain(float newgain,double duration) { dauxgain = (newgain-auxgain)/(duration*srate);tauxfader = srate*duration;};
   void quit() { b_quit = true;};
   static int osc_set_t0(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   static int osc_set_loop_time(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
@@ -182,6 +183,7 @@ public:
   static int osc_stoploop(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   static int osc_clearloop(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   static int osc_set_gain(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
+  static int osc_set_auxgain(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
 private:
   std::vector<looped_sndfile_t*> sounds;
   std::vector<std::string> soundnames;
@@ -192,10 +194,14 @@ private:
   bool b_quit;
   double* vtime;
   float* vgain;
+  float* vauxgain;
   double loop_time;
   double mastergain;
   uint32_t tfader;
   double dgain;
+  double auxgain;
+  uint32_t tauxfader;
+  double dauxgain;
   lo_address lo_addr;
   bool b_announce;
   int32_t barno;
@@ -205,25 +211,32 @@ sampler_t::sampler_t(const std::string& jname,const std::string& announce)
   : jackc_t(jname),
     osc_server_t("239.255.1.7","6978"),
     timescale(1.0),
-    current_time(0),
+    current_time(-1),
     last_phase(0),
     b_quit(false),
     vtime(new double[fragsize]),
     vgain(new float[fragsize]),
+    vauxgain(new float[fragsize]),
     loop_time(0),
     mastergain(0.0),
     tfader(0),
     dgain(0.0),
+    auxgain(0.0),
+    tauxfader(0),
+    dauxgain(0.0),
     b_announce(!announce.empty()),
     barno(-100)
 {
   add_input_port("phase");
   add_output_port("out");
+  add_output_port("auxout");
   set_prefix("/"+jname);
   add_method("/t0","f",sampler_t::osc_set_t0,this);
   add_method("/loop","f",sampler_t::osc_set_loop_time,this);
   add_method("/gain","f",osc_set_double,&mastergain);
   add_method("/gain","ff",osc_set_gain,this);
+  add_method("/auxgain","f",osc_set_double,&auxgain);
+  add_method("/auxgain","ff",osc_set_auxgain,this);
   add_double("/timescale",&timescale);
   add_method("/quit","",sampler_t::osc_quit,this);
   if( b_announce )
@@ -262,6 +275,14 @@ int sampler_t::osc_set_gain(const char *path, const char *types, lo_arg **argv, 
   return 0;
 }
 
+int sampler_t::osc_set_auxgain(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
+{
+  if( (user_data) && (argc == 2) && (types[0]=='f') && (types[1]=='f') ){
+    ((sampler_t*)user_data)->set_auxgain(argv[0]->f,argv[1]->f);
+  }
+  return 0;
+}
+
 int sampler_t::osc_stoploop(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data)
 {
   if( (user_data) && (argc == 0) ){
@@ -296,11 +317,11 @@ sampler_t::~sampler_t()
     delete sounds[k];
   delete [] vtime;
   delete [] vgain;
+  delete [] vauxgain;
 }
 
 int sampler_t::process(jack_nframes_t n, const std::vector<float*>& sIn, const std::vector<float*>& sOut)
 {
-  //DEBUG(mastergain);
   for(uint32_t k=0;k<sOut.size();k++)
     memset(sOut[k],0,n*sizeof(float));
   //for(uint32_t k=0;k<sounds.size();k++){
@@ -319,7 +340,7 @@ int sampler_t::process(jack_nframes_t n, const std::vector<float*>& sIn, const s
       current_time = 0.0;
     last_phase = vPhase[k];
     vtime[k] = current_time;
-    int32_t newbarno(current_time);
+    int32_t newbarno(floor(current_time));
     if( newbarno != barno ){
       if( b_announce )
         lo_send(lo_addr,"/bar","i",newbarno);
@@ -330,6 +351,11 @@ int sampler_t::process(jack_nframes_t n, const std::vector<float*>& sIn, const s
       tfader--;
     }
     vgain[k] = mastergain;
+    if( tauxfader ){
+      auxgain += dauxgain;
+      tauxfader--;
+    }
+    vauxgain[k] = auxgain;
   }
   //std::cerr << chunk_time << ",..." << std::endl;
   //  DEBUG(chunk_time);
@@ -337,8 +363,11 @@ int sampler_t::process(jack_nframes_t n, const std::vector<float*>& sIn, const s
     if( notes[kn].note_ < sounds.size() ){
       for(uint32_t k=0;k<n;k++){
         notes[kn].process_time(vtime[k]);
-        if( (notes[kn].t >= 0) && ((uint32_t)notes[kn].t < sounds[notes[kn].note_]->size()))
-          sOut[0][k] += (*sounds[notes[kn].note_])[notes[kn].t] * notes[kn].gain_ * notes[kn].fade_gain * vgain[k];
+        if( (notes[kn].t >= 0) && ((uint32_t)notes[kn].t < sounds[notes[kn].note_]->size())){
+          float val((*sounds[notes[kn].note_])[notes[kn].t] * notes[kn].gain_ * notes[kn].fade_gain);
+          sOut[0][k] += val * vgain[k];
+          sOut[1][k] += val * vauxgain[k];
+        }
       }
       //sounds[notes[kn].note_]->add_chunk(chunk_time,notes[kn].time_*samples_per_period,notes[k].gain_,out);
     }
