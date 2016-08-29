@@ -190,20 +190,20 @@ osc_house_t::osc_house_t(const std::vector<std::string>& names,const std::string
   add_output_port("q1");
   add_output_port("f2");
   add_output_port("q2");
-  add_method(prefix+"quit","",osc_set_bool_true,&b_quit);
+  add_bool_true(prefix+"quit",&b_quit);
   add_method(prefix+"reload","",osc_reload,this);
   add_method(prefix+"select","i",osc_select,this);
-  add_method(prefix+"gain1","f",osc_set_double,&(gain[0]));
+  add_double(prefix+"gain1",&(gain[0]));
   add_method(prefix+"gain1","ff",osc_house_t::osc_set_gain0,this);
-  add_method(prefix+"gain2","f",osc_set_double,&(gain[1]));
+  add_double(prefix+"gain2",&(gain[1]));
   add_method(prefix+"gain2","ff",osc_house_t::osc_set_gain1,this);
-  add_method(prefix+"gain3","f",osc_set_double,&(gain[2]));
+  add_double(prefix+"gain3",&(gain[2]));
   add_method(prefix+"gain3","ff",osc_house_t::osc_set_gain2,this);
-  add_method(prefix+"gain4","f",osc_set_double,&(gain[3]));
+  add_double(prefix+"gain4",&(gain[3]));
   add_method(prefix+"gain4","ff",osc_house_t::osc_set_gain3,this);
-  add_method(prefix+"gain5","f",osc_set_double,&(gain[4]));
+  add_double(prefix+"gain5",&(gain[4]));
   add_method(prefix+"gain5","ff",osc_house_t::osc_set_gain4,this);
-  add_method(prefix+"gain6","f",osc_set_double,&(gain[5]));
+  add_double(prefix+"gain6",&(gain[5]));
   add_method(prefix+"gain6","ff",osc_house_t::osc_set_gain5,this);
 }
 

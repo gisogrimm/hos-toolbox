@@ -47,13 +47,13 @@ osc_marais_t::osc_marais_t(const std::string& oscad,const std::string& multicast
   add_output_port("cv_2q");
   add_output_port("cv_echo");
   add_output_port("cv_detone");
-  add_method(prefix+"quit","",osc_set_bool_true,&b_quit);
-  add_method("/1/fader1","f",osc_set_float,&g_f);
-  add_method("/1/fader2","f",osc_set_float,&g_q);
-  add_method("/1/toggle1","f",osc_set_float,&g_flt1);
-  add_method("/1/toggle2","f",osc_set_float,&g_flt2);
-  add_method("/1/push7","f",osc_set_float,&g_echo);
-  add_method("/1/push4","f",osc_set_float,&g_detone);
+  add_bool_true(prefix+"quit",&b_quit);
+  add_float("/1/fader1",&g_f);
+  add_float("/1/fader2",&g_q);
+  add_float("/1/toggle1",&g_flt1);
+  add_float("/1/toggle2",&g_flt2);
+  add_float("/1/push7",&g_echo);
+  add_float("/1/push4",&g_detone);
   add_method(prefix+"upload","",osc_upload,this);
   upload_touchosc();
 }

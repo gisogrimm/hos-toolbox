@@ -700,7 +700,7 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
   }
   if( send_cnt == 0 ){
     obj.send_osc(lo_addr);
-    send_cnt = 10;
+    send_cnt = 2;
   }else
     send_cnt--;
   for(uint32_t kobj=0;kobj<obj.size();kobj++){

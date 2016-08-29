@@ -123,13 +123,13 @@ osc2jack_t::osc2jack_t(const std::string& oscad,const std::vector<std::string>& 
     add_output_port("resflt3_f");
     add_output_port("resflt3_q");
   }
-  add_method(prefix+"quit","",osc_set_bool_true,&b_quit);
-  add_method("/4/toggle1","f",osc_set_float,&xy1);
-  add_method("/4/toggle2","f",osc_set_float,&xy2);
-  add_method("/4/toggle3","f",osc_set_float,&xy3);
+  add_bool_true(prefix+"quit",&b_quit);
+  add_float("/4/toggle1",&xy1);
+  add_float("/4/toggle2",&xy2);
+  add_float("/4/toggle3",&xy3);
   add_method("/4/xy","ff",osc2jack_t::osc_set_xy,this);
   for(uint32_t k=0;k<names.size();k++){
-    add_method(prefix+names[k],"f",osc_set_float,&(v[k]));
+    add_float(prefix+names[k],&(v[k]));
     add_output_port(names[k]);
   }
   vloop.resize(names.size());
@@ -145,7 +145,7 @@ osc2jack_t::osc2jack_t(const std::string& oscad,const std::vector<std::string>& 
       for(uint32_t t=0;t<16;t++){
         char addr[1024];
         sprintf(addr,"/2/multitoggle/%d/%d",ch+1,t+1);
-        add_method(addr,"f",osc_set_float,&(matrix[ch+6*t]));
+        add_float(addr,&(matrix[ch+6*t]));
       }
     lo_send( lo_addr, "/2", "" );
     lo_send( lo_addr, "/4/xy", "ff", 0.0f, 0.5f );

@@ -277,7 +277,7 @@ cyclephase_t::cyclephase_t(const std::string& name, const std::string& target)
   add_output_port("spokes");
   set_prefix("/"+name);
   add_method("/t0","f",cyclephase_t::osc_set_t0,this);
-  add_method("/loop","i",osc_set_int32,&loop);
+  add_uint("/loop",&loop);
   add_method("/quit","",cyclephase_t::osc_quit,this);
   add_double("/rpm",&targetrpm);
   add_double("/eps",&epsilon);

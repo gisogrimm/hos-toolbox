@@ -233,9 +233,9 @@ sampler_t::sampler_t(const std::string& jname,const std::string& announce)
   set_prefix("/"+jname);
   add_method("/t0","f",sampler_t::osc_set_t0,this);
   add_method("/loop","f",sampler_t::osc_set_loop_time,this);
-  add_method("/gain","f",osc_set_double,&mastergain);
+  add_double("/gain",&mastergain);
   add_method("/gain","ff",osc_set_gain,this);
-  add_method("/auxgain","f",osc_set_double,&auxgain);
+  add_double("/auxgain",&auxgain);
   add_method("/auxgain","ff",osc_set_auxgain,this);
   add_double("/timescale",&timescale);
   add_method("/quit","",sampler_t::osc_quit,this);
