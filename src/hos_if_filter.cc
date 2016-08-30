@@ -108,8 +108,8 @@ int if_filter_t::inner_process(jack_nframes_t n,const std::vector<float*>& inBuf
 {
   if( (inBuf.size() == 0) || (outBuf.size() == 0) )
     return 1;
-  HoS::wave_t w_in(n,inBuf[0]);
-  HoS::wave_t w_out(n,outBuf[0]);
+  TASCAR::wave_t w_in(n,inBuf[0]);
+  TASCAR::wave_t w_out(n,outBuf[0]);
   float sigma0_corr(0.69315f/sigma0);
   mean_lp.set_lowpass(tau_std);
   std_lp.set_lowpass(tau_std);

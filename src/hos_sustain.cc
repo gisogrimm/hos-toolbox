@@ -51,7 +51,7 @@ public:
   void set_apply(float t);
 protected:
   HoS::ola_t ola;
-  HoS::wave_t absspec;
+  TASCAR::wave_t absspec;
   float tau_sustain;
   float tau_envelope;
   double Lin;
@@ -82,8 +82,8 @@ void sustain_t::set_apply(float t)
 int sustain_t::process(jack_nframes_t n, const std::vector<float*>& vIn, const std::vector<float*>& vOut)
 {
   jackc_db_t::process(n,vIn,vOut);
-  HoS::wave_t w_in(n,vIn[0]);
-  HoS::wave_t w_out(n,vOut[0]);
+  TASCAR::wave_t w_in(n,vIn[0]);
+  TASCAR::wave_t w_out(n,vOut[0]);
   float env_c1(0);
   if( tau_envelope > 0 )
     env_c1 = exp( -1.0/(tau_envelope*(double)srate));
@@ -109,8 +109,8 @@ int sustain_t::process(jack_nframes_t n, const std::vector<float*>& vIn, const s
 
 int sustain_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, const std::vector<float*>& vOut)
 {
-  HoS::wave_t w_in(n,vIn[0]);
-  HoS::wave_t w_out(n,vOut[0]);
+  TASCAR::wave_t w_in(n,vIn[0]);
+  TASCAR::wave_t w_out(n,vOut[0]);
   ola.process(w_in);
   float sus_c1(0);
   if( tau_sustain > 0 )

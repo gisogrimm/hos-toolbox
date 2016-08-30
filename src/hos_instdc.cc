@@ -21,8 +21,8 @@ private:
   float fcut;
   double c1;
   double c2;
-  HoS::wave_t statex;
-  HoS::wave_t statey;
+  TASCAR::wave_t statex;
+  TASCAR::wave_t statey;
 };
 
 dc_t::dc_t(const std::string& jackname,

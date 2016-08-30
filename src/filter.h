@@ -85,14 +85,14 @@ namespace HoS {
     filter_array_t(uint32_t n,double fs) : arflt(1,1,fs),state(n) {};
     inline float filter(uint32_t k, float x)
     {
-      if( x >= state.b[k] )
-        state.b[k] = c1a * state.b[k] + c2a * x;
+      if( x >= state.d[k] )
+        state.d[k] = c1a * state.d[k] + c2a * x;
       else
-        state.b[k] = c1r * state.b[k] + c2r * x;
-      return state.b[k];
+        state.d[k] = c1r * state.d[k] + c2r * x;
+      return state.d[k];
     };
   private:
-    HoS::wave_t state;
+    TASCAR::wave_t state;
   };
 
 

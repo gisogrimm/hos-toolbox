@@ -23,7 +23,7 @@ public:
   loop_event_t() : tsample(0),tloop(1),loopgain(1.0){};
   loop_event_t(int32_t cnt,float gain) : tsample(0),tloop(cnt),loopgain(gain){};
   bool valid() const { return tsample || tloop;};
-  inline void process(wave_t& out_chunk,const wave_t& in_chunk){
+  inline void process(TASCAR::wave_t& out_chunk,const TASCAR::wave_t& in_chunk){
     uint32_t n_(in_chunk.size());
     for( uint32_t k=0;k<out_chunk.size();k++){
       if( tloop == -2 ){

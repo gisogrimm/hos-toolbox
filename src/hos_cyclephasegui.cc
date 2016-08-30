@@ -60,11 +60,11 @@ namespace HoSGUI {
     std::vector<double> col_r;
     std::vector<double> col_g;
     std::vector<double> col_b;
-    HoS::wave_t inBuffer;
+    TASCAR::wave_t inBuffer;
     HoS::delay1_t delay;
     HoS::stft_t stft0;
     HoS::stft_t stft1;
-    HoS::wave_t instf;
+    TASCAR::wave_t instf;
     std::vector<double> t0;
     std::vector<double> chroma;
     double ifscale;
@@ -186,24 +186,24 @@ int cycle_t::osc_setval(const char *path, const char *types, lo_arg **argv, int 
 
 void cycle_t::calc_chroma(float* samples, uint32_t n)
 {
-  for(uint32_t k=0;k<std::min(n,inBuffer.n_);k++){
-    inBuffer.b[k] = samples[k];
+  for(uint32_t k=0;k<std::min(n,inBuffer.n);k++){
+    inBuffer.d[k] = samples[k];
   }
   delay.process(inBuffer);
   stft0.process(inBuffer);
   stft1.process(delay);
   for(unsigned int k=0;k<stft0.s.n_;k++){
     stft0.s.b[k] *= conj(stft1.s.b[k]);
-    instf.b[k] = carg(stft0.s.b[k])*ifscale;
+    instf.d[k] = carg(stft0.s.b[k])*ifscale;
   }
   double te(0.0);
   for(unsigned int ch=0;ch<channels_;ch++)
     chroma[ch] = 0.0;
-  for(unsigned int k=0;k<instf.n_;k++){
+  for(unsigned int k=0;k<instf.n;k++){
     double le(cabs(stft0.s.b[k]));
     te+=le;
     for(unsigned int ch=0;ch<channels_;ch++)
-      chroma[ch] += mapped_intensity(instf.b[k],t0[ch],le);
+      chroma[ch] += mapped_intensity(instf.d[k],t0[ch],le);
   }
   if( te > 0 )
     te = 1.0/te;

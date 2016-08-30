@@ -60,6 +60,7 @@
 #include "errorhandling.h"
 #include "gammatone.h"
 #include "gammatone.cc"
+#include "filter.h"
 
 #define OSC_ADDR "239.255.1.7"
 #define OSC_PORT "6978"
@@ -260,13 +261,14 @@ public:
     float g;
   };
   void send_osc(const lo_address& lo_addr);
-  objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float fmin,const std::vector<std::string>& names,bool nosortobjects_);
+  objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float fmin,const std::vector<std::string>& names,uint32_t sortmode_);
   float objval(float x,float y,param_t lp);
   float objval(float x,float y,const std::vector<float>&);
   float objval(float x,float y);
   static float errfun(const std::vector<float>&,void* data);
   float errfun(const std::vector<float>&);
   void iterate();
+  void reset();
   uint32_t size() const {return nobj;};
   const std::vector<float>& param() const { return obj_param;};
   param_t param(uint32_t k) const { return param_t(k,obj_param);};
@@ -287,7 +289,7 @@ private:
   float bpo_;
   float fmin_;
   std::vector<param_t> vpar;
-  bool nosortobjects;
+  uint32_t sortmode;
 };
 
 bool param_less_y(objmodel_t::param_t i,objmodel_t::param_t j){
@@ -336,8 +338,8 @@ void objmodel_t::param_t::setp(uint32_t num,std::vector<float>& vp)
   vp[5*num+4] = g;
 }
 
-objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float fmin,const std::vector<std::string>& names,bool nosortobjects_)
-  : xyfield_t(sx,sy),error(0),nobj(numobj),xscale(PI2/(float)sx),bpo_(bpo),fmin_(fmin),nosortobjects(nosortobjects_)
+objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float fmin,const std::vector<std::string>& names,uint32_t sortmode_)
+  : xyfield_t(sx,sy),error(0),nobj(numobj),xscale(PI2/(float)sx),bpo_(bpo),fmin_(fmin),sortmode(sortmode_)
 {
   calls = 0;
   obj_param.resize(5*nobj);
@@ -455,16 +457,33 @@ void objmodel_t::iterate()
     }
   }
   // sort:
-  if( !nosortobjects ){
+  switch( sortmode ){
+  case 1: // frequency sorting:
     std::sort(vpar.begin(),vpar.end(),param_less_y);
-  }else{
+    break;
+  case 2: // azimuth sorting:
     std::sort(vpar.begin(),vpar.end(),param_less_x);
+    break;
   }
   for(uint32_t k=0;k<nobj;k++)
     vpar[k].setp(k,obj_param);
 }
 
-class az_hist_t : public HoS::wave_t
+void objmodel_t::reset()
+{
+  for(uint32_t k=0;k<nobj;k++){
+    param_t par(k,obj_param);
+    par.cx = k/(double)nobj*sizex();
+    par.cy = 0.5*sizey();    
+    par.wx = 3;
+    par.wy = 4;
+    par.g = 20;
+    vpar[k] = par;
+    vpar[k].setp(k,obj_param);
+  }
+}
+
+class az_hist_t : public TASCAR::wave_t
 {
 public:
   az_hist_t(uint32_t size);
@@ -480,12 +499,12 @@ private:
   float fmin;
   float fmax;
   float dec_w;
-  HoS::wave_t dec_x;
-  HoS::wave_t dec_y;
+  TASCAR::wave_t dec_x;
+  TASCAR::wave_t dec_y;
 };
 
 az_hist_t::az_hist_t(uint32_t size)
-  : HoS::wave_t(size),
+  : TASCAR::wave_t(size),
     dec_x(size),
     dec_y(size)
 {
@@ -587,7 +606,7 @@ namespace HoSGUI {
   class foacoh_t : public freqinfo_t, public Gtk::DrawingArea, public TASCAR::osc_server_t, public jackc_db_t
   {
   public:
-    foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,const std::vector<std::string>& objnames,uint32_t periodsize,const std::string& url,bool nosortobjects);
+    foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,const std::vector<std::string>& objnames,uint32_t periodsize,const std::string& url,uint32_t sortmode, float levelthreshold_);
     virtual ~foacoh_t();
     virtual int inner_process(jack_nframes_t, const std::vector<float*>&, const std::vector<float*>&);
     void activate();
@@ -604,16 +623,16 @@ namespace HoSGUI {
     HoS::ola_t ola_y;
     std::vector<HoS::ola_t*> ola_obj;
     // low pass filter coefficients:
-    HoS::wave_t lp_c1;
-    HoS::wave_t lp_c2;
+    TASCAR::wave_t lp_c1;
+    TASCAR::wave_t lp_c2;
     // complex temporary coherence:
     HoS::spec_t ccohXY;
     //HoS::spec_t ccoh2;
     // coherence functions:
-    HoS::wave_t cohXY;
+    TASCAR::wave_t cohXY;
     //HoS::wave_t cohReXY;
-    HoS::wave_t cohXWYW;
-    HoS::wave_t az;
+    TASCAR::wave_t cohXWYW;
+    TASCAR::wave_t az;
     std::vector<az_hist_t> haz;
     //az_hist_t haz2;
     std::string name_;
@@ -638,6 +657,9 @@ namespace HoSGUI {
     std::vector<std::string> paths_modf;
     std::vector<std::string> paths_modbw;
     uint32_t send_cnt;
+    HoS::arflt levellp;
+    float level;
+    float levelthreshold;
   };
 
 }
@@ -646,9 +668,13 @@ using namespace HoSGUI;
 
 int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, const std::vector<float*>& vOut)
 {
-  HoS::wave_t inW(n,vIn[0]);
-  HoS::wave_t inX(n,vIn[1]);
-  HoS::wave_t inY(n,vIn[2]);
+  TASCAR::wave_t inW(n,vIn[0]);
+  TASCAR::wave_t inX(n,vIn[1]);
+  TASCAR::wave_t inY(n,vIn[2]);
+  level = inW.spldb();
+  if( !(level > -200) )
+    level = -200;
+  level = levellp.filter(level);
   ola_w.process(inW);
   ola_x.process(inX);
   ola_y.process(inY);
@@ -695,8 +721,8 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
     //  }
     //// bin-wise Bayes classification:
     //for(uint32_t kobj=0;kobj<obj.size();kobj++)
-      //ola_obj[kobj]->s[k] = cohXY[k]*cW*bayes_prob[kobj];
-      //ola_obj[kobj]->s[k] = cW*bayes_prob[kobj];
+    //ola_obj[kobj]->s[k] = cohXY[k]*cW*bayes_prob[kobj];
+    //ola_obj[kobj]->s[k] = cW*bayes_prob[kobj];
   }
   if( send_cnt == 0 ){
     obj.send_osc(lo_addr);
@@ -704,7 +730,7 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
   }else
     send_cnt--;
   for(uint32_t kobj=0;kobj<obj.size();kobj++){
-    HoS::wave_t outW(n,vOut[kobj]);
+    TASCAR::wave_t outW(n,vOut[kobj]);
     objmodel_t::param_t par(obj.param(kobj));
     float az(PI2*par.cx/(float)azchannels-M_PI);
     float wx(cos(az));
@@ -742,10 +768,12 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
   obj += -vmin;
   obj *= 100.0/(vmax-vmin);
   obj.iterate();
+  if( level < levelthreshold )
+    obj.reset();
   return 0;
 }
 
-foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,const std::vector<std::string>& objnames,uint32_t periodsize_,const std::string& url,bool nosortobjects)
+foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,const std::vector<std::string>& objnames,uint32_t periodsize_,const std::string& url,uint32_t sortmode, float levelthreshold_)
   : freqinfo_t(bpo,fmin,fmax),
     osc_server_t(OSC_ADDR,OSC_PORT),
     jackc_db_t("foacoh",periodsize_),
@@ -754,23 +782,26 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
     wndlen(std::max(256u,2*periodsize)),
     ola_w(fftlen,wndlen,periodsize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
     ola_x(fftlen,wndlen,periodsize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
-    ola_y(fftlen,wndlen,periodsize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
-    lp_c1(ola_x.s.size()),
-    lp_c2(ola_x.s.size()),
-    ccohXY(ola_x.s.size()),
-    cohXY(ola_x.s.size()),
-    cohXWYW(ola_x.s.size()),
-    az(ola_x.s.size()),
-    name_(name),
-    fscale(get_srate()/(float)fftlen),
-    draw_image(true),
-    col(0),
-    azchannels(channels),
-  obj(channels,bands,objnames.size(),bpo,fmin,objnames,nosortobjects),
-    vmin(0),vmax(1),
-    lo_addr(lo_address_new_from_url(url.c_str())),
-    names(objnames),
-    send_cnt(2)
+  ola_y(fftlen,wndlen,periodsize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
+  lp_c1(ola_x.s.size()),
+  lp_c2(ola_x.s.size()),
+  ccohXY(ola_x.s.size()),
+  cohXY(ola_x.s.size()),
+  cohXWYW(ola_x.s.size()),
+  az(ola_x.s.size()),
+  name_(name),
+  fscale(get_srate()/(float)fftlen),
+  draw_image(true),
+  col(0),
+  azchannels(channels),
+  obj(channels,bands,objnames.size(),bpo,fmin,objnames,sortmode),
+  vmin(0),vmax(1),
+  lo_addr(lo_address_new_from_url(url.c_str())),
+  names(objnames),
+  send_cnt(2),
+  levellp(0.125,0.125,get_srate()/(float)periodsize),
+  level(-200),
+  levelthreshold(levelthreshold_)
 {
   lo_address_set_ttl( lo_addr, 1 );
   image = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB,false,8,channels,bands);
@@ -1030,10 +1061,11 @@ int main(int argc, char** argv)
   float bpoctave(3);
   float fmin(125);
   float fmax(4000);
+  float levelthreshold(-200);
   uint32_t periodsize(1024);
-  bool nosortobjects(false);
+  uint32_t sortmode(0);
   std::vector<std::string> objnames;
-  const char *options = "hj:c:b:l:u:p:d:o";
+  const char *options = "hj:c:b:l:u:p:d:s:t:";
   struct option long_options[] = { 
     { "help",      0, 0, 'h' },
     { "jackname",  1, 0, 'j' },
@@ -1042,8 +1074,9 @@ int main(int argc, char** argv)
     { "bpoctave",  1, 0, 'b' },
     { "fmin",      1, 0, 'l' },
     { "fmax",      1, 0, 'u' },
-    { "periodsize",1, 0, 'p'},
-    { "nosortobjects",0, 0, 'o'},
+    { "periodsize",1, 0, 'p' },
+    { "sort",      1, 0, 's' },
+    { "threshold", 1, 0, 't' },
     { 0, 0, 0, 0 }
   };
   int opt(0);
@@ -1072,11 +1105,14 @@ int main(int argc, char** argv)
     case 'u':
       fmax = atof(optarg);
       break;
+    case 't':
+      levelthreshold = atof(optarg);
+      break;
     case 'p':
       periodsize = atoi(optarg);
       break;
-    case 'o':
-      nosortobjects = true;
+    case 's':
+      sortmode = atoi(optarg);
       break;
     }
   }
@@ -1090,7 +1126,7 @@ int main(int argc, char** argv)
     }
   }
   win.set_title(jackname);
-  HoSGUI::foacoh_t c(jackname,channels,bpoctave,fmin,fmax,objnames,periodsize,desturl,nosortobjects);
+  HoSGUI::foacoh_t c(jackname,channels,bpoctave,fmin,fmax,objnames,periodsize,desturl,sortmode,levelthreshold);
   win.add(c);
   win.set_default_size(640,480);
   //win.fullscreen();

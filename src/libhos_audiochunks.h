@@ -1,5 +1,5 @@
-#ifndef AUDIOCHUNKS_H
-#define AUDIOCHUNKS_H
+#ifndef LIBHOSAUDIOCHUNKS_H
+#define LIBHOSAUDIOCHUNKS_H
 
 #include <stdint.h>
 #include <complex.h>
@@ -7,28 +7,30 @@
 #include <sndfile.h>
 #include <string>
 
+#include <audiochunks.h>
+
 namespace HoS {
 
-  class wave_t {
-  public:
-    wave_t(uint32_t n);
-    wave_t(const wave_t& src);
-    wave_t(uint32_t n,float* ptr);
-    ~wave_t();
-    void operator*=(const float& d);
-    void operator/=(const float& d);
-    void operator+=(const wave_t& src);
-    void operator*=(const wave_t& src);
-    float maxabs() const;
-    void copy(const wave_t& src);
-    inline float& operator[](uint32_t k){return b[k];};
-    inline const float& operator[](uint32_t k) const{return b[k];};
-    inline uint32_t size() const {return n_;};
-    uint32_t n_;
-    float* b;
-    bool own_pointer;
-  };
-
+  //class wave_t {
+  //public:
+  //  wave_t(uint32_t n);
+  //  wave_t(const wave_t& src);
+  //  wave_t(uint32_t n,float* ptr);
+  //  ~wave_t();
+  //  void operator*=(const float& d);
+  //  void operator/=(const float& d);
+  //  void operator+=(const wave_t& src);
+  //  void operator*=(const wave_t& src);
+  //  float maxabs() const;
+  //  void copy(const wave_t& src);
+  //  inline float& operator[](uint32_t k){return b[k];};
+  //  inline const float& operator[](uint32_t k) const{return b[k];};
+  //  inline uint32_t size() const {return n_;};
+  //  uint32_t n_;
+  //  float* b;
+  //  bool own_pointer;
+  //};
+  //
   class spec_t {
   public:
     spec_t(uint32_t n);
@@ -58,7 +60,7 @@ namespace HoS {
     SF_INFO sf_inf;
   };
 
-  class sndfile_t : public sndfile_handle_t, public wave_t {
+  class sndfile_t : public sndfile_handle_t, public TASCAR::wave_t {
   public:
     sndfile_t(const std::string& fname,uint32_t channel=0);
     void add_chunk(int32_t chunk_time, int32_t start_time,float gain,wave_t& chunk);
@@ -67,12 +69,12 @@ namespace HoS {
   class fft_t {
   public:
     fft_t(uint32_t fftlen);
-    void execute(const wave_t& src);
+    void execute(const TASCAR::wave_t& src);
     void execute(const spec_t& src);
     void ifft();
     void fft();
     ~fft_t();
-    wave_t w;
+    TASCAR::wave_t w;
     spec_t s;
   private:
     fftwf_plan fftwp;
@@ -90,28 +92,28 @@ namespace HoS {
     uint32_t get_fftlen() const { return fftlen_; };
     uint32_t get_wndlen() const { return wndlen_; };
     uint32_t get_chunksize() const { return chunksize_; };
-    void process(const wave_t& w);
+    void process(const TASCAR::wave_t& w);
   protected:
     uint32_t fftlen_;
     uint32_t wndlen_;
     uint32_t chunksize_;
     uint32_t zpad1;
     uint32_t zpad2;
-    wave_t long_in;
-    wave_t long_windowed_in;
-    wave_t window;
+    TASCAR::wave_t long_in;
+    TASCAR::wave_t long_windowed_in;
+    TASCAR::wave_t window;
   };
 
   class ola_t : public stft_t {
   public:
     ola_t(uint32_t fftlen, uint32_t wndlen, uint32_t chunksize, windowtype_t wnd, windowtype_t zerownd,windowtype_t postwnd=WND_RECT);
-    void ifft(wave_t& wOut);
+    void ifft(TASCAR::wave_t& wOut);
   private:
-    wave_t zwnd1;
-    wave_t zwnd2;
-    wave_t pwnd;
+    TASCAR::wave_t zwnd1;
+    TASCAR::wave_t zwnd2;
+    TASCAR::wave_t pwnd;
     bool apply_pwnd;
-    wave_t long_out;
+    TASCAR::wave_t long_out;
   };
 
   /**
@@ -119,10 +121,10 @@ namespace HoS {
 
      Delay a signal by one sample. The input is taken in the process() method, the result is stored in the class itself.
    */
-  class delay1_t : public wave_t {
+  class delay1_t : public TASCAR::wave_t {
   public:
     delay1_t(uint32_t n);
-    void process(const wave_t& w);
+    void process(const TASCAR::wave_t& w);
   private:
     float state;
   };

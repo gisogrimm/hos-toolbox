@@ -65,7 +65,7 @@ EXTERNALS = alsa jack libxml++-2.6 liblo fftw3f sndfile
 laserctl: EXTERNALS += libserial
 hos_cycledriver: EXTERNALS += libserial
 
-LDLIBS += -ltascar
+LDLIBS += -ltascar -ldl
 LDFLAGS += -L../tascar/build
 CXXFLAGS += -I../tascar/src
 CPPFLAGS += -I../tascar/src

@@ -11,19 +11,6 @@
 #include <string.h>
 #include <limits>
 
-template<class T> void make_friendly_number_limited(T& x)
-{
-  if( (-1000 <= x) && (x <= 1000 ) ){
-    if( (0 < x) && (x < std::numeric_limits<T>::min()) )
-      x = 0;
-    if( (0 > x) && (x > -std::numeric_limits<T>::min()) )
-      x = 0;
-    return;
-  }
-  x = 0;
-}
-
-
 static bool b_quit;
 
 class dc_t : public jackc_t, public TASCAR::osc_server_t {
