@@ -81,6 +81,7 @@ composer_t::composer_t(const std::string& srv_addr,const std::string& srv_port,c
   voice.resize(NUM_VOICES);
   read_xml(fname);
   lo_send(lo_addr,"/clear","");
+  lo_send(lo_addr,"/numvoices","i",NUM_VOICES);
   lo_send(lo_addr,"/key","fii",time,get_key(),get_mode());
   timesig = time_signature_t(ptimesig.rand());
   timesigcnt = ptimesigbars.rand();

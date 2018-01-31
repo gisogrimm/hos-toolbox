@@ -51,7 +51,7 @@ public:
   note_t process(double beat,const harmony_model_t& harmony, const time_signature_t& timesig,double center,double bandw,double harmonyweight,double beatweight,double modf);
   void read_xml(xmlpp::Element* e);
   std::string get_name() const { return name;};
-private:
+  //private:
   pmf_t pambitus;
   pmf_t pstep;
   pmf_t pduration;

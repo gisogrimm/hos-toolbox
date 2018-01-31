@@ -62,8 +62,8 @@
 #include "gammatone.cc"
 #include "filter.h"
 
-#define OSC_ADDR "239.255.1.7"
-#define OSC_PORT "6978"
+//#define OSC_ADDR "239.255.1.7"
+//#define OSC_PORT "6978"
 #define HIST_SIZE 256
 
 float downhill_iterate(float eps,std::vector<float>& param,float (*err)(const std::vector<float>& x,void* data),void* data,const std::vector<float>& unitstep)
@@ -603,10 +603,11 @@ float freqinfo_t::band(float f_hz)
 
 namespace HoSGUI {
 
-  class foacoh_t : public freqinfo_t, public Gtk::DrawingArea, public TASCAR::osc_server_t, public jackc_db_t
+  class foacoh_t : public freqinfo_t, public Gtk::DrawingArea, public jackc_db_t
+                   //public TASCAR::osc_server_t, 
   {
   public:
-    foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,const std::vector<std::string>& objnames,uint32_t periodsize,const std::string& url,uint32_t sortmode, float levelthreshold_);
+    foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,const std::vector<std::string>& objnames,uint32_t periodsize,const std::string& url,uint32_t sortmode, float levelthreshold_, float lpperiods );
     virtual ~foacoh_t();
     virtual int inner_process(jack_nframes_t, const std::vector<float*>&, const std::vector<float*>&);
     void activate();
@@ -773,9 +774,9 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
   return 0;
 }
 
-foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,const std::vector<std::string>& objnames,uint32_t periodsize_,const std::string& url,uint32_t sortmode, float levelthreshold_)
+foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,const std::vector<std::string>& objnames,uint32_t periodsize_,const std::string& url,uint32_t sortmode, float levelthreshold_, float lpperiods )
   : freqinfo_t(bpo,fmin,fmax),
-    osc_server_t(OSC_ADDR,OSC_PORT),
+    //osc_server_t(OSC_ADDR,OSC_PORT),
     jackc_db_t("foacoh",periodsize_),
     periodsize(periodsize_),
     fftlen(std::max(512u,4*periodsize)),
@@ -838,13 +839,13 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
   // tau = 250/fc, max 1s, min 125ms
   for(uint32_t kH=0;kH<bands;kH++){
     haz.push_back(az_hist_t(channels));
-    haz.back().set_tau(std::max(0.125f,std::min(1.0f,500.0f/fc[kH])),frame_rate);
+    haz.back().set_tau(std::max(0.125f,std::min(1.0f,lpperiods/fc[kH])),frame_rate);
     haz.back().set_frange(fe[kH],fe[kH+1]);
   }
   objlp_c1 = exp( -1.0/(0.5 * frame_rate) );
   objlp_c2 = 1.0f-objlp_c1;
   col.clim(-1,100);
-  set_prefix("/"+name);
+  //set_prefix("/"+name);
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &foacoh_t::on_timeout), 40 );
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
   //Connect the signal handler if it isn't already a virtual method override:
@@ -855,7 +856,7 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
 void foacoh_t::activate()
 {
   jackc_db_t::activate();
-  osc_server_t::activate();
+  //osc_server_t::activate();
   try{
     connect_in(0,"mhwe:out1");
     connect_in(1,"mhwe:out2");
@@ -891,7 +892,7 @@ void foacoh_t::activate()
 
 void foacoh_t::deactivate()
 {
-  osc_server_t::deactivate();
+  //osc_server_t::deactivate();
   jackc_db_t::deactivate();
 }
 
@@ -1062,10 +1063,11 @@ int main(int argc, char** argv)
   float fmin(125);
   float fmax(4000);
   float levelthreshold(-200);
+  float lpperiods( 500 );
   uint32_t periodsize(1024);
   uint32_t sortmode(0);
   std::vector<std::string> objnames;
-  const char *options = "hj:c:b:l:u:p:d:s:t:";
+  const char *options = "hj:c:b:l:u:p:d:s:t:f:";
   struct option long_options[] = { 
     { "help",      0, 0, 'h' },
     { "jackname",  1, 0, 'j' },
@@ -1077,6 +1079,7 @@ int main(int argc, char** argv)
     { "periodsize",1, 0, 'p' },
     { "sort",      1, 0, 's' },
     { "threshold", 1, 0, 't' },
+    { "lpperiods", 1, 0, 'f' },
     { 0, 0, 0, 0 }
   };
   int opt(0);
@@ -1098,6 +1101,9 @@ int main(int argc, char** argv)
       break;
     case 'b':
       bpoctave = atof(optarg);
+      break;
+    case 'f':
+      lpperiods = atof(optarg);
       break;
     case 'l':
       fmin = atof(optarg);
@@ -1126,7 +1132,7 @@ int main(int argc, char** argv)
     }
   }
   win.set_title(jackname);
-  HoSGUI::foacoh_t c(jackname,channels,bpoctave,fmin,fmax,objnames,periodsize,desturl,sortmode,levelthreshold);
+  HoSGUI::foacoh_t c(jackname,channels,bpoctave,fmin,fmax,objnames,periodsize,desturl,sortmode,levelthreshold, lpperiods);
   win.add(c);
   win.set_default_size(640,480);
   //win.fullscreen();

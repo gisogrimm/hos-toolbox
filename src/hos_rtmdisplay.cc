@@ -352,7 +352,7 @@ double graphical_time_signature_t::space(Cairo::RefPtr<Cairo::Context> cr)
 class score_t : public Gtk::DrawingArea, public TASCAR::osc_server_t
 {
 public:
-  score_t();
+  score_t(const std::string& srvaddr, const std::string& srvport, uint32_t numstaves );
   virtual ~score_t();
   static int set_time(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   static int add_note(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
@@ -371,6 +371,7 @@ protected:
   //Override default signal handler:
   virtual bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr);
   bool on_timeout();
+  uint32_t numstaves_;
   std::vector<staff_t> staves;
   std::map<double,double> xpositions;
   double timescale;
@@ -519,24 +520,26 @@ void score_t::set_time_signature(uint32_t numerator,uint32_t denominator,double 
   pthread_mutex_unlock( &mutex );
 }
 
-score_t::score_t()
+score_t::score_t( const std::string& srvaddr, const std::string& srvport, uint32_t numstaves )
   //: TASCAR::osc_server_t("239.255.1.7","9877"),timescale(20),history(6),time(0),x_left(-105),prev_tpos(0),xshift(0)
-  : TASCAR::osc_server_t("239.255.1.7","9877"),timescale(20),history(6),time(0),x_left(-105),prev_tpos(0),xshift(0)
+  : TASCAR::osc_server_t(srvaddr,srvport),
+    numstaves_(numstaves),
+    timescale(20),history(6),time(0),x_left(-105),prev_tpos(0),xshift(0)
 {
   pthread_mutex_init( &mutex, NULL );
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &score_t::on_timeout), 40 );
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
   //Connect the signal handler if it isn't already a virtual method override:  signal_expose_event().connect(sigc::mem_fun(*this, &score_t::on_expose_event), false);
 #endif //GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
-  staves.resize(5);
+  staves.resize(numstaves_);
   for(unsigned int k=0;k<staves.size();k++){
     staves[k].set_coords(-2*x_left+18,-20.0*(k-0.5*(staves.size()-1.0)));
     //staves[k].key = 0;
   }
-  staves[0].clef = Symbols::treble;
-  staves[1].clef = Symbols::treble;
+  //staves[0].clef = Symbols::treble;
+  //staves[1].clef = Symbols::treble;
   //staves[3].clef = Symbols::bass;
-  staves[4].clef = Symbols::bass;
+  //staves[4].clef = Symbols::bass;
   add_method("/time","f",score_t::set_time,this);
   add_method("/note","iiif",score_t::add_note,this);
   add_method("/clear","",score_t::clear_all,this);
@@ -716,9 +719,12 @@ bool score_t::on_timeout()
 
 int main(int argc, char** argv)
 {
+  std::string srvaddr("239.255.1.7");
+  std::string srvport("9877");
+  uint32_t numstaves(5);
   Gtk::Main kit(argc, argv);
   Gtk::Window win;
-  score_t n;
+  score_t n( srvaddr, srvport, numstaves );
   win.add(n);
   win.set_title("music");
   win.set_default_size(1024,480);
