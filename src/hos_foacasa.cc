@@ -145,12 +145,6 @@ void mod_analyzer_t::update(float x)
   param[0] = std::max(0.0f,std::min((float)(fb.size()-1),param[0]));
   param[1] = std::max(0.1f,std::min((float)(fb.size()),param[1]));
   param[2] = std::max(0.1f,std::min(10.0f,param[2]));
-  //for(uint32_t k=0;k<val.size();k++)
-  //  std::cout << val[k] << " ";
-  //std::cout << std::endl;
-  //for(uint32_t k=0;k<param.size();k++)
-  //  std::cout << param[k] << " ";
-  //std::cout << std::endl;
 }
 
 float mod_analyzer_t::errfun(const std::vector<float>& p,void* data)
@@ -275,6 +269,7 @@ public:
   float geterror(){ return error;};
   //void bayes_prob(uint32_t kx,uint32_t ky,std::vector<float>& p);
   float bayes_prob(float x,float y,uint32_t ko);
+  void add_variables( TASCAR::osc_server_t* srv );
 private:
   float error;
   uint32_t nobj;
@@ -283,6 +278,7 @@ private:
   float xscale;
   //std::vector<xyfield_t> bayes_table;
   uint32_t calls;
+  std::vector<std::string> objnames;
   std::vector<std::string> paths_pitch;
   std::vector<std::string> paths_bw;
   std::vector<std::string> paths_az;
@@ -291,6 +287,19 @@ private:
   std::vector<param_t> vpar;
   uint32_t sortmode;
 };
+
+void objmodel_t::add_variables( TASCAR::osc_server_t* srv )
+{
+  for(uint32_t ko=0;ko<nobj;ko++){
+    char ctmp[1024];
+    sprintf(ctmp,"/%s/",objnames[ko].c_str());
+    srv->set_prefix(ctmp);
+    srv->add_float("mux",&(obj_param[5*ko]));
+    srv->add_float("muy",&(obj_param[5*ko+1]));
+    srv->add_float("sigmax",&(obj_param[5*ko+2]));
+    srv->add_float("sigmay",&(obj_param[5*ko+3]));
+  }
+}
 
 bool param_less_y(objmodel_t::param_t i,objmodel_t::param_t j){
   return (i.cy>j.cy+1); 
@@ -339,7 +348,8 @@ void objmodel_t::param_t::setp(uint32_t num,std::vector<float>& vp)
 }
 
 objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float fmin,const std::vector<std::string>& names,uint32_t sortmode_)
-  : xyfield_t(sx,sy),error(0),nobj(numobj),xscale(PI2/(float)sx),bpo_(bpo),fmin_(fmin),sortmode(sortmode_)
+  : xyfield_t(sx,sy),error(0),nobj(numobj),xscale(PI2/(float)sx),bpo_(bpo),fmin_(fmin),sortmode(sortmode_),
+    objnames(names)
 {
   calls = 0;
   obj_param.resize(5*nobj);
@@ -378,7 +388,6 @@ float objmodel_t::objval(float x,float y,param_t lp)
   lp.cy = y-lp.cy;
   lp.cy /= lp.wy*1.4142135623730f;
   lp.cy *= lp.cy;
-  //return g*powf(0.5+0.5*cosf((x-lp.cx)*PI2),lp.wx);
   return lp.g*powf(0.5+0.5*cosf((x-lp.cx)*xscale),lp.wx)*expf(-lp.cy);
 }
 
@@ -431,10 +440,10 @@ void objmodel_t::iterate()
       par.cy = 0.0f;
     if( par.cy > sizey()-1 )
       par.cy = sizey()-1.0f;
-    if( par.wx < 3 )
-      par.wx = 3;
-    if( par.wx > 8 )
-      par.wx = 8;
+    if( par.wx < 1 )
+      par.wx = 1;
+    if( par.wx > 10 )
+      par.wx = 10;
     if( par.wy < 4 )
       par.wy = 4;
     if( par.wy > 32 )
@@ -603,8 +612,8 @@ float freqinfo_t::band(float f_hz)
 
 namespace HoSGUI {
 
-  class foacoh_t : public freqinfo_t, public Gtk::DrawingArea, public jackc_db_t
-                   //public TASCAR::osc_server_t, 
+  class foacoh_t : public freqinfo_t, public Gtk::DrawingArea, public jackc_db_t,
+                   public TASCAR::osc_server_t
   {
   public:
     foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,const std::vector<std::string>& objnames,uint32_t periodsize,const std::string& url,uint32_t sortmode, float levelthreshold_, float lpperiods, float taumax );
@@ -641,8 +650,8 @@ namespace HoSGUI {
     //float haz_c2;
     float fscale;
     Glib::RefPtr<Gdk::Pixbuf> image;
-    Glib::RefPtr<Gdk::Pixbuf> image_mod;
-    bool draw_image;
+    //Glib::RefPtr<Gdk::Pixbuf> image_mod;
+    //bool draw_image;
     colormap_t col;
     uint32_t azchannels;
     objmodel_t obj;
@@ -713,17 +722,8 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
     float w(powf(cabsf(cW)*cohXY[k],2.0));
     float l_az(az[k]+M_PI);
     l_az *= (0.5*haz.size()/M_PI);
-    //uint32_t iaz(std::max(0.0f,std::min((float)(haz.size()-1),l_az)));
-    //for(uint32_t kobj=0;kobj<obj.size();kobj++)
-    //  bayes_prob[kobj] = 0;
     for(uint32_t kH=0;kH<haz.size();kH++)
       haz[kH].add(freq,az[k],w);
-    //    obj.bayes_prob(iaz,kH,bayes_prob);
-    //  }
-    //// bin-wise Bayes classification:
-    //for(uint32_t kobj=0;kobj<obj.size();kobj++)
-    //ola_obj[kobj]->s[k] = cohXY[k]*cW*bayes_prob[kobj];
-    //ola_obj[kobj]->s[k] = cW*bayes_prob[kobj];
   }
   if( send_cnt == 0 ){
     obj.send_osc(lo_addr);
@@ -745,24 +745,13 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
     }
     env = sqrt(env);
     modflt[kobj].update(env);
-    //lo_send(lo_addr,paths_modf[kobj].c_str(),"f",modflt[kobj].get_modoct());
-    //lo_send(lo_addr,paths_modbw[kobj].c_str(),"f",modflt[kobj].get_modbw());
-    //std::cout << " " << modflt[kobj].get_modoct();
-    //ola_obj[kobj]->s[k] = ola_w.s[k];
     ola_obj[kobj]->s[0] = creal(ola_obj[kobj]->s[0]);
     ola_obj[kobj]->ifft(outW);
   }
-  //std::cout << "\n";
   for(uint32_t kb=0;kb<bands;kb++){
     for(uint32_t kc=0;kc<azchannels;kc++){
       obj.val(kc,kb) = 10.0f*log10f(std::max(1.0e-10f,haz[kb][kc]));
     }
-    //if( sum > 0 ){
-    //  sum = (float)azchannels/sum;
-    //  for(uint32_t kc=0;kc<azchannels;kc++){
-    //    obj.val(kc,kb) *= sum;
-    //  }
-    //}
   }
   vmin = objlp_c1*vmin+objlp_c2*obj.min();
   vmax = std::max(vmin+0.1f,objlp_c1*vmax+objlp_c2*obj.max());
@@ -778,6 +767,7 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
   : freqinfo_t(bpo,fmin,fmax),
     //osc_server_t(OSC_ADDR,OSC_PORT),
     jackc_db_t("foacoh",periodsize_),
+    osc_server_t("","9788"),
     periodsize(periodsize_),
     fftlen(std::max(512u,4*periodsize)),
     wndlen(std::max(256u,2*periodsize)),
@@ -792,7 +782,7 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
   az(ola_x.s.size()),
   name_(name),
   fscale(get_srate()/(float)fftlen),
-  draw_image(true),
+//draw_image(true),
   col(0),
   azchannels(channels),
   obj(channels,bands,objnames.size(),bpo,fmin,objnames,sortmode),
@@ -806,25 +796,19 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
 {
   lo_address_set_ttl( lo_addr, 1 );
   image = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB,false,8,channels,bands);
-  image_mod = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB,false,8,channels,bands);
   add_input_port("in.0w");
   add_input_port("in.1x");
   add_input_port("in.1y");
-  //add_output_port("diffuse.0w");
-  //add_output_port("diffuse.1x");
-  //add_output_port("diffuse.1y");
   for(uint32_t k=0;k<ola_w.s.size();k++)
     f2band.push_back(band((float)k*fscale));
   float frame_rate(get_srate()/(float)periodsize);
   for(uint32_t ko=0;ko<objnames.size();ko++){
     add_output_port(names[ko].c_str());
     ola_obj.push_back(new HoS::ola_t(fftlen,wndlen,periodsize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING));
-    //bayes_prob.push_back(0.0f);
     modflt.push_back(mod_analyzer_t(frame_rate,4,1));
     paths_modf.push_back(std::string("/")+names[ko]+std::string("/modf"));
     paths_modbw.push_back(std::string("/")+names[ko]+std::string("/modbw"));
   }
-  //fscale = 0.5*get_srate()/lp_c1.size();
   // coherence/azimuth estimation smoothing: 40 ms
   for(uint32_t k=0;k<lp_c1.size();k++){
     float f(fscale*std::max(k,1u));
@@ -851,23 +835,17 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
   //Connect the signal handler if it isn't already a virtual method override:
   signal_draw().connect(sigc::mem_fun(*this, &mixergui_t::on_draw), false);
 #endif //GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
+  obj.add_variables( this );
 }
 
 void foacoh_t::activate()
 {
   jackc_db_t::activate();
-  //osc_server_t::activate();
+  osc_server_t::activate();
   try{
     connect_in(0,"mhwe:out1");
     connect_in(1,"mhwe:out2");
     connect_in(2,"mhwe:out3");
-    //
-    //connect_in(0,"ardour:amb_1st/out 1");
-    //connect_in(1,"ardour:amb_1st/out 2");
-    //connect_in(2,"ardour:amb_1st/out 3");
-    //connect_out(0,"ambdec:in.0w");
-    //connect_out(1,"ambdec:in.1x");
-    //connect_out(2,"ambdec:in.1y");
   }
   catch( const std::exception& e ){
     std::cerr << "Warning: " << e.what() << std::endl;
@@ -876,13 +854,6 @@ void foacoh_t::activate()
     connect_in(0,"tetraproc:B-form.W");
     connect_in(1,"tetraproc:B-form.X");
     connect_in(2,"tetraproc:B-form.Y");
-    //
-    //connect_in(0,"ardour:amb_1st/out 1");
-    //connect_in(1,"ardour:amb_1st/out 2");
-    //connect_in(2,"ardour:amb_1st/out 3");
-    //connect_out(0,"ambdec:in.0w");
-    //connect_out(1,"ambdec:in.1x");
-    //connect_out(2,"ambdec:in.1y");
   }
   catch( const std::exception& e ){
     std::cerr << "Warning: " << e.what() << std::endl;
@@ -892,17 +863,31 @@ void foacoh_t::activate()
 
 void foacoh_t::deactivate()
 {
-  //osc_server_t::deactivate();
+  osc_server_t::deactivate();
   jackc_db_t::deactivate();
 }
 
 foacoh_t::~foacoh_t()
 {
   image.clear();
-  image_mod.clear();
   for(uint32_t k=0;k<ola_obj.size();k++)
     delete ola_obj[k];
 }
+
+void draw_ellipse( const Cairo::RefPtr<Cairo::Context>& cr, float x, float y, float sx, float sy )
+{
+  if( (sx > 0) && (sy > 0) ){
+    cr->save();
+    cr->translate( x, y );
+    cr->scale( sx, sy );
+    cr->arc( 0, 0, 1, 0, 2*M_PI );
+    cr->restore();
+  }else{
+    DEBUG(sx);
+    DEBUG(sy);
+  }
+}
+
   
 bool foacoh_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 {
@@ -911,117 +896,52 @@ bool foacoh_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
   const int height = allocation.get_height();
   float vmax(-1e8);
   float vmin(1e8);
-  if( draw_image ){
-    guint8* pixels = image->get_pixels();
-    for(uint32_t k=0;k<azchannels;k++)
-      for(uint32_t b=0;b<bands;b++){
-        uint32_t pix(k+(bands-b-1)*azchannels);
-        //uint32_t pix(bands*k+b);
-        //float val(10.0f*log10f(haz[b][k]));
-        float val(obj.val(k,b));
-        if( val > vmax ){
-          vmax = val;
-        }
-        if( val < vmin ){
-          vmin = val;
-        }
-        pixels[3*pix] = col.r(val)*255;
-        pixels[3*pix+1] = col.g(val)*255;
-        pixels[3*pix+2] = col.b(val)*255;
+  // fill image values:
+  guint8* pixels = image->get_pixels();
+  for(uint32_t k=0;k<azchannels;k++)
+    for(uint32_t b=0;b<bands;b++){
+      uint32_t pix(k+(bands-b-1)*azchannels);
+      float val(obj.val(k,b));
+      if( val > vmax ){
+        vmax = val;
       }
-    pixels = image_mod->get_pixels();
-    for(uint32_t k=0;k<azchannels;k++)
-      for(uint32_t b=0;b<bands;b++){
-        uint32_t pix(k+(bands-b-1)*azchannels);
-        //uint32_t pix(bands*k+b);
-        float val(obj.objval(k,b));
-        pixels[3*pix] = col.r(val)*255;
-        pixels[3*pix+1] = col.g(val)*255;
-        pixels[3*pix+2] = col.b(val)*255;
+      if( val < vmin ){
+        vmin = val;
       }
-    //std::cout << vmin << " " << vmax << std::endl;
-    //std::cout << obj.geterror();
-    cr->save();
-    cr->scale(0.5*(double)width/(double)azchannels,(double)height/(double)bands);
-    Gdk::Cairo::set_source_pixbuf(cr, image, 0, 0);
-    //(width - image->get_width())/2, (height - image->get_height())/2);
-    cr->paint();
-    Gdk::Cairo::set_source_pixbuf(cr, image_mod, azchannels,0);
-    cr->paint();
-    cr->set_font_size(azchannels*0.1);
-    for(uint32_t ko=0;ko<obj.size();ko++){
-      objmodel_t::param_t par(obj.param(ko));
-      //std::cout << " " << par.cx << " " << par.cy << " " << par.wx << " " << par.wy << " " << par.g;
-      cr->set_line_width(0.2);
+      pixels[3*pix] = col.r(val)*255;
+      pixels[3*pix+1] = col.g(val)*255;
+      pixels[3*pix+2] = col.b(val)*255;
+    }
+  cr->save();
+  cr->scale((double)width/(double)azchannels,(double)height/(double)bands);
+  cr->set_line_width(0.2);
+  Gdk::Cairo::set_source_pixbuf(cr, image, 0, 0);
+  cr->paint();
+  for(uint32_t ko=0;ko<obj.size();ko++){
+    objmodel_t::param_t par(obj.param(ko));
+    for(int32_t dx=-1;dx<2;++dx){
+      float x(par.cx+(double)azchannels*(double)dx);
       cr->set_source_rgb( 1, 1, 1 );
-      cr->move_to(par.cx+0.5,bands-(par.cy-0.5*par.wy)-1);
-      cr->line_to(par.cx+0.5,bands-(par.cy+0.5*par.wy)-1);
-      cr->stroke();
-      cr->move_to(par.cx-0.5/par.wx+0.5,bands-par.cy-1);
-      cr->line_to(par.cx+0.5/par.wx+0.5,bands-par.cy-1);
-      cr->stroke();
-      cr->move_to(par.cx+0.3+0.5,bands-par.cy-2 );
+      cr->save();
+      cr->set_source_rgba( 0.7, 0.7, 0.7, 0.5 );
+      draw_ellipse( cr, x, bands-par.cy-1, 
+                    0.25*(double)azchannels/log2(2*par.wx), 0.5*par.wy );
+      draw_ellipse( cr, x, bands-par.cy-1, 
+                    0.1, 0.1 );
+      cr->fill();
+      cr->restore();
+      cr->move_to(x,bands-par.cy-1 );
+      cr->save();
+      cr->scale((double)azchannels/(double)width,(double)bands/(double)height);
+      cr->set_font_size(48);
       char ctmp[16];
       sprintf(ctmp,"%d",ko+1);
       cr->show_text(ctmp);
+      cr->stroke();
+      cr->restore();
     }
-    //std::cout << std::endl;
-    cr->restore();
-  }else{
-    //double ratio = (double)width/(double)height;
-    cr->rectangle(0,0,width, height);
-    cr->clip();
-    //cr->scale(1.0,1.0);
-    cr->set_line_width(2.0);
-    cr->set_source_rgb( 1, 1, 1 );
-    cr->set_line_cap(Cairo::LINE_CAP_ROUND);
-    cr->set_line_join(Cairo::LINE_JOIN_ROUND);
-    // bg:
-    cr->save();
-    cr->set_source_rgb( 1.0, 1.0, 1.0 );
-    cr->paint();
-    cr->restore();
-    // end bg
-    cr->save();
-    // coherence:
-    cr->set_line_width(3.0);
-    //// Measure 1:
-    //cr->set_source_rgb( 1, 0, 0 );
-    //cr->move_to(0,height-height*cohXY[0]);
-    //for(uint32_t k=1;k<cohXY.size();k++)
-    //  cr->line_to(k,height-height*cohXY[k]);
-    //cr->stroke();
-    //// Measure 2:
-    //cr->set_source_rgb( 0, 1, 0 );
-    //cr->move_to(0,height-height*cohReXY[0]);
-    //for(uint32_t k=1;k<cohReXY.size();k++)
-    //  cr->line_to(k,height-height*cohReXY[k]);
-    //cr->stroke();
-    //// Measure 3:
-    //cr->set_source_rgb( 0, 0, 1 );
-    //cr->move_to(0,0.5*height-0.5*height/M_PI*az[0]);
-    //for(uint32_t k=1;k<az.size();k++)
-    //  cr->line_to(k,0.5*height-0.5*height/M_PI*az[k]);
-    //cr->stroke();
-
-
-    cr->save();
-    cr->translate(0.5*width,0.5*height);
-    cr->scale(0.5*std::min(width,height),0.5*std::min(width,height));
-    cr->set_line_width(0.006);
-    cr->set_source_rgba( 0, 0, 0, 0.4 );
-    cr->move_to(-1,0);
-    cr->line_to(1,0);
-    cr->move_to(0,-1);
-    cr->line_to(0,1);
-    cr->stroke();
-    for(uint32_t kH=0;kH<haz.size();kH++){
-      float arg((float)kH/(float)(haz.size()-1));
-      cr->set_source_rgb( pow(1.0f-arg,2.0), pow(0.5-0.5*cos(2.0*M_PI*arg),4.0), pow(arg,2.0) );
-      haz[kH].draw(cr,0.3);
-    }
-    cr->restore();
   }
+  cr->restore();
   return true;
 }
 
@@ -1140,7 +1060,6 @@ int main(int argc, char** argv)
   HoSGUI::foacoh_t c(jackname,channels,bpoctave,fmin,fmax,objnames,periodsize,desturl,sortmode,levelthreshold, lpperiods, taumax );
   win.add(c);
   win.set_default_size(640,480);
-  //win.fullscreen();
   win.show_all();
   c.activate();
   Gtk::Main::run(win);
