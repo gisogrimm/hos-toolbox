@@ -348,8 +348,11 @@ void objmodel_t::param_t::setp(uint32_t num,std::vector<float>& vp)
 }
 
 objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float fmin,const std::vector<std::string>& names,uint32_t sortmode_)
-  : xyfield_t(sx,sy),error(0),nobj(numobj),xscale(PI2/(float)sx),bpo_(bpo),fmin_(fmin),sortmode(sortmode_),
-    objnames(names)
+  : xyfield_t(sx,sy),error(0),nobj(numobj),
+    xscale(PI2/(float)sx),
+    objnames(names),
+    bpo_(bpo),fmin_(fmin),
+    sortmode(sortmode_)
 {
   calls = 0;
   obj_param.resize(5*nobj);
@@ -925,7 +928,7 @@ bool foacoh_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
       cr->save();
       cr->set_source_rgba( 0.7, 0.7, 0.7, 0.5 );
       draw_ellipse( cr, x, bands-par.cy-1, 
-                    0.25*(double)azchannels/log2(2*par.wx), 0.5*par.wy );
+                    0.125*(double)azchannels/log2(2*par.wx), 0.5*par.wy );
       draw_ellipse( cr, x, bands-par.cy-1, 
                     0.1, 0.1 );
       cr->fill();
