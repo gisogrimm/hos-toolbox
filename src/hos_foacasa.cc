@@ -52,20 +52,21 @@
 #include "osc_helper.h"
 #include <stdlib.h>
 #include <iostream>
-#include "libhos_audiochunks.h"
 #include "hos_defs.h"
 #include <getopt.h>
 #include "lininterp.h"
-#include "libhos_random.h"
 #include "errorhandling.h"
-#include "gammatone.h"
-#include "gammatone.cc"
 #include "filter.h"
 
-//#define OSC_ADDR "239.255.1.7"
-//#define OSC_PORT "6978"
-#define HIST_SIZE 256
-
+/**
+   \brief One iteration of gradient search
+   \param eps Stepsize scaling factor
+   \retval param Input: start values, Output: new values
+   \param err Error function handle
+   \param data Data pointer to be handed to error function
+   \param unitstep Unit step size
+   \return Error measure
+ */
 float downhill_iterate(float eps,std::vector<float>& param,float (*err)(const std::vector<float>& x,void* data),void* data,const std::vector<float>& unitstep)
 {
   std::vector<float> stepparam(param);
@@ -79,12 +80,15 @@ float downhill_iterate(float eps,std::vector<float>& param,float (*err)(const st
   return errv;
 }
 
+/**
+   \brief Create logarithmic frequency spacing
+ */
 class freqinfo_t {
 public:
-  freqinfo_t(float bpo,float fmin,float fmax);
+  freqinfo_t( float bpo, float fmin, float fmax );
   uint32_t bands;
-  std::vector<float> fc;
-  std::vector<float> fe;
+  std::vector<float> fc; //< center frequencies
+  std::vector<float> fe; //< edge frequencies
   float band(float f_hz);
 private:
   float bpo_;
@@ -92,77 +96,9 @@ private:
   float fmax_;
 };
 
-class mod_analyzer_t {
-public:
-  mod_analyzer_t(float fs,uint32_t nchannels,float bpo);
-  void update(float x);
-  float get_modoct() const { return param[0];};
-  float get_modbw() const { return param[1];};
-  static float errfun(const std::vector<float>&,void* data);
-  float errfun(const std::vector<float>&);
-private:
-  std::vector<gammatone_t> fb;
-  std::vector<float> param;
-  std::vector<float> val;
-  std::vector<float> unitstep;
-  float oval;
-};
-
-mod_analyzer_t::mod_analyzer_t(float fs,uint32_t nchannels,float bpo)
-  : oval(0)
-{
-  for(uint32_t k=0;k<nchannels;k++){
-    
-    float f(0.5*fs / pow(2.0,(float)k/bpo));
-    float bw(pow(2.0,0.5*bpo));
-    bw = f*(bw-1.0/bw);
-    fb.push_back(gammatone_t(f,bw,fs,3));
-  }
-  param.resize(3);
-  param[1] = 1;
-  param[2] = 1;
-  unitstep.resize(3);
-  unitstep[0] = 0.1;
-  unitstep[1] = 0.1;
-  unitstep[2] = 0.1;
-  val.resize(nchannels);
-}
-
-void mod_analyzer_t::update(float x)
-{
-  float tmp(x);
-  x = x-oval;
-  oval = tmp;
-  // update filterbank:
-  float vsum(0);
-  for(uint32_t k=0;k<fb.size();k++)
-    vsum += (val[k] = cabs(fb[k].filter(x)));
-  if( vsum > 0 )
-    for(uint32_t k=0;k<fb.size();k++)
-      val[k] /= vsum;
-  // parameter fitting:
-  downhill_iterate(1,param,&mod_analyzer_t::errfun,this,unitstep);
-  param[0] = std::max(0.0f,std::min((float)(fb.size()-1),param[0]));
-  param[1] = std::max(0.1f,std::min((float)(fb.size()),param[1]));
-  param[2] = std::max(0.1f,std::min(10.0f,param[2]));
-}
-
-float mod_analyzer_t::errfun(const std::vector<float>& p,void* data)
-{
-  return ((mod_analyzer_t*)(data))->errfun(p);
-}
-
-float mod_analyzer_t::errfun(const std::vector<float>& p)
-{
-  float err(0.0);
-  for(uint32_t k=0;k<val.size();k++){
-    float lerr(val[k]-p[2]*gauss((double)k-p[0],p[1]));
-    err += lerr*lerr;
-  }
-  return err;
-}
-
-
+/**
+   \brief Two-dimensional data container for feature map
+ */
 class xyfield_t {
 public:
   xyfield_t(uint32_t sx,uint32_t sy);
@@ -241,8 +177,19 @@ float xyfield_t::val(uint32_t px,uint32_t py) const
   return data[px+sx_*py];
 }
 
-class objmodel_t : public xyfield_t {
+/**
+   \brief Model which describes a scene.
+
+   A scene model consists of several objects. Each object is described
+   based on a brief parameter set. This specific model is a mixture
+   model, using gaussians on the frequency axis, and raised cosines
+   along the azimuth axis.
+ */
+class scene_model_t : public xyfield_t {
 public:
+  /**
+     \brief Parameter set for one object
+   */
   class param_t {
   public:
     param_t();
@@ -254,8 +201,7 @@ public:
     float wy;
     float g;
   };
-  void send_osc(const lo_address& lo_addr);
-  objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float fmin,const std::vector<std::string>& names,uint32_t sortmode_);
+  scene_model_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float fmin,const std::vector<std::string>& names,uint32_t sortmode_);
   float objval(float x,float y,param_t lp);
   float objval(float x,float y,const std::vector<float>&);
   float objval(float x,float y);
@@ -267,8 +213,8 @@ public:
   const std::vector<float>& param() const { return obj_param;};
   param_t param(uint32_t k) const { return param_t(k,obj_param);};
   float geterror(){ return error;};
-  //void bayes_prob(uint32_t kx,uint32_t ky,std::vector<float>& p);
   float bayes_prob(float x,float y,uint32_t ko);
+  void send_osc(const lo_address& lo_addr);
   void add_variables( TASCAR::osc_server_t* srv );
 private:
   float error;
@@ -276,7 +222,6 @@ private:
   std::vector<float> obj_param;
   std::vector<float> unitstep;
   float xscale;
-  //std::vector<xyfield_t> bayes_table;
   uint32_t calls;
   std::vector<std::string> objnames;
   std::vector<std::string> paths_pitch;
@@ -288,7 +233,10 @@ private:
   uint32_t sortmode;
 };
 
-void objmodel_t::add_variables( TASCAR::osc_server_t* srv )
+/**
+   \brief Add variables to OSC server to allow resetting of parameters
+ */
+void scene_model_t::add_variables( TASCAR::osc_server_t* srv )
 {
   for(uint32_t ko=0;ko<nobj;ko++){
     char ctmp[1024];
@@ -301,18 +249,26 @@ void objmodel_t::add_variables( TASCAR::osc_server_t* srv )
   }
 }
 
-bool param_less_y(objmodel_t::param_t i,objmodel_t::param_t j){
+/**
+   \brief Comparison function to sort objects along y axis
+ */
+bool param_less_y(scene_model_t::param_t i,scene_model_t::param_t j){
   return (i.cy>j.cy+1); 
 }
 
-bool param_less_x(objmodel_t::param_t i,objmodel_t::param_t j){
+/**
+   \brief Comparison function to sort objects along x axis
+ */
+bool param_less_x(scene_model_t::param_t i,scene_model_t::param_t j){
   return (i.cx>j.cx); 
 }
 
-void objmodel_t::send_osc(const lo_address& lo_addr)
+/**
+   \brief Send OSC messages describing the scene
+ */
+void scene_model_t::send_osc(const lo_address& lo_addr)
 {
   // 0 equals c in low pitch (a=415 Hz):
-  //float delta(bpo_*log2f(246.8f/fmin_));
   float delta(bpo_*log2f(0.5*fmin_/246.8f));
   for(uint32_t ko=0;ko<nobj;ko++){
     param_t par(param(ko));
@@ -322,23 +278,21 @@ void objmodel_t::send_osc(const lo_address& lo_addr)
   }
 }
 
-objmodel_t::param_t::param_t()
+scene_model_t::param_t::param_t()
   : cx(0),cy(0),wx(3),wy(2),g(1)
 {
 }
 
-objmodel_t::param_t::param_t(uint32_t num,const std::vector<float>& vp)
+scene_model_t::param_t::param_t(uint32_t num,const std::vector<float>& vp)
 {
   cx = vp[5*num];
   cy = vp[5*num+1];
   wx = vp[5*num+2];
   wy = vp[5*num+3];
   g = vp[5*num+4];
-  //wx = vp[4*num+2];
-  //wy = vp[4*num+3];
 }
 
-void objmodel_t::param_t::setp(uint32_t num,std::vector<float>& vp)
+void scene_model_t::param_t::setp(uint32_t num,std::vector<float>& vp)
 {
   vp[5*num] = cx;
   vp[5*num+1] = cy;
@@ -347,7 +301,7 @@ void objmodel_t::param_t::setp(uint32_t num,std::vector<float>& vp)
   vp[5*num+4] = g;
 }
 
-objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float fmin,const std::vector<std::string>& names,uint32_t sortmode_)
+scene_model_t::scene_model_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float fmin,const std::vector<std::string>& names,uint32_t sortmode_)
   : xyfield_t(sx,sy),error(0),nobj(numobj),
     xscale(PI2/(float)sx),
     objnames(names),
@@ -363,9 +317,9 @@ objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float f
     paths_az.push_back(std::string("/")+names[k]+std::string("/az"));
     param_t par;
     // center x:
-    par.cx = sx*drand();
+    par.cx = sx*(double)k/(double)nobj;
     // center y:
-    par.cy = sy*drand();
+    par.cy = sy*0.5;
     par.setp(k,obj_param);
     // center x:
     unitstep[5*k] = 0.01;
@@ -374,16 +328,14 @@ objmodel_t::objmodel_t(uint32_t sx,uint32_t sy,uint32_t numobj,float bpo,float f
     unitstep[5*k+2] = 0.01;
     unitstep[5*k+3] = 0.01;
     unitstep[5*k+4] = 10;
-    // exponent x:
-    //unitstep[4*k+2] = 0.001;
-    // bandwidth y:
-    //unitstep[4*k+3] = 0.01;
-    //bayes_table.push_back(xyfield_t(sx,sy));
   }
   vpar.resize(nobj);
 }
 
-float objmodel_t::objval(float x,float y,param_t lp) 
+/**
+   \brief Model function for one object
+ */
+float scene_model_t::objval(float x,float y,param_t lp) 
 {
   calls++;
   //float g(val(std::max(0.0f,std::min(lp.cx,(float)(sizex()))),
@@ -394,7 +346,9 @@ float objmodel_t::objval(float x,float y,param_t lp)
   return lp.g*powf(0.5+0.5*cosf((x-lp.cx)*xscale),lp.wx)*expf(-lp.cy);
 }
 
-float objmodel_t::objval(float x,float y,const std::vector<float>& p)
+/**
+ */
+float scene_model_t::objval(float x,float y,const std::vector<float>& p)
 {
   float rv(0.0f);
   for(uint32_t k=0;k<nobj;k++)
@@ -402,22 +356,22 @@ float objmodel_t::objval(float x,float y,const std::vector<float>& p)
   return rv;
 }
 
-float objmodel_t::objval(float x,float y)
+float scene_model_t::objval(float x,float y)
 {
   return objval(x,y,obj_param);
 }
 
-float objmodel_t::bayes_prob(float x,float y,uint32_t ko)
+float scene_model_t::bayes_prob(float x,float y,uint32_t ko)
 {
   return objval(x,y,param_t(ko,obj_param))/objval(x,y);
 }
 
-float objmodel_t::errfun(const std::vector<float>& p,void* data)
+float scene_model_t::errfun(const std::vector<float>& p,void* data)
 {
-  return ((objmodel_t*)(data))->errfun(p);
+  return ((scene_model_t*)(data))->errfun(p);
 }
 
-float objmodel_t::errfun(const std::vector<float>& p)
+float scene_model_t::errfun(const std::vector<float>& p)
 {
   float err(0.0);
   for(uint32_t kx=0;kx<sizex();kx++)
@@ -428,10 +382,10 @@ float objmodel_t::errfun(const std::vector<float>& p)
   return err;
 }
 
-void objmodel_t::iterate()
+void scene_model_t::iterate()
 {
   calls = 0;
-  error = downhill_iterate(0.0002,obj_param,&objmodel_t::errfun,this,unitstep);
+  error = downhill_iterate(0.0002,obj_param,&scene_model_t::errfun,this,unitstep);
   // constraints:
   for(uint32_t k=0;k<nobj;k++){
     param_t par(k,obj_param);
@@ -481,7 +435,7 @@ void objmodel_t::iterate()
     vpar[k].setp(k,obj_param);
 }
 
-void objmodel_t::reset()
+void scene_model_t::reset()
 {
   for(uint32_t k=0;k<nobj;k++){
     param_t par(k,obj_param);
@@ -495,51 +449,43 @@ void objmodel_t::reset()
   }
 }
 
+/**
+   \brief Feature extractor for one frequency band
+   
+ */
 class az_hist_t : public TASCAR::wave_t
 {
 public:
   az_hist_t(uint32_t size);
   void update();
   bool add(float f, float az,float weight);
-  void add(float f, float _Complex W, float _Complex X, float _Complex Y, float weight);
   void set_tau(float tau,float fs);
-  void draw(const Cairo::RefPtr<Cairo::Context>& cr,float scale);
   void set_frange(float f1,float f2);
 private:
   float c1;
   float c2;
   float fmin;
   float fmax;
-  float dec_w;
-  TASCAR::wave_t dec_x;
-  TASCAR::wave_t dec_y;
 };
 
 az_hist_t::az_hist_t(uint32_t size)
-  : TASCAR::wave_t(size),
-    dec_x(size),
-    dec_y(size)
+  : TASCAR::wave_t(size)
 {
   set_tau(1.0f,1.0f);
   set_frange(0,22050);
-  // 1st order decoder type:
-  // basic = 1
-  // max-rE(2D) = 0.707
-  float dec_gain(1.0);
-  dec_gain = 0.707;
-  dec_w = 1.0/sqrt(2.0);
-  for(uint32_t k=0;k<size;k++){
-    float az((float)k*2.0*M_PI/(float)size);
-    dec_x[k] = dec_gain*cos(az);
-    dec_y[k] = dec_gain*sin(az);
-  }
 }
 
+/**
+   \brief Smoothly forget previous values
+ */
 void az_hist_t::update()
 {
   *this *= c1;
 }
 
+/**
+   \brief Add intensity at the specified frequency and azimuth
+ */
 bool az_hist_t::add(float f, float az, float weight)
 {
   if( (f >= fmin) && (f < fmax) ){
@@ -550,17 +496,6 @@ bool az_hist_t::add(float f, float az, float weight)
     return true;
   }
   return false;
-}
-
-void az_hist_t::add(float f, float _Complex W, float _Complex X, float _Complex Y, float weight)
-{
-  if( (f >= fmin) && (f < fmax) ){
-    for(uint32_t k=0;k<size();k++){
-      float t(crealf(dec_w*W+dec_x[k]*X+dec_y[k]*Y));
-      t *= t;
-      operator[](k) += c2*t*weight;
-    }
-  }
 }
 
 void az_hist_t::set_tau(float tau,float fs)
@@ -575,31 +510,9 @@ void az_hist_t::set_frange(float f1,float f2)
   fmax = f2;
 }
 
-void az_hist_t::draw(const Cairo::RefPtr<Cairo::Context>& cr,float scale)
-{
-  float w(0);
-  for(uint32_t k=0;k<size();k++)
-    w+=operator[](k);
-  w /= size();
-  if( w > 0.0f )
-    scale /= w;
-  for(uint32_t k=0;k<=size();k++){
-    float arg(2.0*M_PI*k/size());
-    float r(scale*operator[](k % size()));
-    float x(r*cos(arg));
-    float y(r*sin(arg));
-    if( k==0)
-      cr->move_to(x,y);
-    else
-      cr->line_to(x,y);
-  }
-  cr->stroke();
-}
-
 freqinfo_t::freqinfo_t(float bpo,float fmin,float fmax)
   : bands(bpo*log2(fmax/fmin)+1.0),bpo_(bpo),fmin_(fmin),fmax_(fmax)
 {
-  DEBUG(bands);
   float f_ratio(pow(fmax/fmin,0.5/(double)(bands-1)));
   for(uint32_t k=0;k<bands;k++){
     fc.push_back(fmin*pow(fmax/fmin,(double)k/(double)(bands-1)));
@@ -635,30 +548,22 @@ namespace HoSGUI {
     HoS::ola_t ola_x;
     HoS::ola_t ola_y;
     std::vector<HoS::ola_t*> ola_obj;
-    // low pass filter coefficients:
-    TASCAR::wave_t lp_c1;
-    TASCAR::wave_t lp_c2;
-    // complex temporary coherence:
-    HoS::spec_t ccohXY;
-    //HoS::spec_t ccoh2;
+    TASCAR::wave_t lp_c1; //< low pass filter coefficients
+    TASCAR::wave_t lp_c2; //< low pass filter coefficients
+    HoS::spec_t ccohXY;//< complex temporary coherence
     // coherence functions:
     TASCAR::wave_t cohXY;
-    //HoS::wave_t cohReXY;
-    TASCAR::wave_t cohXWYW;
     TASCAR::wave_t az;
     std::vector<az_hist_t> haz;
-    //az_hist_t haz2;
     std::string name_;
-    //float haz_c1;
-    //float haz_c2;
     float fscale;
     Glib::RefPtr<Gdk::Pixbuf> image;
     //Glib::RefPtr<Gdk::Pixbuf> image_mod;
     //bool draw_image;
     colormap_t col;
     uint32_t azchannels;
-    objmodel_t obj;
-    std::vector<mod_analyzer_t> modflt;
+    scene_model_t obj;
+    //std::vector<mod_analyzer_t> modflt;
     float vmin;
     float vmax;
     float objlp_c1;
@@ -667,8 +572,8 @@ namespace HoSGUI {
     std::vector<float> f2band;
     lo_address lo_addr;
     std::vector<std::string> names;
-    std::vector<std::string> paths_modf;
-    std::vector<std::string> paths_modbw;
+    //std::vector<std::string> paths_modf;
+    //std::vector<std::string> paths_modbw;
     uint32_t send_cnt;
     HoS::arflt levellp;
     float level;
@@ -691,8 +596,10 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
   ola_w.process(inW);
   ola_x.process(inX);
   ola_y.process(inY);
+  // forget previous values:
   for(uint32_t kH=0;kH<haz.size();kH++)
     haz[kH].update();
+  // do scene analysis:
   for(uint32_t k=0;k<ola_x.s.size();k++){
     float freq(k*fscale);
     // for all measures, X*conj(Y) and its absolute value is needed:
@@ -707,19 +614,9 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
       ccohXY[k] += (lp_c2[k]/cXYabs)*cXY;
     }
     cohXY[k] = cabs(ccohXY[k]);
-    // Measure 2: real part of X/Y:
-    //cohReXY[k] *= lp_c1[k];
-    //if( cXYabs > 0 ){
-    //  cohReXY[k] += lp_c2[k]*fabsf(crealf(cXY))/cXYabs;
-    //}
-    //cohReXY[k] = fabsf(creal(ccohXY[k]));
-    //// Measure 3: (X/W)^2 + (Y/W)^2 = 2
-    cohXWYW[k] = std::min(1.0f,cohXWYW[k]);
-    cohXWYW[k] *= lp_c1[k];
     if( cabsf(cW) > 0 ){
       cX /= cW;
       cY /= cW;
-      cohXWYW[k] += lp_c2[k]*0.25*cabsf(cX*conjf(cX) + cY*conjf(cY));
     }
     az[k] = cargf(cX+I*cY);
     float w(powf(cabsf(cW)*cohXY[k],2.0));
@@ -728,26 +625,23 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
     for(uint32_t kH=0;kH<haz.size();kH++)
       haz[kH].add(freq,az[k],w);
   }
+  // send model parameters:
   if( send_cnt == 0 ){
     obj.send_osc(lo_addr);
     send_cnt = 2;
   }else
     send_cnt--;
+  // do object decomposition:
   for(uint32_t kobj=0;kobj<obj.size();kobj++){
     TASCAR::wave_t outW(n,vOut[kobj]);
-    objmodel_t::param_t par(obj.param(kobj));
+    scene_model_t::param_t par(obj.param(kobj));
     float az(PI2*par.cx/(float)azchannels-M_PI);
     float wx(cos(az));
     float wy(sin(az));
-    float env(0);
     for(uint32_t k=0;k<ola_w.s.size();k++){
       // by not using W channel gain, this is max-rE FOA decoder:
       ola_obj[kobj]->s[k] = (ola_w.s[k]+wx*ola_x.s[k]+wy*ola_y.s[k])*obj.bayes_prob(par.cx,f2band[k],kobj);
-      float aspec(cabs(ola_obj[kobj]->s[k]));
-      env += aspec*aspec;
     }
-    env = sqrt(env);
-    modflt[kobj].update(env);
     ola_obj[kobj]->s[0] = creal(ola_obj[kobj]->s[0]);
     ola_obj[kobj]->ifft(outW);
   }
@@ -781,7 +675,6 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
   lp_c2(ola_x.s.size()),
   ccohXY(ola_x.s.size()),
   cohXY(ola_x.s.size()),
-  cohXWYW(ola_x.s.size()),
   az(ola_x.s.size()),
   name_(name),
   fscale(get_srate()/(float)fftlen),
@@ -808,9 +701,9 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
   for(uint32_t ko=0;ko<objnames.size();ko++){
     add_output_port(names[ko].c_str());
     ola_obj.push_back(new HoS::ola_t(fftlen,wndlen,periodsize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING));
-    modflt.push_back(mod_analyzer_t(frame_rate,4,1));
-    paths_modf.push_back(std::string("/")+names[ko]+std::string("/modf"));
-    paths_modbw.push_back(std::string("/")+names[ko]+std::string("/modbw"));
+    //modflt.push_back(mod_analyzer_t(frame_rate,4,1));
+    //paths_modf.push_back(std::string("/")+names[ko]+std::string("/modf"));
+    //paths_modbw.push_back(std::string("/")+names[ko]+std::string("/modbw"));
   }
   // coherence/azimuth estimation smoothing: 40 ms
   for(uint32_t k=0;k<lp_c1.size();k++){
@@ -921,7 +814,7 @@ bool foacoh_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
   Gdk::Cairo::set_source_pixbuf(cr, image, 0, 0);
   cr->paint();
   for(uint32_t ko=0;ko<obj.size();ko++){
-    objmodel_t::param_t par(obj.param(ko));
+    scene_model_t::param_t par(obj.param(ko));
     for(int32_t dx=-1;dx<2;++dx){
       float x(par.cx+(double)azchannels*(double)dx);
       cr->set_source_rgb( 1, 1, 1 );
