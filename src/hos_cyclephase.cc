@@ -45,7 +45,7 @@
 
 namespace HoS {
 
-  inline double c2normphase(double complex p)
+  inline double c2normphase(double _Complex p)
   {
     double rp(atan2(cimag(p),creal(p)));
     if( rp < 0 )
@@ -57,12 +57,12 @@ namespace HoS {
   public:
     clp_t();
     void set_tau(double tau);
-    inline double complex filter(double complex val){
+    inline double _Complex filter(double _Complex val){
       state *= c1;
       return (state += c2*val);
     }
   private:
-    double complex state;
+    double _Complex state;
     double c1;
     double c2;
   };
@@ -162,14 +162,14 @@ namespace HoS {
     maxtrack_t mtspokes;
     std::vector<uint32_t> phase_i;
     std::vector<double> p0;
-    double complex cphase_raw;
-    double complex cphase_lp;
-    double complex cphase_lpdrift;
-    double complex cphase_if;
-    double complex cdrift_raw;
-    double complex cdrift_lp;
-    double complex cdphase;
-    double complex cdphase_lp;
+    double _Complex cphase_raw;
+    double _Complex cphase_lp;
+    double _Complex cphase_lpdrift;
+    double _Complex cphase_if;
+    double _Complex cdrift_raw;
+    double _Complex cdrift_lp;
+    double _Complex cdphase;
+    double _Complex cdphase_lp;
     unwrapper_t unwrap;
     clp_t lp_phase;
     clp_t lp_drift;
@@ -356,7 +356,7 @@ int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBu
     cphase_lp = lp_phase.filter(cphase_raw);
     cdphase *= cphase_lp;
     cdphase_lp = lp_if.filter(cdphase);
-    cphase_if *= cexp(I*carg(cdphase_lp));
+    cphase_if *= cexp(1.0iF*carg(cdphase_lp));
     rpm = carg(cdphase_lp)*rpmscale;
     cphase_lpdrift = cphase_if*cdrift_lp;
     double current_phase(c2normphase(cphase_lpdrift));

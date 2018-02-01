@@ -148,8 +148,8 @@ void fft_t::execute(const spec_t& src)
 fft_t::fft_t(uint32_t fftlen)
   : w(fftlen),
     s(fftlen/2+1),
-    fftwp(fftwf_plan_dft_r2c_1d(fftlen,w.d,s.b,0)),
-    fftwp_s2w(fftwf_plan_dft_c2r_1d(fftlen,s.b,w.d,0))
+    fftwp(fftwf_plan_dft_r2c_1d(fftlen,w.d,(fftwf_complex*)s.b,0)),
+    fftwp_s2w(fftwf_plan_dft_c2r_1d(fftlen,(fftwf_complex*)s.b,w.d,0))
 {
 }
 
@@ -289,7 +289,7 @@ void ola_t::ifft(TASCAR::wave_t& wOut)
    \param n Fragment size
  */
 delay1_t::delay1_t(uint32_t n)
-  : wave_t(n),
+  : TASCAR::wave_t(n),
     state(0.0)
 {
 }
@@ -321,7 +321,7 @@ uint32_t sndfile_handle_t::readf_float( float* buf, uint32_t frames )
 
 sndfile_t::sndfile_t(const std::string& fname,uint32_t channel)
   : sndfile_handle_t(fname),
-    wave_t(get_frames())
+    TASCAR::wave_t(get_frames())
 {
   uint32_t ch(get_channels());
   uint32_t N(get_frames());

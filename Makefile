@@ -2,13 +2,13 @@ ARCH = $(shell uname -m)
 
 PREFIX = /usr/local
 
-BINFILES = hos_sphere_amb30 hos_sendosc hos_delay		\
-hos_cyclephase hos_visualize hos_visualize_sphere hos_cyclephasegui	\
-hos_sampler hos_scope hos_osc2jack hos_resfilt hos_tmcm			\
-hos_osc_marais hos_osc_house hos_rtmdisplay hos_composer hos_rtm2midi	\
-test_duration hos_foacasa hos_mm hos_markerbroadcast hos_marker2osc	\
-laserctl hos_sustain hos_if_filter hos_instdc hos_spksim		\
-hos_cycledriver hos_mainmix
+BINFILES = hos_sphere_amb30 hos_sendosc hos_delay hos_cyclephase	\
+	hos_visualize hos_visualize_sphere hos_cyclephasegui		\
+	hos_sampler hos_scope hos_osc2jack hos_resfilt hos_tmcm		\
+	hos_osc_marais hos_osc_house hos_rtmdisplay hos_composer	\
+	hos_rtm2midi test_duration hos_foacasa hos_mm			\
+	hos_markerbroadcast hos_marker2osc hos_sustain hos_if_filter	\
+	hos_instdc hos_spksim hos_mainmix hos_cycledriver laserctl
 
 #BINFILES = hos_visualize_sphere
 
@@ -52,6 +52,8 @@ LOBIN = \
 ALSABIN = mm_midicc mm_hdsp
 
 GTKMMBIN = hos_oscrmsmeter hos_visualize mm_gui hos_visualize_sphere tascar_draw hos_cyclephasegui hos_scope hos_rtmdisplay hos_foacasa hos_mm
+
+CXXFLAGS += -std=c++11 -fext-numeric-literals
 
 ifeq "$(ARCH)" "x86_64"
 CXXFLAGS += -msse -msse2 -mfpmath=sse -ffast-math -fomit-frame-pointer -fno-finite-math-only
