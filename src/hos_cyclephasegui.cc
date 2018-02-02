@@ -83,7 +83,8 @@ namespace HoSGUI {
     void set_f0(uint32_t ch,double f);
   protected:
     //Override default signal handler:
-    virtual bool on_expose_event(GdkEventExpose* event);
+    bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr);
+    //virtual bool on_expose_event(GdkEventExpose* event);
     bool on_timeout();
 
     std::vector<cycle_t*> vCycle;
@@ -266,10 +267,10 @@ cyclephase_t::cyclephase_t(const std::string& name,uint32_t channels)
 {
   set_prefix("/"+name);
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &cyclephase_t::on_timeout), 40 );
-#ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
-  //Connect the signal handler if it isn't already a virtual method override:
-  signal_expose_event().connect(sigc::mem_fun(*this, &cyclephase_t::on_expose_event), false);
-#endif //GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
+//#ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
+//  //Connect the signal handler if it isn't already a virtual method override:
+//  signal_expose_event().connect(sigc::mem_fun(*this, &cyclephase_t::on_expose_event), false);
+//#endif //GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
   add_input_port("phase");
 }
 
@@ -307,24 +308,13 @@ void cyclephase_t::add_cycle(double x, double y, const std::string& name)
   add_input_port(name);
 }
 
-bool cyclephase_t::on_expose_event(GdkEventExpose* event)
+bool cyclephase_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 {
   Glib::RefPtr<Gdk::Window> window = get_window();
-  if(window)
-    {
+  if(window){
       Gtk::Allocation allocation = get_allocation();
       const int width = allocation.get_width();
       const int height = allocation.get_height();
-      //double ratio = (double)width/(double)height;
-      Cairo::RefPtr<Cairo::Context> cr = window->create_cairo_context();
-      if(event)
-        {
-          // clip to the area indicated by the expose event so that we only
-          // redraw the portion of the window that needs to be redrawn
-          cr->rectangle(event->area.x, event->area.y,
-                        event->area.width, event->area.height);
-          cr->clip();
-        }
       cr->translate(0.5*width,0.5*height);
       double scale = std::min(width,height)/3;
       cr->scale(scale,scale);
