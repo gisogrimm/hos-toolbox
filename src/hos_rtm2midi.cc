@@ -1,3 +1,7 @@
+/**
+   \file hos_rtm2midi.cc
+   \ingroup rtm
+ */
 /*
   Copyright (C) 2004 Ian Esten
     
@@ -29,6 +33,9 @@
 #include <iostream>
 #include "hos_defs.h"
 
+/**
+   \ingroup rtm
+ */
 class midi_note_t {
 public:
   midi_note_t();
@@ -48,6 +55,9 @@ midi_note_t::midi_note_t()
 {
 }
 
+/**
+   \ingroup rtm
+ */
 class midi_t : public TASCAR::osc_server_t
 {
 public:

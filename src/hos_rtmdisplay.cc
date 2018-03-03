@@ -1,3 +1,8 @@
+/**
+   \file hos_rtmdisplay.cc
+   \ingroup rtm
+ */
+
 #include <gtkmm.h>
 #include <gtkmm/main.h>
 #include <gtkmm/window.h>
@@ -11,6 +16,9 @@
 
 #define DRAWKEY
 
+/**
+   \ingroup rtm
+ */
 class clef_t {
 public:
   std::string symbol;
@@ -40,6 +48,9 @@ void clef_t::draw_full(Cairo::RefPtr<Cairo::Context> cr,double x, double y)
   cr->show_text(symbol);
 }
 
+/**
+   \ingroup rtm
+ */
 namespace Symbols {
   clef_t alto = { "", "",0,0};
   clef_t tenor = { "", "",2,2};
@@ -54,6 +65,9 @@ namespace Symbols {
   std::string dot(".");
 }
 
+/**
+   \ingroup rtm
+ */
 class graphical_note_t : public note_t {
 public:
   graphical_note_t(const note_t& note, const clef_t& clef, int key,const graphical_note_t& prev=graphical_note_t());
@@ -349,6 +363,9 @@ double graphical_time_signature_t::space(Cairo::RefPtr<Cairo::Context> cr)
   return std::max(l_denom,l_nom)+1;
 }
 
+/**
+   \ingroup rtm
+ */
 class score_t : public Gtk::DrawingArea, public TASCAR::osc_server_t
 {
 public:
