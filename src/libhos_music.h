@@ -17,6 +17,9 @@ double frac(double x,double eps=8192.0);
 #define PITCH_REST 1000
 #define MAXLEN 12
 
+/**
+   \ingroup rtm
+ */
 class note_t {
 public:
   note_t();
@@ -29,6 +32,9 @@ public:
   friend std::ostream& operator<<(std::ostream& o, const note_t& p){  o << "[" << p.pitch << ":"<<p.length << "@" << p.time << "]"; return o;};
 };
 
+/**
+   \ingroup rtm
+*/
 class keysigchange_t {
 public:
   keysigchange_t();
@@ -39,6 +45,9 @@ public:
   bool parallel;
 };
 
+/**
+   \ingroup rtm
+ */
 class keysig_t {
 public:
   enum mode_t {
@@ -59,6 +68,9 @@ public:
   uint32_t hash() const;
 };
 
+/**
+   \ingroup rtm
+*/
 class time_signature_t {
 public:
   time_signature_t();

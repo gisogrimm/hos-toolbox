@@ -5,11 +5,22 @@
 #include "libhos_random.h"
 #include <libxml++/libxml++.h>
 
+/**
+   \file libhos_harmony.h
+   \ingroup rtm
+ */
+
+/**
+   \brief Resolution of beats, to avoid rounding errors
+ */
 #define BEATRES 512.0
 
 double get_attribute_double(xmlpp::Element* e,const std::string& name);
 double get_attribute_double(xmlpp::Element* e,const std::string& name,double def);
 
+/**
+   \ingroup rtm
+ */
 class scale_t {
 public:
   scale_t();
@@ -18,6 +29,9 @@ public:
   pmf_t minor;
 };
 
+/**
+   \ingroup rtm
+ */
 class triad_t {
 public:
   triad_t();
@@ -29,6 +43,9 @@ public:
 const scale_t Scale;
 const triad_t Triad;
 
+/**
+   \ingroup rtm
+ */
 class harmony_model_t {
 public:
   bool process(double beat);
@@ -46,6 +63,9 @@ private:
   std::map<uint32_t,pmf_t> pkeyrel;
 };
 
+/**
+   \ingroup rtm
+ */
 class melody_model_t {
 public:
   note_t process(double beat,const harmony_model_t& harmony, const time_signature_t& timesig,double center,double bandw,double harmonyweight,double beatweight,double modf);

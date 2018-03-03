@@ -1,3 +1,13 @@
+/**
+   \defgroup rtm Real-time music composition tool set
+
+*/
+
+/**
+   \file hos_composer.cc
+   \ingroup rtm
+*/
+
 #include <lo/lo.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -8,17 +18,16 @@
 #include "osc_helper.h"
 #include <stdio.h>
 #include "jackclient.h"
+#include <cli.h>
 
 #define NUM_VOICES 5
 
 static bool  b_quit(false);
 
-class simple_timesig_t {
-public:
-  uint32_t num;
-  uint32_t denom;
-};
-
+/**
+   \brief Definition of one voice
+   \ingroup rtm
+ */
 class voice_t : public melody_model_t {
 public:
   voice_t();
@@ -30,9 +39,14 @@ voice_t::voice_t()
   note.time = 0;
 }
 
+/**
+   \brief Composition class
+   \ingroup rtm
+ */
 class composer_t : public TASCAR::osc_server_t, public jackc_db_t {
 public:
-  composer_t(const std::string& srv_addr,const std::string& srv_port,const std::string& url,const std::string& fname);
+  composer_t(const std::string& srv_addr,const std::string& srv_port,const std::string& url,const std::string& fname,const std::string& jackname);
+private:
   bool process_timesig();
   int32_t get_key() const;
   int32_t get_mode() const;
@@ -41,13 +55,10 @@ public:
   static int osc_set_pitch(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   void set_pitch(double c,double w);
   int inner_process(jack_nframes_t n,const std::vector<float*>& inBuff,const std::vector<float*>& outBuff);
-private:
   std::vector<voice_t> voice;
   harmony_model_t harmony;
-public:
   time_signature_t timesig;
   double time;
-private:
   pmf_t ptimesig;
   pmf_t ptimesigbars;
   lo_address lo_addr;
@@ -60,19 +71,35 @@ private:
   float timeincrement;
 };
 
+/**
+   \brief Return current key pitch
+ */
 int32_t composer_t::get_key() const
 {
   return harmony.current().pitch();
 }
 
+/**
+   \brief Return current key mode
+ */
 int32_t composer_t::get_mode() const
 {
   return harmony.current().mode;
 }
 
-composer_t::composer_t(const std::string& srv_addr,const std::string& srv_port,const std::string& url,const std::string& fname)
+/**
+   \param srv_addr Address of OSC server
+   \param srv_port Port to listen on for incoming OSC messages
+   \param url Destination of OSC messages
+   \param fname Configuration file name
+ */
+composer_t::composer_t(const std::string& srv_addr,
+                       const std::string& srv_port,
+                       const std::string& url,
+                       const std::string& fname, 
+                       const std::string& jackname)
   : osc_server_t(srv_addr,srv_port), 
-    jackc_db_t("composer",512),
+    jackc_db_t(jackname,512),
     timesig(0,2,0,0), time(0), lo_addr(lo_address_new_from_url(url.c_str())),timesigcnt(0),
     pcenter(NUM_VOICES,0.0),pbandw(NUM_VOICES,48.0),pmodf(NUM_VOICES,1.0),pitchchaos(0.0),beatchaos(0.0),
     timeincrement(1.0/256.0)
@@ -212,17 +239,44 @@ int composer_t::inner_process(jack_nframes_t n,const std::vector<float*>& inBuff
 
 int main(int argc, char** argv)
 {
-  if( argc < 2 )
-    throw TASCAR::ErrMsg("No prob table given.");
-  srandom(time(NULL));
   std::string serverport("6978");
   std::string serveraddr("239.255.1.7");
   std::string desturl("osc.udp://239.255.1.7:9877/");
-  composer_t c(serveraddr,serverport,desturl,argv[1]);
+  std::string jackname("composer");
+  std::string configfile;
+  const char *options = "hj:u:";
+  struct option long_options[] = { 
+      { "help",     0, 0, 'h' },
+      { "jackname", 1, 0, 'j' },
+      { "desturl",  1, 0, 'u' },
+      { 0, 0, 0, 0 }
+  };
+  int opt(0);
+  int option_index(0);
+  while( (opt = getopt_long(argc, argv, options,
+                            long_options, &option_index)) != -1){
+    switch(opt){
+      case 'h':
+        TASCAR::app_usage("hos_composer",long_options,"configfile");
+        return -1;
+    case 'j':
+      jackname = optarg;
+      break;
+    case 'u':
+      desturl = optarg;
+      break;
+    }
+  }
+  if( optind < argc )
+    configfile = argv[optind++];
+  if( configfile.size() == 0 ){
+    TASCAR::app_usage("tascar_cli",long_options,"configfile");
+    return -1;
+  }
+  srandom(time(NULL));
+  composer_t c(serveraddr,serverport,desturl,configfile,jackname);
   c.jackc_db_t::activate();
   while(!b_quit){
-    //usleep(15625);
-    //usleep(10625);
     usleep(99625);
   }
   c.jackc_db_t::deactivate();

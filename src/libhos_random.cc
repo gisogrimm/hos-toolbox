@@ -13,6 +13,10 @@ pmf_t::pmf_t()
 {
 }
 
+/**
+   \brief re-normalize the pmf data and re-calculate the cumulative
+   distribution function
+ */
 void pmf_t::update()
 {
   icdf.clear();
@@ -30,6 +34,14 @@ void pmf_t::update()
   }
 }
 
+/**
+   \brief Return a random number based on the PMF
+
+   After changes of the probability map, the update function needs to
+   be called, otherwise the return values are undefind.
+
+   \return random number
+ */
 double pmf_t::rand() const
 {
   if( icdf.empty() )
