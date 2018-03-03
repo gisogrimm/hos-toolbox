@@ -53,7 +53,7 @@ public:
     return o;
   };
 private:
-  std::map<double,double> icdf;//< Cumulative distribution function
+  std::map<double,double> icdf;///< Cumulative distribution function
 };
 
 pmf_t operator*(double a,const pmf_t& p);

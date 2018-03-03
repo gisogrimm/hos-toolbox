@@ -87,8 +87,8 @@ class freqinfo_t {
 public:
   freqinfo_t( float bpo, float fmin, float fmax );
   uint32_t bands;
-  std::vector<float> fc; //< center frequencies
-  std::vector<float> fe; //< edge frequencies
+  std::vector<float> fc; ///< center frequencies
+  std::vector<float> fe; ///< edge frequencies
   float band(float f_hz);
 private:
   float bpo_;
@@ -548,9 +548,9 @@ namespace HoSGUI {
     HoS::ola_t ola_x;
     HoS::ola_t ola_y;
     std::vector<HoS::ola_t*> ola_obj;
-    TASCAR::wave_t lp_c1; //< low pass filter coefficients
-    TASCAR::wave_t lp_c2; //< low pass filter coefficients
-    HoS::spec_t ccohXY;//< complex temporary coherence
+    TASCAR::wave_t lp_c1; ///< low pass filter coefficients
+    TASCAR::wave_t lp_c2; ///< low pass filter coefficients
+    HoS::spec_t ccohXY;///< complex temporary coherence
     // coherence functions:
     TASCAR::wave_t cohXY;
     TASCAR::wave_t az;

@@ -19,6 +19,7 @@ double get_attribute_double(xmlpp::Element* e,const std::string& name);
 double get_attribute_double(xmlpp::Element* e,const std::string& name,double def);
 
 /**
+   \brief Major and minor scale
    \ingroup rtm
  */
 class scale_t {
@@ -30,6 +31,7 @@ public:
 };
 
 /**
+   \brief Major and minor triads
    \ingroup rtm
  */
 class triad_t {
@@ -64,6 +66,7 @@ private:
 };
 
 /**
+   \brief Create a melody based on a harmony and time signature model.
    \ingroup rtm
  */
 class melody_model_t {
@@ -71,15 +74,15 @@ public:
   note_t process(double beat,const harmony_model_t& harmony, const time_signature_t& timesig,double center,double bandw,double harmonyweight,double beatweight,double modf);
   void read_xml(xmlpp::Element* e);
   std::string get_name() const { return name;};
-  //private:
-  pmf_t pambitus;
-  pmf_t pstep;
-  pmf_t pduration;
-  pmf_t pbeat;
+  pmf_t pambitus; ///< Voice/instrument specific ambitus or list of possible notes
+  pmf_t pstep;///< List of possible melody intervals
+  pmf_t pduration;///< List of possible note durations
+  pmf_t pbeat;///< List of possible note beats
+private:
   int32_t last_pitch;
-  double onbeatscale;
-  double offbeatscale;
-  std::string name;
+  double onbeatscale;///< Weight, to what extent the underlying scale should be used for on-beat notes (0=any pitch allowed, 1=only scale pitch is allowed)
+  double offbeatscale;///< Weight, to what extent the underlying scale should be used for off-beat notes (0=any pitch allowed, 1=only scale pitch is allowed)
+  std::string name;///< Voice name
 };
 
 #endif

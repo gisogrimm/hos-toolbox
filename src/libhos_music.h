@@ -69,6 +69,7 @@ public:
 };
 
 /**
+   \brief A class to deal with bars and beats based on a semi-contiuous time
    \ingroup rtm
 */
 class time_signature_t {
@@ -79,8 +80,8 @@ public:
   uint32_t hash() const;
   uint32_t numerator;
   uint32_t denominator;
-  double starttime;
-  uint32_t addbar;
+  double starttime;///< Start time from which on the new time signature is value
+  uint32_t addbar;///< Number of bars which were counted before the current time signature
   double bar(double time) const;
   double beat(double time) const;
   double time(double bar) const;

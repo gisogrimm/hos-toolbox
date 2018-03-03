@@ -113,16 +113,18 @@ void harmony_model_t::update_tables()
   //throw TASCAR::ErrMsg("Stop");
 }
 
+/**
+   \brief Update harmony model based on current beat
+   \return True if the key changed.
+ */
 bool harmony_model_t::process(double beat)
 {
-  //DEBUG(beat);
   beat = rint(BEATRES*beat)/BEATRES;
   if( pbeat.find(beat)!=pbeat.end() ){
     double rand(drand());
     if( pbeat[beat] > rand ){
       keysig_t old_key(key_current);
       key_current = key_next;
-      //DEBUG(key_current);
       try{
         key_next = keysig_t(pkeyrel[key_current.hash()].rand());
       }
@@ -209,6 +211,32 @@ pmf_t harmony_model_t::notes(double triadw) const
   return n.vadd(key_current.pitch());
 }
 
+/**
+   \brief Generate a new note.
+
+   Use an underlying harmony model and time signature model to
+   calculate possible note probabilities.
+
+   \param beat Current beat within a bar
+   
+   \param harmony Underlying harmony model
+   
+   \param timesig Underlying time signature model
+   
+   \param center Most desired pitch
+
+   \param bandw Typical desired pitch range 
+
+   \param harmonyweight Weight between harmony model based composition
+   (1) and atonal composition (0) 
+
+   \param beatweight Weight between bar hierarchic composition (1) and
+   free composition (0) 
+
+   \param modf Note length related parameter linked to modulation frequency
+
+   \return New note
+ */
 note_t melody_model_t::process(double beat,const harmony_model_t& harmony, const time_signature_t& timesig,double center,double bandw,double harmonyweight,double beatweight,double modf)
 {
   beat = rint(BEATRES*beat)/BEATRES;

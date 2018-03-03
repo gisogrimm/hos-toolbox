@@ -27,6 +27,7 @@ static bool  b_quit(false);
 /**
    \brief Definition of one voice
    \ingroup rtm
+
  */
 class voice_t : public melody_model_t {
 public:
@@ -55,9 +56,9 @@ private:
   static int osc_set_pitch(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   void set_pitch(double c,double w);
   int inner_process(jack_nframes_t n,const std::vector<float*>& inBuff,const std::vector<float*>& outBuff);
-  std::vector<voice_t> voice;
-  harmony_model_t harmony;
-  time_signature_t timesig;
+  std::vector<voice_t> voice;///< A vector of voices
+  harmony_model_t harmony; ///< The harmony model of the current piece
+  time_signature_t timesig; ///< The current time signature
   double time;
   pmf_t ptimesig;
   pmf_t ptimesigbars;
@@ -197,13 +198,8 @@ bool composer_t::process_timesig()
 
 void composer_t::process_time()
 {
-  //time += 1.0/128.0;
-  //time += 1.0/256.0;
   time += timeincrement;
   time = round(256*time)/256;
-  //DEBUG(frac(time));
-  //DEBUG(time);
-  //DEBUG(timesig.bar(time));
   lo_send(lo_addr,"/time","f",time);
   double beat(timesig.beat(time));
   double beat_frac(frac(beat));
@@ -215,9 +211,7 @@ void composer_t::process_time()
   }
   beat = timesig.beat(time);
   beat_frac = frac(beat);
-  //DEBUG(beat);
   if( beat_frac == 0 ){
-    //DEBUG(beat);
     lo_send(lo_addr,"/beat","f",beat);
   }
   if( harmony.process(beat) )
@@ -244,11 +238,13 @@ int main(int argc, char** argv)
   std::string desturl("osc.udp://239.255.1.7:9877/");
   std::string jackname("composer");
   std::string configfile;
-  const char *options = "hj:u:";
+  const char *options = "hj:u:p:a:";
   struct option long_options[] = { 
       { "help",     0, 0, 'h' },
       { "jackname", 1, 0, 'j' },
       { "desturl",  1, 0, 'u' },
+      { "port",     1, 0, 'p' },
+      { "address",  1, 0, 'a' },
       { 0, 0, 0, 0 }
   };
   int opt(0);
@@ -265,12 +261,18 @@ int main(int argc, char** argv)
     case 'u':
       desturl = optarg;
       break;
+    case 'p' :
+      serverport = optarg;
+      break;
+    case 'a' :
+      serveraddr = optarg;
+      break;
     }
   }
   if( optind < argc )
     configfile = argv[optind++];
   if( configfile.size() == 0 ){
-    TASCAR::app_usage("tascar_cli",long_options,"configfile");
+    TASCAR::app_usage("hos_composer",long_options,"configfile");
     return -1;
   }
   srandom(time(NULL));

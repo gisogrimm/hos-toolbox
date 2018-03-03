@@ -94,6 +94,9 @@ uint32_t time_signature_t::hash() const
   return 256*numerator + denominator;
 }
 
+/**
+   \brief Convert a time value into the quantized beat value
+ */
 double time_signature_t::beat(double time) const
 {
   if( numerator == 0 )
@@ -101,6 +104,9 @@ double time_signature_t::beat(double time) const
   return frac(bar(time),numerator*8192)*numerator;
 }
 
+/**
+   \brief Convert a time value into a fractional bar number
+ */
 double time_signature_t::bar(double time) const
 {
   if( numerator == 0 )
