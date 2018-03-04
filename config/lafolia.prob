@@ -1,0 +1,141 @@
+<?xml version="1.0"?>
+<hos_composer name="Picforth">
+  <harmony>
+    <key v="am" p="5"/>
+    <key v="E" p="4"/>
+    <key v="G" p="4"/>
+    <key v="C" p="2"/>
+    <key v="F" p="2"/>
+    <change v="+4:p"	p="3"/>
+    <change v="-4:p"	p="3"/>
+    <change v="+1:p"	p="2"/>
+    <change v="-1"	p="2"/>
+    <change v="+1"	p="2"/>
+    <change v="-2"	p="1"/>
+    <change v="+5"	p="1"/>
+    <change v="-1:p"	p="1"/>
+    <change v="-5"	p="1"/>
+    <change v="+1:p"	p="1"/>
+    <beat v="0"    p="8"/>
+    <beat v="0.75" p="8"/>
+    <beat v="0.5"  p="1"/>
+  </harmony>
+  <timesig v="6/4" p="1"/>
+  <timesigbars v="16" p="1"/>
+  <voice id="4" name="bass" lowest="-19" highest="-2" central="-5" dev="8" scalew="0">
+    <step v="-1" p="1"/>
+    <step v="-12" p="1"/>
+    <step v="-2" p="1"/>
+    <step v="-3" p="1"/>
+    <step v="-4" p="1"/>
+    <step v="-5" p="1"/>
+    <step v="-6" p="1"/>
+    <step v="-7" p="1"/>
+    <step v="0" p="1"/>
+    <step v="1" p="1"/>
+    <step v="12" p="1"/>
+    <step v="2" p="1"/>
+    <step v="3" p="1"/>
+    <step v="4" p="1"/>
+    <step v="5" p="1"/>
+    <step v="6" p="1"/>
+    <step v="7" p="1"/>
+    <notelength v="0.75" p="1"/>
+    <beat v="0" p="1"/>
+    <beat v="0.75" p="1"/>
+    <beat v="1.5" p="1"/>
+    <beat v="2.25" p="1"/>
+  </voice>
+  <voice id="3" name="tenor2" lowest="-7" highest="7" central="0" dev="8" scalew="0">
+    <step v="-1" p="8"/>
+    <step v="-2" p="7"/>
+    <step v="-3" p="6"/>
+    <step v="-4" p="5"/>
+    <step v="-5" p="1"/>
+    <step v="-6" p="1"/>
+    <step v="-7" p="1"/>
+    <step v="0" p="1"/>
+    <step v="1" p="8"/>
+    <step v="2" p="7"/>
+    <step v="3" p="6"/>
+    <step v="4" p="5"/>
+    <step v="5" p="1"/>
+    <step v="6" p="1"/>
+    <step v="7" p="1"/>
+    <notelength v="1" p="1"/>
+    <beat v="0" p="1"/>
+    <beat v="1" p="1"/>
+    <beat v="2" p="1"/>
+  </voice>
+  <voice id="2" name="tenor1" lowest="-2" highest="12" central="7" dev="8" scalew="0">
+    <step v="-1" p="8"/>
+    <step v="-2" p="7"/>
+    <step v="-3" p="6"/>
+    <step v="-4" p="5"/>
+    <step v="-5" p="1"/>
+    <step v="-6" p="1"/>
+    <step v="-7" p="1"/>
+    <step v="0" p="1"/>
+    <step v="1" p="8"/>
+    <step v="2" p="7"/>
+    <step v="3" p="6"/>
+    <step v="4" p="5"/>
+    <step v="5" p="1"/>
+    <step v="6" p="1"/>
+    <step v="7" p="1"/>
+    <notelength v="0.5" p="1"/>
+    <beat v="0" p="1"/>
+    <beat v="0.5" p="1"/>
+    <beat v="1" p="1"/>
+    <beat v="1.5" p="1"/>
+    <beat v="2" p="1"/>
+    <beat v="2.5" p="1"/>
+  </voice>
+  <voice id="1" name="alto" lowest="-3" highest="12" central="7" dev="8" scalew="0">
+    <step v="-1" p="1"/>
+    <step v="-2" p="1"/>
+    <step v="-3" p="4"/>
+    <step v="-4" p="4"/>
+    <step v="-5" p="4"/>
+    <step v="-6" p="1"/>
+    <step v="-7" p="1"/>
+    <step v="0" p="1"/>
+    <step v="1" p="1"/>
+    <step v="2" p="1"/>
+    <step v="3" p="4"/>
+    <step v="4" p="4"/>
+    <step v="5" p="4"/>
+    <step v="6" p="1"/>
+    <step v="7" p="1"/>
+    <notelength v="0.375" p="1"/>
+    <beat v="0.000" p="1"/>
+    <beat v="0.375" p="1"/>
+    <beat v="0.750" p="1"/>
+    <beat v="1.125" p="1"/>
+    <beat v="1.500" p="1"/>
+    <beat v="1.875" p="1"/>
+    <beat v="2.250" p="1"/>
+    <beat v="2.625" p="1"/>
+  </voice>
+  <voice id="0" name="Sopran" lowest="18" highest="26" central="17" dev="8" scalew="0">
+    <step v="+2" p="7"/>
+    <step v="+1" p="6"/>
+    <step v="+0" p="15"/>
+    <step v="-1" p="6"/>
+    <step v="-2" p="5"/>
+    <step v="-3" p="1"/>
+
+    <notelength v="0.25"  p="26"/>
+    <notelength v="0.125" p="8"/>
+    <notelength v="0.5"   p="4"/>
+    <notelength v="0.75"  p="2"/>
+
+    <beat v="0.00"  p="8"/> <!-- 1st beat in odd measures -->
+    <beat v="0.75"  p="8"/> <!-- 1st beat in even measures -->
+    <beat v="0.875" p="4"/> <!-- 2nd eighth in even measures -->
+    <beat v="0.25"  p="8"/> <!-- 2nd beat in odd measures -->
+    <beat v="1.00"  p="6"/> <!-- 2nd beat in even measures -->
+    <beat v="0.50"  p="6"/> <!-- 3rd beat in odd measures -->
+    <beat v="1.25"  p="0"/> <!-- 3rd beat in even measures -->
+  </voice>
+</hos_composer>
