@@ -28,8 +28,8 @@
 #include <gtkmm/window.h>
 #include <gtkmm/drawingarea.h>
 #include <cairomm/context.h>
-#include "jackclient.h"
-#include "osc_helper.h"
+#include <tascar/jackclient.h>
+#include <tascar/osc_helper.h>
 #include <stdlib.h>
 #include <iostream>
 #include "libhos_audiochunks.h"

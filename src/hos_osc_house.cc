@@ -1,6 +1,6 @@
-#include "jackclient.h"
-#include "osc_helper.h"
-#include "errorhandling.h"
+#include <tascar/jackclient.h>
+#include <tascar/osc_helper.h>
+#include <tascar/errorhandling.h>
 #include <stdio.h>
 #include <iostream>
 #include <getopt.h>

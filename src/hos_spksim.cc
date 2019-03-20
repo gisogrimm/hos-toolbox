@@ -1,11 +1,11 @@
-#include "jackclient.h"
+#include <tascar/jackclient.h>
 #include <iostream>
 #include <getopt.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <math.h>
 #include "libhos_audiochunks.h"
-#include "osc_helper.h"
+#include <tascar/osc_helper.h>
 #include <unistd.h>
 #include <complex.h>
 #include <string.h>

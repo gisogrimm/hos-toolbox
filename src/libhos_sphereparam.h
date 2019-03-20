@@ -28,9 +28,8 @@
 #define SPHERE_PARAM_H
 
 #include <string>
-#include "osc_helper.h"
-//#include <lo/lo.h>
-#include "defs.h"
+#include <tascar/osc_helper.h>
+#include <tascar/defs.h>
 
 /**
 \brief Classes mainly used for artistic purposes

@@ -1,7 +1,7 @@
 #include "libhos_harmony.h"
 #include <stdlib.h>
 #include "hos_defs.h"
-#include "errorhandling.h"
+#include <tascar/errorhandling.h>
 #include <math.h>
 
 double get_attribute_double(xmlpp::Element* e,const std::string& name)

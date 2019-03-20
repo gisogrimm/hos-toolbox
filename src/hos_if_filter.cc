@@ -23,13 +23,13 @@
 
 */
 
-#include "jackclient.h"
+#include <tascar/jackclient.h>
 #include "libhos_audiochunks.h"
 #include "hos_defs.h"
 #include <iostream>
 #include <getopt.h>
 #include <stdlib.h>
-#include "osc_helper.h"
+#include <tascar/osc_helper.h>
 #include "filter.h"
 #include <signal.h>
 #include <unistd.h>

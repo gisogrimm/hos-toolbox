@@ -28,13 +28,11 @@
 #include <gtkmm/window.h>
 #include <gtkmm/drawingarea.h>
 #include <cairomm/context.h>
-#include "jackclient.h"
-//#include "osc_helper.h"
+#include <tascar/jackclient.h>
 #include <stdlib.h>
 #include <iostream>
-//#include "audiochunks.h"
 
-#include "defs.h"
+#include <tascar/defs.h>
 
 #define OSC_ADDR "239.255.1.7"
 #define OSC_PORT "6978"

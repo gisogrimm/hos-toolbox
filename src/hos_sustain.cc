@@ -23,16 +23,16 @@
 
 */
 
-#include "jackclient.h"
-#include "osc_helper.h"
+#include <tascar/jackclient.h>
+#include <tascar/osc_helper.h>
+#include <tascar/errorhandling.h>
+#include <tascar/ringbuffer.h>
 #include <stdlib.h>
 #include <iostream>
 #include "libhos_audiochunks.h"
 #include "hos_defs.h"
 #include "libhos_random.h"
-#include "ringbuffer.h"
 #include <math.h>
-#include "errorhandling.h"
 #include <getopt.h>
 #include <signal.h>
 #include <unistd.h>

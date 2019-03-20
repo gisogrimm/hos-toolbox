@@ -5,7 +5,7 @@
  * jack port.
  */
 
-#include "jackclient.h"
+#include <tascar/jackclient.h>
 #include <alsa/asoundlib.h>
 #include <getopt.h>
 #include <iostream>

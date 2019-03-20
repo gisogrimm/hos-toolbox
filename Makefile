@@ -51,7 +51,7 @@ LOBIN = \
 
 ALSABIN = mm_midicc mm_hdsp
 
-GTKMMBIN = hos_oscrmsmeter hos_visualize mm_gui hos_visualize_sphere tascar_draw hos_cyclephasegui hos_scope hos_rtmdisplay hos_foacasa hos_mm
+GTKMMBIN = hos_oscrmsmeter hos_visualize mm_gui hos_visualize_sphere hos_cyclephasegui hos_scope hos_rtmdisplay hos_foacasa hos_mm
 
 CXXFLAGS += -std=c++11 -fext-numeric-literals
 
@@ -68,19 +68,13 @@ laserctl: EXTERNALS += libserial
 hos_cycledriver: EXTERNALS += libserial
 
 LDLIBS += -ltascar -ldl
-LDFLAGS += -L../tascar/build
-CXXFLAGS += -I../tascar/src
-CPPFLAGS += -I../tascar/src
 
 LDLIBS += `pkg-config --libs $(EXTERNALS)`
 CXXFLAGS += `pkg-config --cflags $(EXTERNALS)`
 
-all: libtascar
+all:
 	mkdir -p build
 	$(MAKE) -C build -f ../Makefile $(BINFILES)
-
-libtascar:
-	$(MAKE) -C tascar lib
 
 install:
 	$(MAKE) -C build -f ../Makefile $(INSTBIN)
@@ -89,7 +83,6 @@ uninstall:
 	rm -f $(INSTBIN)
 
 clean:
-	$(MAKE) -C tascar clean
 	rm -Rf *~ src/*~ build doc/html
 
 VPATH = ../src ../src/hoafilt

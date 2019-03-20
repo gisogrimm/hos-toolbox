@@ -28,8 +28,8 @@
 #include <iostream>
 #include <stdlib.h>
 #include <string.h>
-#include "jackclient.h"
-#include "osc_helper.h"
+#include <tascar/jackclient.h>
+#include <tascar/osc_helper.h>
 #include <unistd.h>
 
 #define MAXDELAY 480000

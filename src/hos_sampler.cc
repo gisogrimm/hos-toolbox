@@ -1,7 +1,7 @@
-#include "jackclient.h"
+#include <tascar/jackclient.h>
 #include "libhos_audiochunks.h"
-#include "osc_helper.h"
-#include "errorhandling.h"
+#include <tascar/osc_helper.h>
+#include <tascar/errorhandling.h>
 #include <string.h>
 #include <fstream>
 #include <iostream>

@@ -1,7 +1,7 @@
 #include "libhos_random.h"
 #include <stdlib.h>
 #include <math.h>
-#include "errorhandling.h"
+#include <tascar/errorhandling.h>
 #include "hos_defs.h"
 
 double drand()

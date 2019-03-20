@@ -8,7 +8,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <SerialStream.h>
-#include "osc_helper.h"
+#include <tascar/osc_helper.h>
 
 #define DEBUG(x) std::cerr << __FILE__ << ":" << __LINE__ << " " << #x << "=" << x << std::endl
 

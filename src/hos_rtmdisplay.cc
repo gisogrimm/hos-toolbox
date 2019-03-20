@@ -9,10 +9,10 @@
 #include <gtkmm/drawingarea.h>
 #include <cairomm/context.h>
 #include <lo/lo.h>
-#include "osc_helper.h"
+#include <tascar/osc_helper.h>
 #include "libhos_music.h"
 #include "hos_defs.h"
-#include "errorhandling.h"
+#include <tascar/errorhandling.h>
 
 #define DRAWKEY
 

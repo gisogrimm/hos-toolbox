@@ -7,7 +7,7 @@
 #include <sndfile.h>
 #include <string>
 
-#include <audiochunks.h>
+#include <tascar/audiochunks.h>
 
 namespace HoS {
 

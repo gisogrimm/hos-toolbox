@@ -6,9 +6,9 @@
 #include <fstream>
 #include <vector>
 #include <math.h>
-#include "errorhandling.h"
+#include <tascar/errorhandling.h>
 #include "hos_defs.h"
-#include "osc_helper.h"
+#include <tascar/osc_helper.h>
 #include <unistd.h>
 
 

@@ -27,7 +27,7 @@
 
 #include <iostream>
 #include <stdlib.h>
-#include "jackclient.h"
+#include <tascar/jackclient.h>
 #include "filter.h"
 #include "ambpan.h"
 #include "libhos_sphereparam.h"

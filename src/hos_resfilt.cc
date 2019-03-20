@@ -1,7 +1,7 @@
 #include <iostream>
 #include <stdlib.h>
 #include <string.h>
-#include "jackclient.h"
+#include <tascar/jackclient.h>
 #include <complex.h>
 #include <math.h>
 #include "hos_defs.h"

@@ -27,9 +27,9 @@
 #include <unistd.h>
 #include <string>
 #include <vector>
-#include "errorhandling.h"
+#include <tascar/errorhandling.h>
 #include "libhos_music.h"
-#include "osc_helper.h"
+#include <tascar/osc_helper.h>
 #include <iostream>
 #include "hos_defs.h"
 

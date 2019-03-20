@@ -28,7 +28,7 @@
 #define OSC_ADDR "239.255.1.7"
 #define OSC_PORT "6978"
 
-#include "osc_helper.h"
+#include <tascar/osc_helper.h>
 #include <SerialStream.h>
 
 class drv_t : public SerialPort, public TASCAR::osc_server_t {

@@ -3,7 +3,7 @@
 #include <math.h>
 #include <complex.h>
 #include <algorithm>
-#include "errorhandling.h"
+#include <tascar/errorhandling.h>
 #include "hos_defs.h"
 #include <iostream>
 

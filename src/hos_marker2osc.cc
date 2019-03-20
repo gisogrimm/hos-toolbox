@@ -25,7 +25,7 @@
 
 */
 
-#include "jackclient.h"
+#include <tascar/jackclient.h>
 #include <iostream>
 #include <libxml++/libxml++.h>
 #include <stdlib.h>

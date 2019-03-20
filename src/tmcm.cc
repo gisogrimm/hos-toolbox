@@ -4,7 +4,7 @@
 #include <termios.h> // POSIX terminal control definitionss
 #include <string.h>
 #include <unistd.h>
-#include "errorhandling.h"
+#include <tascar/errorhandling.h>
 
 #define DEBUG(x) std::cerr << __FILE__ << ":" << __LINE__ << " " #x "=" << x << std::endl
 

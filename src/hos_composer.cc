@@ -14,11 +14,11 @@
 #include "libhos_harmony.h"
 #include "hos_defs.h"
 #include <math.h>
-#include "errorhandling.h"
-#include "osc_helper.h"
+#include <tascar/errorhandling.h>
+#include <tascar/osc_helper.h>
 #include <stdio.h>
-#include "jackclient.h"
-#include <cli.h>
+#include <tascar/jackclient.h>
+#include <tascar/cli.h>
 
 #define NUM_VOICES 5
 
