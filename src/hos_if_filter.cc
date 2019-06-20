@@ -60,7 +60,7 @@ private:
 
 if_filter_t::if_filter_t(const std::string& server_addr,const std::string& server_port,const std::string& jackname,uint32_t fragsize)
   : jackc_db_t(jackname,fragsize),
-    TASCAR::osc_server_t(server_addr,server_port),
+    TASCAR::osc_server_t(server_addr,server_port,"UDP"),
     ola(4*fragsize,2*fragsize,fragsize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
     dtfft(4*fragsize,2*fragsize,fragsize,HoS::stft_t::WND_HANNING),
     d1(fragsize),

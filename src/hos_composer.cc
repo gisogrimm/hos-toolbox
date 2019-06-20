@@ -99,7 +99,7 @@ composer_t::composer_t(const std::string& srv_addr,
                        const std::string& url,
                        const std::string& fname, 
                        const std::string& jackname)
-  : osc_server_t(srv_addr,srv_port), 
+  : osc_server_t(srv_addr,srv_port,"UDP"), 
     jackc_db_t(jackname,512),
     timesig(0,2,0,0), time(0), lo_addr(lo_address_new_from_url(url.c_str())),timesigcnt(0),
     pcenter(NUM_VOICES,0.0),pbandw(NUM_VOICES,48.0),pmodf(NUM_VOICES,1.0),pitchchaos(0.0),beatchaos(0.0),

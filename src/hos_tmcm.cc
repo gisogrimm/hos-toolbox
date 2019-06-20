@@ -74,7 +74,7 @@ void hos_spokes_t::relais_off()
 
 hos_spokes_t::hos_spokes_t(const std::string& devname)
   : tmcm6110_t(),
-    TASCAR::osc_server_t("239.255.1.7","6978"),
+    TASCAR::osc_server_t("239.255.1.7","6978","UDP"),
     b_quit(false)
 {
   set_prefix("/tmcm");

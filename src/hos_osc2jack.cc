@@ -96,7 +96,7 @@ private:
 
 osc2jack_t::osc2jack_t(const std::string& oscad,const std::vector<std::string>& names,const std::string& multicast,const std::string& serverport,const std::string& jackname, bool use_touchosc_)
   : jackc_t(jackname),
-    TASCAR::osc_server_t(multicast,serverport),
+    TASCAR::osc_server_t(multicast,serverport,"UDP"),
     npar(names.size()),
     v(new float[std::max(1u,npar)]),
     bar(0),

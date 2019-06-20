@@ -115,7 +115,7 @@ void rvalue_t::set(double v, double t)
 
 delay_t::delay_t(const std::string& name)
   : jackc_t(name),
-    TASCAR::osc_server_t(OSC_ADDR,OSC_PORT),
+    TASCAR::osc_server_t(OSC_ADDR,OSC_PORT,"UDP"),
     dt(1.0/srate),
     //target_delay(0.0),
     //target_time(0.0),

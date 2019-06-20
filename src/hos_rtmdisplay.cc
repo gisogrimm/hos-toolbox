@@ -539,7 +539,7 @@ void score_t::set_time_signature(uint32_t numerator,uint32_t denominator,double 
 
 score_t::score_t( const std::string& srvaddr, const std::string& srvport, uint32_t numstaves )
   //: TASCAR::osc_server_t("239.255.1.7","9877"),timescale(20),history(6),time(0),x_left(-105),prev_tpos(0),xshift(0)
-  : TASCAR::osc_server_t(srvaddr,srvport),
+  : TASCAR::osc_server_t(srvaddr,srvport,"UDP"),
     numstaves_(numstaves),
     timescale(20),history(6),time(0),x_left(-105),prev_tpos(0),xshift(0)
 {

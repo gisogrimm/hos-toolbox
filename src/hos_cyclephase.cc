@@ -238,7 +238,7 @@ drift_filter_t::drift_filter_t()
 
 cyclephase_t::cyclephase_t(const std::string& name, const std::string& target)
   : jackc_t(name),
-    TASCAR::osc_server_t(OSC_ADDR,OSC_PORT),
+    TASCAR::osc_server_t(OSC_ADDR,OSC_PORT,"UDP"),
     b_quit(false),
     mt(std::vector<maxtrack_t>(4,maxtrack_t(srate,0.3,8.0))),
     mtspokes(srate,0.05,8.0,3e-2),

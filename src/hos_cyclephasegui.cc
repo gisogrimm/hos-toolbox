@@ -259,7 +259,7 @@ void cyclephase_t::set_f0(uint32_t ch,double f)
 }
 
 cyclephase_t::cyclephase_t(const std::string& name,uint32_t channels)
-  : osc_server_t(OSC_ADDR,OSC_PORT),
+  : osc_server_t(OSC_ADDR,OSC_PORT,"UDP"),
     jackc_t("cyclephase"),
     phase(0),
     channels_(channels),

@@ -664,7 +664,7 @@ foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmi
   : freqinfo_t(bpo,fmin,fmax),
     //osc_server_t(OSC_ADDR,OSC_PORT),
     jackc_db_t("foacoh",periodsize_),
-    osc_server_t("","9788"),
+    osc_server_t("","9788","UDP"),
     periodsize(periodsize_),
     fftlen(std::max(512u,4*periodsize)),
     wndlen(std::max(256u,2*periodsize)),

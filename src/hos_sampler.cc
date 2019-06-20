@@ -209,7 +209,7 @@ private:
 
 sampler_t::sampler_t(const std::string& jname,const std::string& announce)
   : jackc_t(jname),
-    osc_server_t("239.255.1.7","6978"),
+    osc_server_t("239.255.1.7","6978","UDP"),
     timescale(1.0),
     current_time(-1),
     last_phase(0),

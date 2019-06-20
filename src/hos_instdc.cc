@@ -28,7 +28,7 @@ private:
 dc_t::dc_t(const std::string& jackname,
            const std::string& server_address,
            const std::string& server_port,const std::vector<std::string>& names,float c,float fc)
-  : jackc_t(jackname), osc_server_t(server_address,server_port), c_(c), fcut(fc), statex(names.size()), statey(names.size())
+  : jackc_t(jackname), osc_server_t(server_address,server_port,"UDP"), c_(c), fcut(fc), statex(names.size()), statey(names.size())
 {
   for(uint32_t k=0;k<names.size();k++){
     add_input_port("in."+names[k]);

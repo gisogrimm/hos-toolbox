@@ -127,7 +127,7 @@ int sustain_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, c
 }
 
 sustain_t::sustain_t(const std::string& server_addr,const std::string& server_port,const std::string& name,uint32_t wlen)
-  : osc_server_t(server_addr,server_port),
+  : osc_server_t(server_addr,server_port,"UDP"),
     jackc_db_t(name,wlen),
     //doublebuffer_t(4*wlen,wlen),
     ola(2*wlen,2*wlen,wlen,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_RECT,HoS::stft_t::WND_SQRTHANN),

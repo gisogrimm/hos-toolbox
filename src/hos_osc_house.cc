@@ -158,7 +158,7 @@ void osc_house_t::reload()
 
 osc_house_t::osc_house_t(const std::vector<std::string>& names,const std::string& multicast,const std::string& serverport,const std::string& jackname)
   : jackc_t(jackname),
-    TASCAR::osc_server_t(multicast,serverport),
+    TASCAR::osc_server_t(multicast,serverport,"UDP"),
     bar(0),
     bar_shifted(0),
     preset(0),

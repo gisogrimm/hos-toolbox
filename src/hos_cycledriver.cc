@@ -43,7 +43,7 @@ private:
 
 drv_t::drv_t(const std::string& ttydev)
   : SerialPort(ttydev),
-    TASCAR::osc_server_t(OSC_ADDR,OSC_PORT),
+    TASCAR::osc_server_t(OSC_ADDR,OSC_PORT,"UDP"),
     rot(0),
     vel(0)
 {

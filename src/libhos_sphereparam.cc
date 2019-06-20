@@ -269,7 +269,7 @@ void parameter_t::apply(float time)
 }
 
 parameter_t::parameter_t(const std::string& name)
-  : TASCAR::osc_server_t(OSC_ADDR,OSC_PORT),
+  : TASCAR::osc_server_t(OSC_ADDR,OSC_PORT,"UDP"),
     stopat(0),
     b_stopat(false),
     applyat(0),

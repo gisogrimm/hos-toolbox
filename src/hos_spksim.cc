@@ -36,7 +36,7 @@ dc_t::dc_t(const std::string& jackname,
            const std::string& server_address,
            const std::string& server_port,const std::vector<std::string>& names,float c_,float fc,float q_)
   : jackc_t(jackname), 
-    osc_server_t(server_address,server_port), 
+    osc_server_t(server_address,server_port,"UDP"), 
     c(c_), 
     f(fc), 
     q(q_),

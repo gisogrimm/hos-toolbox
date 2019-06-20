@@ -54,8 +54,8 @@ int _marker(const char *path, const char *types, lo_arg **argv, int argc, lo_mes
     m = &(argv[0]->s);
     printf("%s\n",m);
     if( strncmp(m,"preset:",7)==0 ){
-      sprintf(cmd,"bash -c \"cat presets/%s | hos_sendosc osc.udp://localhost:9877/\"",m+7);
-      //DEBUG(cmd);
+      sprintf(cmd,"bash -c \"cat presets/%s | hos_sendosc osc.tcp://localhost:9877/\"",m+7);
+      DEBUG(cmd);
       int err=system(cmd);
       if( err != 0 ){
 	DEBUG(err);
@@ -77,7 +77,11 @@ int main(int argc, char** argv)
 {
   lo_server_thread lost;
   b_run = 1;
-  lost = lo_server_thread_new("9999",mbcst_err_handler);
+  lost = lo_server_thread_new_with_proto("9999",LO_UDP,mbcst_err_handler);
+  if( !lost ){
+    std::cerr << "Unable to create OSC server.\n";
+    return 1;
+  }
   lo_server_thread_add_method(lost,"/quit","",_quit,NULL);
   lo_server_thread_add_method(lost,"/marker","s",_marker,NULL);
   lo_server_thread_start(lost);
@@ -86,4 +90,5 @@ int main(int argc, char** argv)
   }
   lo_server_thread_stop(lost);
   lo_server_thread_free(lost);
+  return 0;
 }

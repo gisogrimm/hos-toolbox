@@ -31,7 +31,7 @@ private:
 
 osc_marais_t::osc_marais_t(const std::string& oscad,const std::string& multicast,const std::string& serverport,const std::string& jackname)
   : jackc_t(jackname),
-    TASCAR::osc_server_t(multicast,serverport),
+    TASCAR::osc_server_t(multicast,serverport,"UDP"),
     lo_addr(lo_address_new_from_url( oscad.c_str() )),
     g_f(0),
     g_q(0),

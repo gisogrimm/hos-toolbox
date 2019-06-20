@@ -69,7 +69,7 @@ tasten_t::tasten_t(const std::string& dev,
                    const std::string& server_address,
                    const std::string& server_port)
   : SerialPort(dev),
-    osc_server_t(server_address, server_port ),
+    osc_server_t(server_address, server_port, "UDP" ),
     pos(0),
     npos(8)
 {
