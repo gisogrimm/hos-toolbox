@@ -54,9 +54,13 @@ int _marker(const char *path, const char *types, lo_arg **argv, int argc, lo_mes
     m = &(argv[0]->s);
     printf("%s\n",m);
     if( strncmp(m,"preset:",7)==0 ){
-      sprintf(cmd,"bash -c \"cat presets/%s | hos_sendosc osc.tcp://localhost:9877/\"",m+7);
-      DEBUG(cmd);
+      sprintf(cmd,"bash -c \"cat presets/%s.tcp | hos_sendosc osc.tcp://localhost:9877/\"",m+7);
       int err=system(cmd);
+      if( err != 0 ){
+	DEBUG(err);
+      }
+      sprintf(cmd,"bash -c \"cat presets/%s.udp | hos_sendosc osc.udp://localhost:9877/\"",m+7);
+      err=system(cmd);
       if( err != 0 ){
 	DEBUG(err);
       }
