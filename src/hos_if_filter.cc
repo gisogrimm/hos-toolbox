@@ -23,28 +23,32 @@
 
 */
 
-#include <tascar/jackclient.h>
-#include "libhos_audiochunks.h"
-#include "hos_defs.h"
-#include <iostream>
-#include <getopt.h>
-#include <stdlib.h>
-#include <tascar/osc_helper.h>
 #include "filter.h"
+#include "hos_defs.h"
+#include "libhos_audiochunks.h"
+#include <getopt.h>
+#include <iostream>
 #include <signal.h>
+#include <stdlib.h>
+#include <tascar/jackclient.h>
+#include <tascar/ola.h>
+#include <tascar/osc_helper.h>
 #include <unistd.h>
 
 static bool b_quit(false);
 
 class if_filter_t : public jackc_db_t, public TASCAR::osc_server_t {
 public:
-  if_filter_t(const std::string& server_addr,const std::string& server_port,const std::string& jackname,uint32_t fragsize);
-  int inner_process(jack_nframes_t n,const std::vector<float*>& inBuf,const std::vector<float*>& outBuf);
+  if_filter_t(const std::string& server_addr, const std::string& server_port,
+              const std::string& jackname, uint32_t fragsize);
+  int inner_process(jack_nframes_t n, const std::vector<float*>& inBuf,
+                    const std::vector<float*>& outBuf);
   void activate();
   void deactivate();
+
 private:
-  HoS::ola_t ola;
-  HoS::stft_t dtfft;
+  TASCAR::ola_t ola;
+  TASCAR::stft_t dtfft;
   HoS::delay1_t d1;
   float ifscale;
   HoS::filter_array_t mean_lp;
@@ -58,31 +62,29 @@ private:
   int32_t debugchannel;
 };
 
-if_filter_t::if_filter_t(const std::string& server_addr,const std::string& server_port,const std::string& jackname,uint32_t fragsize)
-  : jackc_db_t(jackname,fragsize),
-    TASCAR::osc_server_t(server_addr,server_port,"UDP"),
-    ola(4*fragsize,2*fragsize,fragsize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
-    dtfft(4*fragsize,2*fragsize,fragsize,HoS::stft_t::WND_HANNING),
-    d1(fragsize),
-    ifscale(-srate/(PI2)),
-    mean_lp(ola.s.n_,srate/(double)fragsize),
-    std_lp(ola.s.n_,srate/(double)fragsize),
-    pow_lp(2,srate/(double)fragsize),
-    sigma0(30.0),
-    tau_std(0.05),
-    tau_gain(0.4),
-    extgain(1.0),
-    b_invert(false),
-    debugchannel(4)
+if_filter_t::if_filter_t(const std::string& server_addr,
+                         const std::string& server_port,
+                         const std::string& jackname, uint32_t fragsize)
+    : jackc_db_t(jackname, fragsize), TASCAR::osc_server_t(server_addr,
+                                                           server_port, "UDP"),
+      ola(4 * fragsize, 2 * fragsize, fragsize, TASCAR::stft_t::WND_HANNING,
+          TASCAR::stft_t::WND_HANNING, 0.5),
+      dtfft(4 * fragsize, 2 * fragsize, fragsize, TASCAR::stft_t::WND_HANNING,
+            0.5),
+      d1(fragsize), ifscale(-srate / (PI2)),
+      mean_lp(ola.s.n_, srate / (double)fragsize),
+      std_lp(ola.s.n_, srate / (double)fragsize),
+      pow_lp(2, srate / (double)fragsize), sigma0(30.0), tau_std(0.05),
+      tau_gain(0.4), extgain(1.0), b_invert(false), debugchannel(4)
 {
-  set_prefix("/"+jackname+"/");
-  add_bool_true("quit",&b_quit);
-  add_float("sigma",&sigma0);
-  add_float("tau",&tau_std);
-  add_float("taugain",&tau_gain);
-  add_float_db("gain",&extgain);
-  add_bool("invert",&b_invert);
-  add_int("debug",&debugchannel);
+  set_prefix("/" + jackname + "/");
+  add_bool_true("quit", &b_quit);
+  add_float("sigma", &sigma0);
+  add_float("tau", &tau_std);
+  add_float("taugain", &tau_gain);
+  add_float_db("gain", &extgain);
+  add_bool("invert", &b_invert);
+  add_int("debug", &debugchannel);
   add_input_port("in");
   add_output_port("out");
 }
@@ -121,7 +123,7 @@ int if_filter_t::inner_process(jack_nframes_t n,const std::vector<float*>& inBuf
   double pow_out(1e-20);
   for(unsigned int k=0;k<dtfft.s.n_;k++){
     dtfft.s.b[k] *= conj(ola.s.b[k]);
-    float ifreq(cargf(dtfft.s.b[k])*ifscale);
+    float ifreq(std::arg(dtfft.s.b[k])*ifscale);
     float ifreq_mean(mean_lp.filter( k, ifreq ));
     float ifreq_diff(ifreq_mean-ifreq);
     ifreq_diff *= ifreq_diff;
@@ -134,9 +136,9 @@ int if_filter_t::inner_process(jack_nframes_t n,const std::vector<float*>& inBuf
       gain = 1e-4;
     if( b_invert )
       gain = 1.0 - gain;
-    pow_in += sqr(cabsf(ola.s[k]));
+    pow_in += sqr(std::abs(ola.s[k]));
     ola.s[k] *= gain;
-    pow_out += sqr(cabsf(ola.s[k]));
+    pow_out += sqr(std::abs(ola.s[k]));
   }
   float bbgain(sqrtf(pow_lp.filter(0,pow_in)/pow_lp.filter(1,pow_out)));
   ola.s *= (bbgain*extgain);

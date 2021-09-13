@@ -30,6 +30,7 @@
 #include <cairomm/context.h>
 #include <tascar/jackclient.h>
 #include <tascar/osc_helper.h>
+#include <tascar/stft.h>
 #include <stdlib.h>
 #include <iostream>
 #include "libhos_audiochunks.h"
@@ -62,8 +63,8 @@ namespace HoSGUI {
     std::vector<double> col_b;
     TASCAR::wave_t inBuffer;
     HoS::delay1_t delay;
-    HoS::stft_t stft0;
-    HoS::stft_t stft1;
+    TASCAR::stft_t stft0;
+    TASCAR::stft_t stft1;
     TASCAR::wave_t instf;
     std::vector<double> t0;
     std::vector<double> chroma;
@@ -99,8 +100,8 @@ using namespace HoSGUI;
 
 cycle_t::cycle_t(double x, double y,uint32_t channels, const std::string& name,uint32_t chunksize,double srate)
   : x_(x),y_(y),channels_(channels),name_(name),current(channels,0.0),inBuffer(chunksize),delay(chunksize),
-    stft0(std::max(2048u,2*chunksize),std::max(2048u,2*chunksize),chunksize,HoS::stft_t::WND_HANNING),
-    stft1(std::max(2048u,2*chunksize),std::max(2048u,2*chunksize),chunksize,HoS::stft_t::WND_HANNING),
+    stft0(std::max(2048u,2*chunksize),std::max(2048u,2*chunksize),chunksize,TASCAR::stft_t::WND_HANNING,0.5),
+    stft1(std::max(2048u,2*chunksize),std::max(2048u,2*chunksize),chunksize,TASCAR::stft_t::WND_HANNING,0.5),
     instf(stft0.s.n_),
     ifscale(srate/(2.0*M_PI)),
     last_phase(0.0)
@@ -195,13 +196,13 @@ void cycle_t::calc_chroma(float* samples, uint32_t n)
   stft1.process(delay);
   for(unsigned int k=0;k<stft0.s.n_;k++){
     stft0.s.b[k] *= conj(stft1.s.b[k]);
-    instf.d[k] = carg(stft0.s.b[k])*ifscale;
+    instf.d[k] = std::arg(stft0.s.b[k])*ifscale;
   }
   double te(0.0);
   for(unsigned int ch=0;ch<channels_;ch++)
     chroma[ch] = 0.0;
   for(unsigned int k=0;k<instf.n;k++){
-    double le(cabs(stft0.s.b[k]));
+    double le(std::abs(stft0.s.b[k]));
     te+=le;
     for(unsigned int ch=0;ch<channels_;ch++)
       chroma[ch] += mapped_intensity(instf.d[k],t0[ch],le);

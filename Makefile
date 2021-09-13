@@ -8,7 +8,9 @@ BINFILES = hos_sphere_amb30 hos_sendosc hos_delay hos_cyclephase	\
 	hos_osc_marais hos_osc_house hos_rtmdisplay hos_composer	\
 	hos_rtm2midi test_duration hos_foacasa hos_mm			\
 	hos_markerbroadcast hos_marker2osc hos_sustain hos_if_filter	\
-	hos_instdc hos_spksim hos_mainmix hos_cycledriver laserctl
+	hos_instdc hos_spksim hos_mainmix
+
+#hos_cycledriver laserctl
 
 #BINFILES = hos_visualize_sphere
 
@@ -62,7 +64,7 @@ endif
 CXXFLAGS += -Wall -O3 -L./
 #CXXFLAGS += -Wall -g -L./
 
-EXTERNALS = alsa jack libxml++-2.6 liblo fftw3f sndfile
+EXTERNALS = alsa jack libxml++-2.6 liblo fftw3f sndfile xerces-c
 
 laserctl: EXTERNALS += libserial
 hos_cycledriver: EXTERNALS += libserial

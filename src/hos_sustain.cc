@@ -27,6 +27,7 @@
 #include <tascar/osc_helper.h>
 #include <tascar/errorhandling.h>
 #include <tascar/ringbuffer.h>
+#include <tascar/ola.h>
 #include <stdlib.h>
 #include <iostream>
 #include "libhos_audiochunks.h"
@@ -50,7 +51,7 @@ public:
   static int osc_apply(const char *path, const char *types, lo_arg **argv, int argc, lo_message msg, void *user_data);
   void set_apply(float t);
 protected:
-  HoS::ola_t ola;
+  TASCAR::ola_t ola;
   TASCAR::wave_t absspec;
   float tau_sustain;
   float tau_envelope;
@@ -106,6 +107,7 @@ int sustain_t::process(jack_nframes_t n, const std::vector<float*>& vIn, const s
   return 0;
 }
 
+std::complex<float> If = 1i;
 
 int sustain_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, const std::vector<float*>& vOut)
 {
@@ -119,35 +121,30 @@ int sustain_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, c
   ola.s *= sus_c2;
   absspec *= sus_c1;
   for(uint32_t k=0;k<ola.s.size();k++){
-    absspec[k] += cabsf(ola.s[k]);
-    ola.s[k] = absspec[k]*cexpf(I*drand()*PI2);
+    absspec[k] += std::abs(ola.s[k]);
+    ola.s[k] = absspec[k]*std::exp(If*(float)(drand()*PI2));
   }
   ola.ifft(w_out);
   return 0;
 }
 
-sustain_t::sustain_t(const std::string& server_addr,const std::string& server_port,const std::string& name,uint32_t wlen)
-  : osc_server_t(server_addr,server_port,"UDP"),
-    jackc_db_t(name,wlen),
-    //doublebuffer_t(4*wlen,wlen),
-    ola(2*wlen,2*wlen,wlen,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_RECT,HoS::stft_t::WND_SQRTHANN),
-    absspec(ola.s.size()),
-    tau_sustain(20),
-    tau_envelope(1),
-    Lin(0),
-    Lout(0),
-    wet(1.0f),
-    t_apply(0),
-    deltaw(0),
-    currentw(0)
+sustain_t::sustain_t(const std::string& server_addr,
+                     const std::string& server_port, const std::string& name,
+                     uint32_t wlen)
+    : osc_server_t(server_addr, server_port, "UDP"), jackc_db_t(name, wlen),
+      // doublebuffer_t(4*wlen,wlen),
+      ola(2 * wlen, 2 * wlen, wlen, TASCAR::stft_t::WND_HANNING,
+          TASCAR::stft_t::WND_RECT, 0.5, TASCAR::stft_t::WND_SQRTHANN),
+      absspec(ola.s.size()), tau_sustain(20), tau_envelope(1), Lin(0), Lout(0),
+      wet(1.0f), t_apply(0), deltaw(0), currentw(0)
 {
-  set_prefix("/"+name);
+  set_prefix("/" + name);
   add_input_port("in");
   add_output_port("out");
-  add_float("/tau_sus",&tau_sustain);
-  add_float("/tau_env",&tau_envelope);
-  add_float("/wet",&wet);
-  add_method("/wetapply","f",&sustain_t::osc_apply,this);
+  add_float("/tau_sus", &tau_sustain);
+  add_float("/tau_env", &tau_envelope);
+  add_float("/wet", &wet);
+  add_method("/wetapply", "f", &sustain_t::osc_apply, this);
 }
 
 void sustain_t::activate()

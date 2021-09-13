@@ -51,6 +51,7 @@
 #include <tascar/jackclient.h>
 #include <tascar/osc_helper.h>
 #include <tascar/errorhandling.h>
+#include <tascar/ola.h>
 #include <stdlib.h>
 #include <iostream>
 #include "hos_defs.h"
@@ -544,13 +545,13 @@ namespace HoSGUI {
     uint32_t periodsize;
     uint32_t fftlen;
     uint32_t wndlen;
-    HoS::ola_t ola_w;
-    HoS::ola_t ola_x;
-    HoS::ola_t ola_y;
-    std::vector<HoS::ola_t*> ola_obj;
+    TASCAR::ola_t ola_w;
+    TASCAR::ola_t ola_x;
+    TASCAR::ola_t ola_y;
+    std::vector<TASCAR::ola_t*> ola_obj;
     TASCAR::wave_t lp_c1; ///< low pass filter coefficients
     TASCAR::wave_t lp_c2; ///< low pass filter coefficients
-    HoS::spec_t ccohXY;///< complex temporary coherence
+    TASCAR::spec_t ccohXY;///< complex temporary coherence
     // coherence functions:
     TASCAR::wave_t cohXY;
     TASCAR::wave_t az;
@@ -584,6 +585,8 @@ namespace HoSGUI {
 
 using namespace HoSGUI;
 
+std::complex<float> If = 1i;
+
 int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, const std::vector<float*>& vOut)
 {
   TASCAR::wave_t inW(n,vIn[0]);
@@ -603,23 +606,23 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
   for(uint32_t k=0;k<ola_x.s.size();k++){
     float freq(k*fscale);
     // for all measures, X*conj(Y) and its absolute value is needed:
-    float _Complex cW(ola_w.s[k]);
-    float _Complex cX(ola_x.s[k]);
-    float _Complex cY(ola_y.s[k]);
-    float _Complex cXY(cX * conjf(cY));
-    float cXYabs(cabsf(cXY));
+    std::complex<float> cW(ola_w.s[k]);
+    std::complex<float> cX(ola_x.s[k]);
+    std::complex<float> cY(ola_y.s[k]);
+    std::complex<float> cXY(cX * std::conj(cY));
+    float cXYabs(std::abs(cXY));
     // Measure 1: x-y-coherence:
     ccohXY[k] *= lp_c1[k];
     if( cXYabs > 0 ){
       ccohXY[k] += (lp_c2[k]/cXYabs)*cXY;
     }
-    cohXY[k] = cabs(ccohXY[k]);
-    if( cabsf(cW) > 0 ){
+    cohXY[k] = std::abs(ccohXY[k]);
+    if( std::abs(cW) > 0 ){
       cX /= cW;
       cY /= cW;
     }
-    az[k] = cargf(cX+I*cY);
-    float w(powf(cabsf(cW)*cohXY[k],2.0));
+    az[k] = std::arg(cX+If*cY);
+    float w(powf(std::abs(cW)*cohXY[k],2.0));
     float l_az(az[k]+M_PI);
     l_az *= (0.5*haz.size()/M_PI);
     for(uint32_t kH=0;kH<haz.size();kH++)
@@ -642,7 +645,7 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
       // by not using W channel gain, this is max-rE FOA decoder:
       ola_obj[kobj]->s[k] = (ola_w.s[k]+wx*ola_x.s[k]+wy*ola_y.s[k])*obj.bayes_prob(par.cx,f2band[k],kobj);
     }
-    ola_obj[kobj]->s[0] = creal(ola_obj[kobj]->s[0]);
+    ola_obj[kobj]->s[0] = std::real(ola_obj[kobj]->s[0]);
     ola_obj[kobj]->ifft(outW);
   }
   for(uint32_t kb=0;kb<bands;kb++){
@@ -660,78 +663,80 @@ int foacoh_t::inner_process(jack_nframes_t n, const std::vector<float*>& vIn, co
   return 0;
 }
 
-foacoh_t::foacoh_t(const std::string& name,uint32_t channels,float bpo,float fmin,float fmax,const std::vector<std::string>& objnames,uint32_t periodsize_,const std::string& url,uint32_t sortmode, float levelthreshold_, float lpperiods, float taumax )
-  : freqinfo_t(bpo,fmin,fmax),
-    //osc_server_t(OSC_ADDR,OSC_PORT),
-    jackc_db_t("foacoh",periodsize_),
-    osc_server_t("","9788","UDP"),
-    periodsize(periodsize_),
-    fftlen(std::max(512u,4*periodsize)),
-    wndlen(std::max(256u,2*periodsize)),
-    ola_w(fftlen,wndlen,periodsize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
-    ola_x(fftlen,wndlen,periodsize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
-  ola_y(fftlen,wndlen,periodsize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING),
-  lp_c1(ola_x.s.size()),
-  lp_c2(ola_x.s.size()),
-  ccohXY(ola_x.s.size()),
-  cohXY(ola_x.s.size()),
-  az(ola_x.s.size()),
-  name_(name),
-  fscale(get_srate()/(float)fftlen),
-//draw_image(true),
-  col(0),
-  azchannels(channels),
-  obj(channels,bands,objnames.size(),bpo,fmin,objnames,sortmode),
-  vmin(0),vmax(1),
-  lo_addr(lo_address_new_from_url(url.c_str())),
-  names(objnames),
-  send_cnt(2),
-  levellp(0.125,0.125,get_srate()/(float)periodsize),
-  level(-200),
-  levelthreshold(levelthreshold_)
+foacoh_t::foacoh_t(const std::string& name, uint32_t channels, float bpo,
+                   float fmin, float fmax,
+                   const std::vector<std::string>& objnames,
+                   uint32_t periodsize_, const std::string& url,
+                   uint32_t sortmode, float levelthreshold_, float lpperiods,
+                   float taumax)
+    : freqinfo_t(bpo, fmin, fmax),
+      // osc_server_t(OSC_ADDR,OSC_PORT),
+      jackc_db_t("foacoh", periodsize_), osc_server_t("", "9788", "UDP"),
+      periodsize(periodsize_), fftlen(std::max(512u, 4 * periodsize)),
+      wndlen(std::max(256u, 2 * periodsize)),
+      ola_w(fftlen, wndlen, periodsize, TASCAR::stft_t::WND_HANNING,
+            TASCAR::stft_t::WND_HANNING, 0.5),
+      ola_x(fftlen, wndlen, periodsize, TASCAR::stft_t::WND_HANNING,
+            TASCAR::stft_t::WND_HANNING, 0.5),
+      ola_y(fftlen, wndlen, periodsize, TASCAR::stft_t::WND_HANNING,
+            TASCAR::stft_t::WND_HANNING, 0.5),
+      lp_c1(ola_x.s.size()), lp_c2(ola_x.s.size()), ccohXY(ola_x.s.size()),
+      cohXY(ola_x.s.size()), az(ola_x.s.size()), name_(name),
+      fscale(get_srate() / (float)fftlen),
+      // draw_image(true),
+      col(0), azchannels(channels),
+      obj(channels, bands, objnames.size(), bpo, fmin, objnames, sortmode),
+      vmin(0), vmax(1), lo_addr(lo_address_new_from_url(url.c_str())),
+      names(objnames), send_cnt(2),
+      levellp(0.125, 0.125, get_srate() / (float)periodsize), level(-200),
+      levelthreshold(levelthreshold_)
 {
-  lo_address_set_ttl( lo_addr, 1 );
-  image = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB,false,8,channels,bands);
+  lo_address_set_ttl(lo_addr, 1);
+  image = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, channels, bands);
   add_input_port("in.0w");
   add_input_port("in.1x");
   add_input_port("in.1y");
-  for(uint32_t k=0;k<ola_w.s.size();k++)
-    f2band.push_back(band((float)k*fscale));
-  float frame_rate(get_srate()/(float)periodsize);
-  for(uint32_t ko=0;ko<objnames.size();ko++){
+  for(uint32_t k = 0; k < ola_w.s.size(); k++)
+    f2band.push_back(band((float)k * fscale));
+  float frame_rate(get_srate() / (float)periodsize);
+  for(uint32_t ko = 0; ko < objnames.size(); ko++) {
     add_output_port(names[ko].c_str());
-    ola_obj.push_back(new HoS::ola_t(fftlen,wndlen,periodsize,HoS::stft_t::WND_HANNING,HoS::stft_t::WND_HANNING));
-    //modflt.push_back(mod_analyzer_t(frame_rate,4,1));
-    //paths_modf.push_back(std::string("/")+names[ko]+std::string("/modf"));
-    //paths_modbw.push_back(std::string("/")+names[ko]+std::string("/modbw"));
+    ola_obj.push_back(new TASCAR::ola_t(fftlen, wndlen, periodsize,
+                                        TASCAR::stft_t::WND_HANNING,
+                                        TASCAR::stft_t::WND_HANNING, 0.5));
+    // modflt.push_back(mod_analyzer_t(frame_rate,4,1));
+    // paths_modf.push_back(std::string("/")+names[ko]+std::string("/modf"));
+    // paths_modbw.push_back(std::string("/")+names[ko]+std::string("/modbw"));
   }
   // coherence/azimuth estimation smoothing: 40 ms
-  for(uint32_t k=0;k<lp_c1.size();k++){
-    float f(fscale*std::max(k,1u));
-    float tau(std::min(0.5f,std::max(0.05f,150.0f/f)));
+  for(uint32_t k = 0; k < lp_c1.size(); k++) {
+    float f(fscale * std::max(k, 1u));
+    float tau(std::min(0.5f, std::max(0.05f, 150.0f / f)));
     tau = 0.04;
-    lp_c1[k] = exp( -1.0/(tau * frame_rate) );
-    lp_c2[k] = 1.0f-lp_c1[k];
+    lp_c1[k] = exp(-1.0 / (tau * frame_rate));
+    lp_c2[k] = 1.0f - lp_c1[k];
   }
-  for(uint32_t k=0;k<az.size();k++)
+  for(uint32_t k = 0; k < az.size(); k++)
     az[k] = 0.0;
   // intensity accumulators:
   // tau = 250/fc, max 1s, min 125ms
-  for(uint32_t kH=0;kH<bands;kH++){
+  for(uint32_t kH = 0; kH < bands; kH++) {
     haz.push_back(az_hist_t(channels));
-    haz.back().set_tau(std::max(0.125f,std::min(taumax,lpperiods/fc[kH])),frame_rate);
-    haz.back().set_frange(fe[kH],fe[kH+1]);
+    haz.back().set_tau(std::max(0.125f, std::min(taumax, lpperiods / fc[kH])),
+                       frame_rate);
+    haz.back().set_frange(fe[kH], fe[kH + 1]);
   }
-  objlp_c1 = exp( -1.0/(0.5 * frame_rate) );
-  objlp_c2 = 1.0f-objlp_c1;
-  col.clim(-1,100);
-  //set_prefix("/"+name);
-  Glib::signal_timeout().connect( sigc::mem_fun(*this, &foacoh_t::on_timeout), 40 );
+  objlp_c1 = exp(-1.0 / (0.5 * frame_rate));
+  objlp_c2 = 1.0f - objlp_c1;
+  col.clim(-1, 100);
+  // set_prefix("/"+name);
+  Glib::signal_timeout().connect(sigc::mem_fun(*this, &foacoh_t::on_timeout),
+                                 40);
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
-  //Connect the signal handler if it isn't already a virtual method override:
+  // Connect the signal handler if it isn't already a virtual method override:
   signal_draw().connect(sigc::mem_fun(*this, &mixergui_t::on_draw), false);
-#endif //GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
-  obj.add_variables( this );
+#endif // GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
+  obj.add_variables(this);
 }
 
 void foacoh_t::activate()

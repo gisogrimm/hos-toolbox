@@ -66,13 +66,15 @@ dc_t::~dc_t()
   delete [] statey2;
 }
 
+std::complex<double> I = 1i;
+
 int dc_t::process(jack_nframes_t n,const std::vector<float*>& inBuf,const std::vector<float*>& outBuf)
 {
   b1 = 2.0*q*cos(2.0*M_PI*f/srate);
   b2 = -q*q;
-  double _Complex z(cexpf(I*2*M_PI*f/srate));
-  double _Complex z0(q*cexp(-I*2*M_PI*f/srate));
-  double a1((1.0-q)*(cabs(z-z0)));
+  std::complex<double> z(std::exp(I*2.0*M_PI*f/(double)srate));
+  std::complex<double> z0(q*std::exp(-I*2.0*M_PI*f/(double)srate));
+  double a1((1.0-q)*(std::abs(z-z0)));
   double og(pow(10.0,0.05*g));
   for(uint32_t ch=0;ch<inBuf.size();ch++){
     float* vx(inBuf[ch]);

@@ -30,7 +30,7 @@
 #include <string.h>
 #include <tascar/jackclient.h>
 #include <tascar/osc_helper.h>
-#include <complex.h>
+#include <complex>
 #include <math.h>
 #include "hos_defs.h"
 #include <unistd.h>
@@ -43,11 +43,13 @@
 
 #define NUMSPOKES 18
 
+std::complex<double> I = 1i;
+
 namespace HoS {
 
-  inline double c2normphase(double _Complex p)
+  inline double c2normphase(std::complex<double> p)
   {
-    double rp(atan2(cimag(p),creal(p)));
+    double rp(std::arg(p));
     if( rp < 0 )
       rp += PI2;
     return PI2INV*rp;
@@ -57,12 +59,12 @@ namespace HoS {
   public:
     clp_t();
     void set_tau(double tau);
-    inline double _Complex filter(double _Complex val){
+    inline std::complex<double> filter(std::complex<double> val){
       state *= c1;
       return (state += c2*val);
     }
   private:
-    double _Complex state;
+    std::complex<double> state;
     double c1;
     double c2;
   };
@@ -162,14 +164,14 @@ namespace HoS {
     maxtrack_t mtspokes;
     std::vector<uint32_t> phase_i;
     std::vector<double> p0;
-    double _Complex cphase_raw;
-    double _Complex cphase_lp;
-    double _Complex cphase_lpdrift;
-    double _Complex cphase_if;
-    double _Complex cdrift_raw;
-    double _Complex cdrift_lp;
-    double _Complex cdphase;
-    double _Complex cdphase_lp;
+    std::complex<double> cphase_raw;
+    std::complex<double> cphase_lp;
+    std::complex<double> cphase_lpdrift;
+    std::complex<double> cphase_if;
+    std::complex<double> cdrift_raw;
+    std::complex<double> cdrift_lp;
+    std::complex<double> cdphase;
+    std::complex<double> cdphase_lp;
     unwrapper_t unwrap;
     clp_t lp_phase;
     clp_t lp_drift;
@@ -343,7 +345,7 @@ int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBu
     for( uint32_t ch=0;ch<4;ch++){
       phase_i[ch]++;
       if( mt[ch].filter(inBuffer[ch][i])){
-        cphase_raw = cexp(I*PI2*p0[ch]);
+        cphase_raw = std::exp(I*PI2*p0[ch]);
         cdrift_raw = cphase_raw * conj(cphase_if);
         lp_phase.set_tau(std::min(2.0*srate,0.5*(double)(phase_i[ch])));
         lp_if.set_tau(std::min(2.0*srate,0.5*(double)(phase_i[ch])));
@@ -356,8 +358,8 @@ int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBu
     cphase_lp = lp_phase.filter(cphase_raw);
     cdphase *= cphase_lp;
     cdphase_lp = lp_if.filter(cdphase);
-    cphase_if *= cexp(1.0iF*carg(cdphase_lp));
-    rpm = carg(cdphase_lp)*rpmscale;
+    cphase_if *= std::exp(I*std::arg(cdphase_lp));
+    rpm = std::arg(cdphase_lp)*rpmscale;
     cphase_lpdrift = cphase_if*cdrift_lp;
     double current_phase(c2normphase(cphase_lpdrift));
     v_phase_lp[i] = current_phase;
@@ -393,7 +395,7 @@ int cyclephase_t::process(jack_nframes_t nframes,const std::vector<float*>& inBu
     }
   }
   otime = v_time[nframes-1];
-  cphase_if /= cabs(cphase_if);
+  cphase_if /= std::abs(cphase_if);
   v0 += sign(targetrpm - rpm)*pow(abs(targetrpm-rpm),alpha)*epsilon*epsscale*(1.0+3*(fabs(v0)<50.0)*(targetrpm>rpm));
   v0 = std::max(std::min(v0,255.0), 0.0);
   lo_send(lo_addr,"/cycledrv/vel","i", (int32_t)v0);
