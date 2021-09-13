@@ -52,15 +52,19 @@ void clef_t::draw_full(Cairo::RefPtr<Cairo::Context> cr,double x, double y)
    \ingroup rtm
  */
 namespace Symbols {
-  clef_t alto = { "", "",0,0};
-  clef_t tenor = { "", "",2,2};
-  clef_t bass = { "", "",2,6};
-  clef_t treble = {"","",-2,-6};
+  clef_t alto = { "", "",0,0};
+  clef_t tenor = { "", "",2,2};
+  clef_t bass = { "", "",2,6};
+  clef_t treble = {"","",-2,-6};
   // 0:brevis,1:ganze,2:halbe,3:4tel,4:8tel,5:16tel,6:32tel
-  std::string notehead[7] = {"","","","","","",""};
-  std::string flag_up[7] = {"","","","","","",""};
-  std::string flag_down[7] = {"","","","","","",""};
-  std::string alteration[5] = {"","","","",""};
+  std::string notehead[7] = {"","","","","","",""};
+  
+  std::string flag_up[7] = {"","","","","","",""};
+  
+  std::string flag_down[7] = {"","","","","","",""};
+
+  // double-flat, flat, natural, sharp, double-sharp
+  std::string alteration[5] = {"","","","",""};
   std::string rest[7] = {"","","","","","",""};
   std::string dot(".");
 }
@@ -553,10 +557,10 @@ score_t::score_t( const std::string& srvaddr, const std::string& srvport, uint32
     staves[k].set_coords(-2*x_left+18,-20.0*(k-0.5*(staves.size()-1.0)));
     //staves[k].key = 0;
   }
-  //staves[0].clef = Symbols::treble;
-  //staves[1].clef = Symbols::treble;
-  //staves[3].clef = Symbols::bass;
-  //staves[4].clef = Symbols::bass;
+  staves[0].clef = Symbols::treble;
+  staves[1].clef = Symbols::treble;
+  staves[3].clef = Symbols::bass;
+  staves[4].clef = Symbols::bass;
   add_method("/time","f",score_t::set_time,this);
   add_method("/note","iiif",score_t::add_note,this);
   add_method("/clear","",score_t::clear_all,this);
@@ -577,128 +581,144 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
 {
   // initialize graphics:
   cr->set_source_rgb(0, 0, 0);
-  cr->select_font_face("Emmentaler-16",Cairo::FONT_SLANT_NORMAL,Cairo::FONT_WEIGHT_NORMAL);
+  cr->select_font_face("Emmentaler-16", Cairo::FONT_SLANT_NORMAL,
+                       Cairo::FONT_WEIGHT_NORMAL);
   cr->set_font_size(8);
   // start access to data:
-  pthread_mutex_lock( &mutex );
+  pthread_mutex_lock(&mutex);
   // clean time database:
-  double t0(time-history);
-  while( xpositions.size() && (xpositions.begin()->first < t0) )
+  double t0(time - history);
+  while(xpositions.size() && (xpositions.begin()->first < t0))
     xpositions.erase(xpositions.begin());
-  for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff)
+  for(std::vector<staff_t>::iterator staff = staves.begin();
+      staff != staves.end(); ++staff)
     staff->clear_music(t0);
   // process graphical timing positions:
   // playhead marker:
   cr->save();
-  double x_marker(get_xpos(time-5.1));
-  for(uint32_t k=1;k<5;k++){
+  double x_marker(get_xpos(time - 5.1));
+  for(uint32_t k = 1; k < 5; k++) {
     double w(3.0);
-    w = w/(w+k);
-    cr->set_source_rgb( 1,w,w );
-    cr->set_line_width(18*w);
-    cr->move_to(x_left+x_marker,-(staves.begin()->y_0+18));
-    cr->line_to(x_left+x_marker,-(staves.rbegin()->y_0-18));
+    w = w / (w + k);
+    cr->set_source_rgb(1, w, w);
+    cr->set_line_width(18 * w);
+    cr->move_to(x_left + x_marker, -(staves.begin()->y_0 + 18));
+    cr->line_to(x_left + x_marker, -(staves.rbegin()->y_0 - 18));
     cr->stroke();
   }
   cr->restore();
   // draw empty staff:
-  for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff)
+  for(std::vector<staff_t>::iterator staff = staves.begin();
+      staff != staves.end(); ++staff)
     staff->draw_empty(cr);
   // draw music:
   double tpos(0);
-  if( xpositions.size()){
+  if(xpositions.size()) {
     tpos = xpositions.begin()->first;
   }
-  if( (tpos != prev_tpos) && (prev_tpos != 0) ){
+  if((tpos != prev_tpos) && (prev_tpos != 0)) {
     xshift = xpositions[tpos];
   }
-  xshift -= 0.05*xshift;
+  xshift -= 0.05 * xshift;
   // main music draw section:
   double xpos(0);
-  for(std::map<double,double>::iterator xp=xpositions.begin();xp!=xpositions.end();++xp){
+  for(std::map<double, double>::iterator xp = xpositions.begin();
+      xp != xpositions.end(); ++xp) {
     double lspace(0);
     double rspace(0);
     double tsspace(0);
     // get graphical extension of music and non-music:
-    std::map<double,graphical_time_signature_t>::iterator ts(timesig.find(xp->first));
-    if( ts != timesig.end() ){
+    std::map<double, graphical_time_signature_t>::iterator ts(
+        timesig.find(xp->first));
+    if(ts != timesig.end()) {
       tsspace = ts->second.space(cr);
     }
-    for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff){
-      lspace = std::max(lspace,staff->left_space(cr,xp->first));
-      rspace = std::max(rspace,staff->right_space(cr,xp->first));
+    for(std::vector<staff_t>::iterator staff = staves.begin();
+        staff != staves.end(); ++staff) {
+      lspace = std::max(lspace, staff->left_space(cr, xp->first));
+      rspace = std::max(rspace, staff->right_space(cr, xp->first));
     }
     // increase x-position by left space
-    xpos += tsspace + lspace + (xp->first-tpos)*timescale;
+    xpos += tsspace + lspace + (xp->first - tpos) * timescale;
     // draw time signature and music
-    if( ts != timesig.end() ){
-      for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff)
-        ts->second.draw(cr,xpos+xshift+x_left-lspace,staff->y_0);
+    if(ts != timesig.end()) {
+      for(std::vector<staff_t>::iterator staff = staves.begin();
+          staff != staves.end(); ++staff)
+        ts->second.draw(cr, xpos + xshift + x_left - lspace, staff->y_0);
     }
-    for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff)
-      staff->draw_music(cr,xp->first,xpos+xshift+x_left);
-    xp->second = xpos+xshift-lspace-tsspace;
+    for(std::vector<staff_t>::iterator staff = staves.begin();
+        staff != staves.end(); ++staff)
+      staff->draw_music(cr, xp->first, xpos + xshift + x_left);
+    xp->second = xpos + xshift - lspace - tsspace;
     xpos += rspace;
-    if( xp == xpositions.begin() ){
+    if(xp == xpositions.begin()) {
       prev_tpos = tpos;
     }
     tpos = xp->first;
   }
   // draw bar lines here:
-  if( !timesig.empty() ){
+  if(!timesig.empty()) {
     double bar_endtime(tpos);
-    for(std::map<double,graphical_time_signature_t>::reverse_iterator it=timesig.rbegin();it!=timesig.rend();++it){
-      if( bar_endtime > prev_tpos ){
-        double bar_starttime(std::max(prev_tpos,it->second.starttime));
-        if( bar_starttime > 0 ){
+    for(std::map<double, graphical_time_signature_t>::reverse_iterator it =
+            timesig.rbegin();
+        it != timesig.rend(); ++it) {
+      if(bar_endtime > prev_tpos) {
+        double bar_starttime(std::max(prev_tpos, it->second.starttime));
+        if(bar_starttime > 0) {
           // draw bar lines from ... to bar_endtime
-          for(double bar=ceil(it->second.bar(bar_starttime));bar<ceil(it->second.bar(bar_endtime));bar+=1){
-            double xbar(get_xpos(it->second.time(bar))-1.0);
-            if( it->second.time(bar) == it->first )
+          for(double bar = ceil(it->second.bar(bar_starttime));
+              bar < ceil(it->second.bar(bar_endtime)); bar += 1) {
+            double xbar(get_xpos(it->second.time(bar)) - 1.0);
+            if(it->second.time(bar) == it->first)
               xbar += it->second.space(cr);
             // bar numbers for debugging:
             cr->save();
-            cr->select_font_face("Arial",Cairo::FONT_SLANT_NORMAL,Cairo::FONT_WEIGHT_NORMAL);
+            cr->select_font_face("Arial", Cairo::FONT_SLANT_NORMAL,
+                                 Cairo::FONT_WEIGHT_NORMAL);
             cr->set_font_size(3);
             char ctmp[40];
-            cr->move_to(x_left+xbar,-(staves.begin()->y_0+10));
-            sprintf(ctmp,"%g (%g)",bar,it->second.time(bar));
+            cr->move_to(x_left + xbar, -(staves.begin()->y_0 + 10));
+            sprintf(ctmp, "%g (%g)", bar, it->second.time(bar));
             cr->show_text(ctmp);
             cr->restore();
             // end bar numbers.
-            for(std::vector<staff_t>::iterator staff=staves.begin();staff!=staves.end();++staff){
+            for(std::vector<staff_t>::iterator staff = staves.begin();
+                staff != staves.end(); ++staff) {
               std::vector<staff_t>::iterator nstaff(staff);
               nstaff++;
-              if( nstaff != staves.end() ){
-                cr->move_to(x_left+xbar,-(staff->y_0-4));
-                cr->line_to(x_left+xbar,-(nstaff->y_0+4));
+              if(nstaff != staves.end()) {
+                cr->move_to(x_left + xbar, -(staff->y_0 - 4));
+                cr->line_to(x_left + xbar, -(nstaff->y_0 + 4));
                 cr->stroke();
               }
             }
           }
         }
       }
-      bar_endtime = std::min(it->second.starttime,tpos);
+      bar_endtime = std::min(it->second.starttime, tpos);
     }
   }
 #ifdef DRAWKEY
   // draw key signature here:
-  for( std::map<double,keysig_t>::iterator ks=keysig.begin();ks!=keysig.end();++ks){
-    if( (ks->first >= prev_tpos) && (ks->first <= tpos) ){
+  for(std::map<double, keysig_t>::iterator ks = keysig.begin();
+      ks != keysig.end(); ++ks) {
+    if((ks->first >= prev_tpos) && (ks->first <= tpos)) {
       double xpos(get_xpos(ks->first));
-      std::map<double,graphical_time_signature_t>::iterator ts(timesig.find(ks->first));
-      if( ts != timesig.end() )
+      std::map<double, graphical_time_signature_t>::iterator ts(
+          timesig.find(ks->first));
+      if(ts != timesig.end())
         xpos += ts->second.space(cr);
       cr->save();
-      cr->move_to(x_left+xpos,-staves.rbegin()->y_0+12);
-      cr->select_font_face("Arial",Cairo::FONT_SLANT_NORMAL,Cairo::FONT_WEIGHT_BOLD);
+      cr->move_to(x_left + xpos, -staves.rbegin()->y_0 + 12);
+      cr->select_font_face("Arial", Cairo::FONT_SLANT_NORMAL,
+                           Cairo::FONT_WEIGHT_BOLD);
       cr->set_font_size(6);
       cr->show_text(ks->second.name().c_str());
       cr->restore();
     }
   }
 #endif
-  pthread_mutex_unlock( &mutex );
+  pthread_mutex_unlock(&mutex);
 }
 
 bool score_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
