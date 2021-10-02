@@ -15,8 +15,9 @@
  */
 #define BEATRES 512.0
 
-double get_attribute_double(xmlpp::Element* e,const std::string& name);
-double get_attribute_double(xmlpp::Element* e,const std::string& name,double def);
+double get_attribute_double(xmlpp::Element* e, const std::string& name);
+double get_attribute_double(xmlpp::Element* e, const std::string& name,
+                            double def);
 
 /**
    \brief Major and minor scale
@@ -55,6 +56,7 @@ public:
   const keysig_t& next() const;
   void read_xml(xmlpp::Element* e);
   pmf_t notes(double triadw) const;
+
 private:
   void update_tables();
   keysig_t key_current;
@@ -62,7 +64,7 @@ private:
   pmf_t pkey;
   pmf_t pchange;
   pmf_t pbeat;
-  std::map<uint32_t,pmf_t> pkeyrel;
+  std::map<uint32_t, pmf_t> pkeyrel;
 };
 
 /**
@@ -71,18 +73,25 @@ private:
  */
 class melody_model_t {
 public:
-  note_t process(double beat,const harmony_model_t& harmony, const time_signature_t& timesig,double center,double bandw,double harmonyweight,double beatweight,double modf);
+  note_t process(double beat, const harmony_model_t& harmony,
+                 const time_signature_t& timesig, double center, double bandw,
+                 double harmonyweight, double beatweight, double modf);
   void read_xml(xmlpp::Element* e);
-  std::string get_name() const { return name;};
-  pmf_t pambitus; ///< Voice/instrument specific ambitus or list of possible notes
-  pmf_t pstep;///< List of possible melody intervals
-  pmf_t pduration;///< List of possible note durations
-  pmf_t pbeat;///< List of possible note beats
+  std::string get_name() const { return name; };
+  pmf_t
+      pambitus; ///< Voice/instrument specific ambitus or list of possible notes
+  pmf_t pstep;  ///< List of possible melody intervals
+  pmf_t pduration; ///< List of possible note durations
+  pmf_t pbeat;     ///< List of possible note beats
 private:
   int32_t last_pitch;
-  double onbeatscale;///< Weight, to what extent the underlying scale should be used for on-beat notes (0=any pitch allowed, 1=only scale pitch is allowed)
-  double offbeatscale;///< Weight, to what extent the underlying scale should be used for off-beat notes (0=any pitch allowed, 1=only scale pitch is allowed)
-  std::string name;///< Voice name
+  double onbeatscale; ///< Weight, to what extent the underlying scale should be
+                      ///< used for on-beat notes (0=any pitch allowed, 1=only
+                      ///< scale pitch is allowed)
+  double offbeatscale; ///< Weight, to what extent the underlying scale should
+                       ///< be used for off-beat notes (0=any pitch allowed,
+                       ///< 1=only scale pitch is allowed)
+  std::string name;    ///< Voice name
 };
 
 #endif

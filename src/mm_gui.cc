@@ -8,9 +8,9 @@
   "mm_{hdsp,file,gui,midicc}" is a set of programs to control the matrix
   mixer of an RME hdsp compatible sound card using XML formatted files
   or a MIDI controller, and to visualize the mixing matrix.
-   
+
   \section license License (GPL)
-   
+
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License as
   published by the Free Software Foundation; version 2 of the
@@ -31,7 +31,7 @@
 
 using namespace HoSGUI;
 
-void lo_err_handler_cb(int num, const char *msg, const char *where) 
+void lo_err_handler_cb(int num, const char* msg, const char* where)
 {
   std::cerr << "lo error " << num << ": " << msg << " (" << where << ")\n";
 }
@@ -39,13 +39,13 @@ void lo_err_handler_cb(int num, const char *msg, const char *where)
 int main(int argc, char** argv)
 {
   Gtk::Main kit(argc, argv);
-  
+
   Gtk::Window win;
   win.set_title("RME hdsp mixer GUI");
   std::string osc_server("");
   std::string osc_port("7777");
   std::string osc_addr("osc.udp://localhost:7778/");
-  if( argc < 4 ){
+  if(argc < 4) {
     std::cerr << "Usage: oscmixergui <osc_multicast> <osc_port> <destaddr>\n";
     return 1;
   }
@@ -55,21 +55,22 @@ int main(int argc, char** argv)
   osc_addr = argv[3];
   lo_server_thread lost;
   lo_address addr;
-  if( osc_server.size() )
-    lost = lo_server_thread_new_multicast(osc_server.c_str(),osc_port.c_str(),lo_err_handler_cb);
+  if(osc_server.size())
+    lost = lo_server_thread_new_multicast(osc_server.c_str(), osc_port.c_str(),
+                                          lo_err_handler_cb);
   else
-    lost = lo_server_thread_new(osc_port.c_str(),lo_err_handler_cb);
+    lost = lo_server_thread_new(osc_port.c_str(), lo_err_handler_cb);
   addr = lo_address_new_from_url(osc_addr.c_str());
-  lo_address_set_ttl( addr, 1 );
-  mixergui_t m(lost,addr);
+  lo_address_set_ttl(addr, 1);
+  mixergui_t m(lost, addr);
   win.add(m);
-  win.set_default_size(800,600);
+  win.set_default_size(800, 600);
   win.show_all();
   lo_server_thread_start(lost);
   Gtk::Main::run(win);
   lo_server_thread_stop(lost);
   lo_server_thread_free(lost);
-  lo_address_free( addr );
+  lo_address_free(addr);
   return 0;
 }
 

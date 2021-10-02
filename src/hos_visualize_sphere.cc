@@ -23,12 +23,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 */
 #include "hosgui_sphere.h"
-#include <stdlib.h>
 #include <iostream>
+#include <stdlib.h>
 
 using namespace HoSGUI;
 
-void lo_err_handler_cb(int num, const char *msg, const char *where) 
+void lo_err_handler_cb(int num, const char* msg, const char* where)
 {
   std::cerr << "lo error " << num << ": " << msg << " (" << where << ")\n";
 }
@@ -45,44 +45,45 @@ int main(int argc, char** argv)
   std::string osc_port("6978");
   double r(0);
   std::vector<std::string> pAddr;
-  if( argc > 1 )
+  if(argc > 1)
     osc_server = argv[1];
-  if( argc > 2 )
+  if(argc > 2)
     osc_port = argv[2];
-  if( argc > 3 )
+  if(argc > 3)
     r = atof(argv[3]);
 
-  if (getenv("BRIGHTNESS"))
+  if(getenv("BRIGHTNESS"))
     brightness = atof(getenv("BRIGHTNESS"));
 
   lo_server_thread lost;
-  if( osc_server.size() )
-    lost = lo_server_thread_new_multicast(osc_server.c_str(),osc_port.c_str(),lo_err_handler_cb);
+  if(osc_server.size())
+    lost = lo_server_thread_new_multicast(osc_server.c_str(), osc_port.c_str(),
+                                          lo_err_handler_cb);
   else
-    lost = lo_server_thread_new(osc_port.c_str(),lo_err_handler_cb);
+    lost = lo_server_thread_new(osc_port.c_str(), lo_err_handler_cb);
   lo_address addr;
   addr = lo_address_new_from_url("osc.udp://localhost:9999/");
-  lo_address_set_ttl( addr, 1 );
+  lo_address_set_ttl(addr, 1);
   pAddr.push_back("hille");
   pAddr.push_back("julia");
   pAddr.push_back("marthe");
   pAddr.push_back("claas");
   pAddr.push_back("giso");
-  //pAddr.push_back("/pos/extra");
-  visualize_t c(pAddr,lost);
-  c.set_rotate( r*M_PI/180.0 );
+  // pAddr.push_back("/pos/extra");
+  visualize_t c(pAddr, lost);
+  c.set_rotate(r * M_PI / 180.0);
   win.add(c);
-  //hbox.add(m_hille);
-  //hbox.add(m_marthe);
-  //hbox.add(m_claas);
-  //hbox.add(m_julia);
-  //hbox.add(m_giso);
-  //hbox.add(m_gisofezzo);
-  //hbox.add(m_gisobass);
-  //win.set_default_size(1024,768);
+  // hbox.add(m_hille);
+  // hbox.add(m_marthe);
+  // hbox.add(m_claas);
+  // hbox.add(m_julia);
+  // hbox.add(m_giso);
+  // hbox.add(m_gisofezzo);
+  // hbox.add(m_gisobass);
+  // win.set_default_size(1024,768);
   // HDTV 720p:
-  win.set_default_size(640,360);
-  //win.fullscreen();
+  win.set_default_size(640, 360);
+  // win.fullscreen();
   win.show_all();
   lo_server_thread_start(lost);
   Gtk::Main::run(win);

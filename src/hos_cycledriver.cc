@@ -28,29 +28,28 @@
 #define OSC_ADDR "239.255.1.7"
 #define OSC_PORT "6978"
 
-#include <tascar/osc_helper.h>
 #include <SerialStream.h>
+#include <tascar/osc_helper.h>
 
 class drv_t : public SerialPort, public TASCAR::osc_server_t {
 public:
   drv_t(const std::string& ttydev);
   ~drv_t() throw();
   void run();
+
 private:
   int32_t rot;
   int32_t vel;
 };
 
 drv_t::drv_t(const std::string& ttydev)
-  : SerialPort(ttydev),
-    TASCAR::osc_server_t(OSC_ADDR,OSC_PORT,"UDP"),
-    rot(0),
-    vel(0)
+    : SerialPort(ttydev), TASCAR::osc_server_t(OSC_ADDR, OSC_PORT, "UDP"),
+      rot(0), vel(0)
 {
-  Open(BAUD_9600,CHAR_SIZE_8,PARITY_NONE,STOP_BITS_1,FLOW_CONTROL_NONE);
+  Open(BAUD_9600, CHAR_SIZE_8, PARITY_NONE, STOP_BITS_1, FLOW_CONTROL_NONE);
   set_prefix("/cycledrv");
-  add_int("/rot",&rot);
-  add_int("/vel",&vel);
+  add_int("/rot", &rot);
+  add_int("/vel", &vel);
   activate();
 }
 
@@ -63,19 +62,18 @@ drv_t::~drv_t() throw()
 void drv_t::run()
 {
   sleep(3);
-  while(true){
+  while(true) {
     char ctmp[1024];
-    sprintf(ctmp,"%d %d\n",rot,std::max(std::min(vel,255),-255));
+    sprintf(ctmp, "%d %d\n", rot, std::max(std::min(vel, 255), -255));
     Write(std::string(ctmp));
     usleep(100000);
   }
 }
 
-
 int main(int argc, char** argv)
 {
   std::string ttydev("/dev/ttyUSB0");
-  if( argc > 1 )
+  if(argc > 1)
     ttydev = argv[1];
   drv_t S(ttydev);
   S.run();

@@ -46,12 +46,12 @@ public:
      \param client Source client
      \param port Source port
   */
-  void connect_input(int client,int port);
+  void connect_input(int client, int port);
   /**
      \param client Destination client
      \param port Destination port
   */
-  void connect_output(int client,int port);
+  void connect_output(int client, int port);
   void start_service();
   void stop_service();
   /**
@@ -61,14 +61,17 @@ public:
      \param value MIDI value
    */
   void send_midi(int channel, int param, int value);
+
 private:
-  static void * service(void *);
+  static void* service(void*);
+
 protected:
   void service();
   /**
      \brief Callback to be called for incoming MIDI events
    */
   virtual void emit_event(int channel, int param, int value) = 0;
+
 private:
   // MIDI sequencer:
   snd_seq_t* seq;
@@ -80,7 +83,6 @@ private:
   bool b_run_service;
   pthread_t srv_thread;
 };
-
 
 #endif
 

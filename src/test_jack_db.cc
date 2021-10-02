@@ -1,30 +1,29 @@
-#include "jackclient.h"
 #include "hos_defs.h"
+#include "jackclient.h"
 #include <iostream>
 #include <stdio.h>
 
 class test_t : public jackc_db_t {
 public:
   test_t();
-  virtual int inner_process(jack_nframes_t n,const std::vector<float*>& inBuffer,const std::vector<float*>& outBuffer);
+  virtual int inner_process(jack_nframes_t n,
+                            const std::vector<float*>& inBuffer,
+                            const std::vector<float*>& outBuffer);
 };
 
+test_t::test_t() : jackc_db_t("test", 8192) {}
 
-test_t::test_t()
-  : jackc_db_t("test",8192)
-{
-}
-
-int test_t::inner_process(jack_nframes_t n,const std::vector<float*>& inBuffer,const std::vector<float*>& outBuffer)
+int test_t::inner_process(jack_nframes_t n, const std::vector<float*>& inBuffer,
+                          const std::vector<float*>& outBuffer)
 {
   DEBUG("inner");
-  for(uint32_t kb=0;kb<std::min(inBuffer.size(),outBuffer.size());kb++)
-    for(uint32_t k=0;k<n;k++)
+  for(uint32_t kb = 0; kb < std::min(inBuffer.size(), outBuffer.size()); kb++)
+    for(uint32_t k = 0; k < n; k++)
       outBuffer[kb][k] = inBuffer[kb][k];
   return 0;
 }
 
-int main(int argc,char** argv)
+int main(int argc, char** argv)
 {
   DEBUG(1);
   test_t t;

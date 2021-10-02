@@ -15,17 +15,18 @@
 
   You should have received a copy of the GNU General Public License
   along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+  USA.
 
 */
 /**
-*/
+ */
 #ifndef HOSFILTER_H
 #define HOSFILTER_H
 
-#include <math.h>
-#include "libhos_audiochunks.h"
 #include "hos_defs.h"
+#include "libhos_audiochunks.h"
+#include <math.h>
 
 namespace HoS {
 
@@ -39,10 +40,10 @@ namespace HoS {
        \param tr release time constant
        \param fs sampling rate
     */
-    arflt(double ta, double tr, double fs) : fs_(fs),z(0) 
+    arflt(double ta, double tr, double fs) : fs_(fs), z(0)
     {
-      tau2c(ta,c1a,c2a);
-      tau2c(tr,c1r,c2r);
+      tau2c(ta, c1a, c2a);
+      tau2c(tr, c1r, c2r);
     };
     /**
        \brief Apply filter
@@ -50,30 +51,31 @@ namespace HoS {
     */
     inline float filter(float x)
     {
-      if( x >= z )
+      if(x >= z)
         z = c1a * z + c2a * x;
       else
         z = c1r * z + c2r * x;
       return z;
     };
-    void set_lowpass(double tau )
+    void set_lowpass(double tau)
     {
-      tau2c(tau,c1a,c2a);
-      tau2c(tau,c1r,c2r);
+      tau2c(tau, c1a, c2a);
+      tau2c(tau, c1r, c2r);
     }
-    void set_attack_release(double tau_a,double tau_r )
+    void set_attack_release(double tau_a, double tau_r)
     {
-      tau2c(tau_a,c1a,c2a);
-      tau2c(tau_r,c1r,c2r);
+      tau2c(tau_a, c1a, c2a);
+      tau2c(tau_r, c1r, c2r);
     }
+
   protected:
-    inline void tau2c( double tau, double &c1, double &c2)
+    inline void tau2c(double tau, double& c1, double& c2)
     {
-      if( tau > 0.0)
-        c1 = exp( -1.0/(tau * fs_) );
+      if(tau > 0.0)
+        c1 = exp(-1.0 / (tau * fs_));
       else
         c1 = 0;
-      c2 = 1.0-c1;
+      c2 = 1.0 - c1;
     };
     double fs_;
     double z;
@@ -82,19 +84,19 @@ namespace HoS {
 
   class filter_array_t : public arflt {
   public:
-    filter_array_t(uint32_t n,double fs) : arflt(1,1,fs),state(n) {};
+    filter_array_t(uint32_t n, double fs) : arflt(1, 1, fs), state(n){};
     inline float filter(uint32_t k, float x)
     {
-      if( x >= state.d[k] )
+      if(x >= state.d[k])
         state.d[k] = c1a * state.d[k] + c2a * x;
       else
         state.d[k] = c1r * state.d[k] + c2r * x;
       return state.d[k];
     };
+
   private:
     TASCAR::wave_t state;
   };
-
 
   /**
      \brief Very simple onset-detector
@@ -102,12 +104,16 @@ namespace HoS {
   class onset_detector {
   public:
     // smooth: 0.02 0.02
-    onset_detector( double fs ) : env_peak( 0.0, 0.005, fs ), env_smooth( 0.4, 1.5, fs), mintrack( 5.0, 0.0, fs ), crit_smooth( 0.05, 0.5, fs ){};
-    inline float detect( float x )
+    onset_detector(double fs)
+        : env_peak(0.0, 0.005, fs), env_smooth(0.4, 1.5, fs),
+          mintrack(5.0, 0.0, fs), crit_smooth(0.05, 0.5, fs){};
+    inline float detect(float x)
     {
-      float env = env_smooth.filter(std::max(EPSf,env_peak.filter( std::max(EPSf,fabsf(x)) ) ) );
+      float env = env_smooth.filter(
+          std::max(EPSf, env_peak.filter(std::max(EPSf, fabsf(x)))));
       return env;
     };
+
   private:
     arflt env_peak;
     arflt env_smooth;
@@ -115,7 +121,7 @@ namespace HoS {
     arflt crit_smooth;
   };
 
-}
+} // namespace HoS
 
 #endif
 
@@ -127,4 +133,3 @@ namespace HoS {
  * compile-command: "make -C .."
  * End:
  */
-

@@ -2,13 +2,9 @@ ARCH = $(shell uname -m)
 
 PREFIX = /usr/local
 
-BINFILES = hos_sphere_amb30 hos_sendosc hos_delay hos_cyclephase	\
-	hos_visualize hos_visualize_sphere hos_cyclephasegui		\
-	hos_sampler hos_scope hos_osc2jack hos_resfilt hos_tmcm		\
-	hos_osc_marais hos_osc_house hos_rtmdisplay hos_composer	\
-	hos_rtm2midi test_duration hos_foacasa hos_mm			\
-	hos_markerbroadcast hos_marker2osc hos_sustain hos_if_filter	\
-	hos_instdc hos_spksim hos_mainmix
+BINFILES = hos_cyclephase hos_cyclephasegui hos_sampler hos_osc2jack	\
+	 hos_resfilt hos_rtmdisplay hos_composer hos_rtm2midi		\
+	 hos_foacasa
 
 #hos_cycledriver laserctl
 
@@ -123,6 +119,10 @@ hos_composer: libhos_music.o libhos_random.o libhos_harmony.o
 hos_rtmdisplay: libhos_music.o
 hos_rtm2midi: libhos_music.o
 test_duration: libhos_music.o
+
+clangformat:
+	clang-format-9 -i $(wildcard src/*.cc) $(wildcard src/*.h)
+
 
 # Local Variables:
 # compile-command: "make"

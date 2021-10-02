@@ -18,16 +18,19 @@
 #define RAD2DEGf 57.29577951308232286464f
 #define EPSf 3.0e-6f
 
-
-/** 
+/**
     \brief average radius of earth in meters:
 */
 #define R_EARTH 6367467.5
 
-
-#define DEBUG(x) std::cerr << __FILE__ << ":" << __LINE__ << ": " << __PRETTY_FUNCTION__ << " " << #x << "=" << x << std::endl
-//#define DEBUGMSG(x) std::cerr << __FILE__ << ":" << __LINE__ << ": " << x << std::endl
-#define DEBUGMSG(x) std::cerr << __FILE__ << ":" << __LINE__ << ": " << __PRETTY_FUNCTION__ << " --" << x << "--" << std::endl
+#define DEBUG(x)                                                               \
+  std::cerr << __FILE__ << ":" << __LINE__ << ": " << __PRETTY_FUNCTION__      \
+            << " " << #x << "=" << x << std::endl
+//#define DEBUGMSG(x) std::cerr << __FILE__ << ":" << __LINE__ << ": " << x <<
+//std::endl
+#define DEBUGMSG(x)                                                            \
+  std::cerr << __FILE__ << ":" << __LINE__ << ": " << __PRETTY_FUNCTION__      \
+            << " --" << x << "--" << std::endl
 
 /**
    \defgroup libtascar TASCAR core library
@@ -44,7 +47,6 @@
 
    This set of applications is published under the GPL and free licenses.
 */
-
 
 #endif
 

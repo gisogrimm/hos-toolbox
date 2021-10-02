@@ -6,8 +6,8 @@
 #ifndef LIBHOS_RANDOM_H
 #define LIBHOS_RANDOM_H
 
-#include <map>
 #include <iostream>
+#include <map>
 
 /**
    \brief Return randum number between 0 (included) and 1 (excluded)
@@ -27,12 +27,12 @@ double gauss(double x, double sigma);
    \brief Probability mass function
    \ingroup rtm
  */
-class pmf_t : public std::map<double,double> {
+class pmf_t : public std::map<double, double> {
 public:
   pmf_t();
   void update();
   double rand() const;
-  void set(double v,double p);
+  void set(double v, double p);
   pmf_t operator+(const pmf_t& p2) const;
   pmf_t vadd(double dp) const;
   pmf_t vscale(double dp) const;
@@ -43,26 +43,27 @@ public:
   double vmax() const;
   double vpmax() const;
   double pmax() const;
-  bool icdfempty() const { return icdf.empty();};
+  bool icdfempty() const { return icdf.empty(); };
   pmf_t& operator*=(const pmf_t& p2);
-  friend std::ostream& operator<<(std::ostream& o, const pmf_t& p){
+  friend std::ostream& operator<<(std::ostream& o, const pmf_t& p)
+  {
     o << "\n[--\n";
-    for(pmf_t::const_iterator it=p.begin();it!=p.end();++it)
+    for(pmf_t::const_iterator it = p.begin(); it != p.end(); ++it)
       o << " " << it->first << "   " << it->second << std::endl;
-    o<< "--]\n";
+    o << "--]\n";
     return o;
   };
+
 private:
-  std::map<double,double> icdf;///< Cumulative distribution function
+  std::map<double, double> icdf; ///< Cumulative distribution function
 };
 
-pmf_t operator*(double a,const pmf_t& p);
+pmf_t operator*(double a, const pmf_t& p);
 
 /**
    \ingroup rtm
  */
-pmf_t gauss(double x,double sigma,double xmin,double xmax,double xstep);
-
+pmf_t gauss(double x, double sigma, double xmin, double xmax, double xstep);
 
 #endif
 

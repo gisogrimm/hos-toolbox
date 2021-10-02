@@ -1,14 +1,14 @@
 #ifndef GAMMATONE_H
 #define GAMMATONE_H
 
-#include <stdint.h>
 #include <complex.h>
+#include <stdint.h>
 
-class gammatone_t 
-{
+class gammatone_t {
 public:
   gammatone_t(double f, double bw, double fs, uint32_t order);
   float complex filter(float complex x);
+
 private:
   float complex A;
   float B;

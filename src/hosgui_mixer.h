@@ -31,17 +31,16 @@
 #define HOS_MIXERGUI_H
 
 #include "libhos_gainmatrix.h"
+#include <cairomm/context.h>
 #include <gtkmm.h>
+#include <gtkmm/drawingarea.h>
 #include <gtkmm/main.h>
 #include <gtkmm/window.h>
-#include <gtkmm/drawingarea.h>
-#include <cairomm/context.h>
 //#include <lo/lo.h>
 
 namespace HoSGUI {
 
-  class mixergui_t : public Gtk::DrawingArea, public MM::observer_t
-  {
+  class mixergui_t : public Gtk::DrawingArea, public MM::observer_t {
   public:
     mixergui_t();
     virtual ~mixergui_t();
@@ -49,9 +48,9 @@ namespace HoSGUI {
     void hdspmm_new(MM::namematrix_t*);
 
   protected:
-    //Override default signal handler:
+    // Override default signal handler:
     virtual bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr);
-    //virtual bool on_expose_event(GdkEventExpose* event);
+    // virtual bool on_expose_event(GdkEventExpose* event);
     bool on_timeout();
 
     MM::namematrix_t* mm;
@@ -59,10 +58,9 @@ namespace HoSGUI {
     pthread_mutex_t mutex;
   };
 
-}
+} // namespace HoSGUI
 
 #endif
-
 
 /*
  * Local Variables:
