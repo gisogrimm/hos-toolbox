@@ -280,12 +280,12 @@ parameter_t::parameter_t(const std::string& name)
   set_prefix(osc_prefix);
   add_bool_true("quit", &b_quit);
 //#define REGISTER_FLOAT_VAR(x) s =
-//osc_prefix+#x;lo_server_thread_add_method(lost,s.c_str(),"f",OSC::handler_f,&(par_osc.x))
+// osc_prefix+#x;lo_server_thread_add_method(lost,s.c_str(),"f",OSC::handler_f,&(par_osc.x))
 //#define REGISTER_FLOAT_VAR_DEGREE(x) s =
-//osc_prefix+#x;lo_server_thread_add_method(lost,s.c_str(),"f",OSC::handler_angle_f,&(par_osc.x))
+// osc_prefix+#x;lo_server_thread_add_method(lost,s.c_str(),"f",OSC::handler_angle_f,&(par_osc.x))
 //#define REGISTER_CALLBACK(x,fmt)
-//s=osc_prefix+#x;lo_server_thread_add_method(lost,s.c_str(),fmt,OSC::_ ##
-//x,this)
+// s=osc_prefix+#x;lo_server_thread_add_method(lost,s.c_str(),fmt,OSC::_ ##
+// x,this)
 #define REGISTER_FLOAT_VAR(x) add_float(#x, &(par_osc.x))
 #define REGISTER_FLOAT_VAR_DEGREE(x)                                           \
   add_method(#x, "f", OSC::handler_angle_f, &(par_osc.x))

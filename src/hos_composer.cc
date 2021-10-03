@@ -16,13 +16,57 @@
 #include <stdlib.h>
 #include <tascar/cli.h>
 #include <tascar/errorhandling.h>
-#include <tascar/jackclient.h>
+//#include <tascar/jackclient.h>
+#include <sys/time.h>
 #include <tascar/osc_helper.h>
+#include <thread>
 #include <unistd.h>
 
 #define NUM_VOICES 5
 
 static bool b_quit(false);
+
+class tictoc_t {
+public:
+  tictoc_t();
+  double toc();
+  void tic();
+
+private:
+  struct timeval tv1;
+  struct timeval tv2;
+  struct timezone tz;
+  double t;
+};
+
+tictoc_t::tictoc_t()
+{
+  memset(&tv1, 0, sizeof(timeval));
+  memset(&tv2, 0, sizeof(timeval));
+  memset(&tz, 0, sizeof(timezone));
+  t = 0;
+  tic();
+}
+
+void tictoc_t::tic()
+{
+  gettimeofday(&tv1, &tz);
+}
+
+double tictoc_t::toc()
+{
+  gettimeofday(&tv2, &tz);
+  tv2.tv_sec -= tv1.tv_sec;
+  if(tv2.tv_usec >= tv1.tv_usec)
+    tv2.tv_usec -= tv1.tv_usec;
+  else {
+    tv2.tv_sec--;
+    tv2.tv_usec += 1000000;
+    tv2.tv_usec -= tv1.tv_usec;
+  }
+  t = (float)(tv2.tv_sec) + 0.000001 * (float)(tv2.tv_usec);
+  return t;
+}
 
 /**
    \brief Definition of one voice
@@ -44,11 +88,12 @@ voice_t::voice_t()
    \brief Composition class
    \ingroup rtm
  */
-class composer_t : public TASCAR::osc_server_t, public jackc_db_t {
+class composer_t : public TASCAR::osc_server_t {
 public:
   composer_t(const std::string& srv_addr, const std::string& srv_port,
              const std::string& url, const std::string& fname,
              const std::string& jackname);
+  ~composer_t();
 
 private:
   bool process_timesig();
@@ -59,12 +104,11 @@ private:
   static int osc_set_pitch(const char* path, const char* types, lo_arg** argv,
                            int argc, lo_message msg, void* user_data);
   void set_pitch(double c, double w);
-  int inner_process(jack_nframes_t n, const std::vector<float*>& inBuff,
-                    const std::vector<float*>& outBuff);
+  void comp_thread();
   std::vector<voice_t> voice; ///< A vector of voices
   harmony_model_t harmony;    ///< The harmony model of the current piece
   time_signature_t timesig;   ///< The current time signature
-  double time;
+  uint64_t time;              ///< Time, measured in 1/64
   pmf_t ptimesig;
   pmf_t ptimesigbars;
   lo_address lo_addr;
@@ -74,7 +118,9 @@ private:
   std::vector<float> pmodf;
   float pitchchaos;
   float beatchaos;
-  float timeincrement;
+  float bpm;
+  std::thread cthread;
+  bool endthread;
 };
 
 /**
@@ -102,22 +148,21 @@ int32_t composer_t::get_mode() const
 composer_t::composer_t(const std::string& srv_addr, const std::string& srv_port,
                        const std::string& url, const std::string& fname,
                        const std::string& jackname)
-    : osc_server_t(srv_addr, srv_port, "UDP"), jackc_db_t(jackname, 512),
-      timesig(0, 2, 0, 0), time(0),
+    : osc_server_t(srv_addr, srv_port, "UDP"), timesig(0, 2, 0, 0), time(0),
       lo_addr(lo_address_new_from_url(url.c_str())), timesigcnt(0),
       pcenter(NUM_VOICES, 0.0), pbandw(NUM_VOICES, 48.0),
-      pmodf(NUM_VOICES, 1.0), pitchchaos(0.0), beatchaos(0.0),
-      timeincrement(1.0 / 256.0)
+      pmodf(NUM_VOICES, 1.0), pitchchaos(0.0), beatchaos(0.0), bpm(60),
+      endthread(false)
 {
   lo_address_set_ttl(lo_addr, 1);
   voice.resize(NUM_VOICES);
   read_xml(fname);
   lo_send(lo_addr, "/clear", "");
   lo_send(lo_addr, "/numvoices", "i", NUM_VOICES);
-  lo_send(lo_addr, "/key", "fii", time, get_key(), get_mode());
+  lo_send(lo_addr, "/key", "fii", 0.0f, get_key(), get_mode());
   timesig = time_signature_t(ptimesig.rand());
   timesigcnt = ptimesigbars.rand();
-  lo_send(lo_addr, "/timesig", "fii", time, timesig.numerator,
+  lo_send(lo_addr, "/timesig", "fii", 0.0f, timesig.numerator,
           timesig.denominator);
   for(uint32_t k = 0; k < voice.size(); k++) {
     add_float(std::string("/") + voice[k].get_name() + std::string("/pitch"),
@@ -129,10 +174,18 @@ composer_t::composer_t(const std::string& srv_addr, const std::string& srv_port,
   }
   add_float("/pitchchaos", &pitchchaos);
   add_float("/beatchaos", &beatchaos);
-  add_float("/timeincrement", &timeincrement);
-  add_double("/abstime", &time);
+  add_float("/bpm", &bpm);
+  // add_double("/abstime", &dtime);
   add_bool_true("/composer/quit", &b_quit);
   osc_server_t::activate();
+  cthread = std::thread(&composer_t::comp_thread, this);
+}
+
+composer_t::~composer_t()
+{
+  endthread = true;
+  if(cthread.joinable())
+    cthread.join();
 }
 
 void composer_t::read_xml(const std::string& fname)
@@ -209,45 +262,53 @@ bool composer_t::process_timesig()
   return false;
 }
 
+/**
+ * @brief Main composition callback, called every 1/64 note
+ */
 void composer_t::process_time()
 {
-  time += timeincrement;
-  time = round(256 * time) / 256;
-  lo_send(lo_addr, "/time", "f", time);
-  double beat(timesig.beat(time));
+  ++time;
+  double dtime(time / 64.0);
+  lo_send(lo_addr, "/time", "f", dtime);
+  double beat(timesig.beat(dtime));
   double beat_frac(frac(beat));
   if((beat == 0) || ((timesig.numerator == 0) && (beat_frac == 0))) {
     // new bar, optionally update time signature:
     if(process_timesig()) {
-      lo_send(lo_addr, "/timesig", "fii", time, timesig.numerator,
+      lo_send(lo_addr, "/timesig", "fii", dtime, timesig.numerator,
               timesig.denominator);
     }
   }
-  beat = timesig.beat(time);
+  beat = timesig.beat(dtime);
   beat_frac = frac(beat);
   if(beat_frac == 0) {
     lo_send(lo_addr, "/beat", "f", beat);
   }
   if(harmony.process(beat))
-    lo_send(lo_addr, "/key", "fii", time, get_key(), get_mode());
+    lo_send(lo_addr, "/key", "fii", dtime, get_key(), get_mode());
   for(unsigned int k = 0; k < voice.size(); k++) {
-    if(voice[k].note.end_time() <= time) {
+    if(voice[k].note.end_time() <= dtime) {
       voice[k].note = voice[k].process(beat, harmony, timesig, pcenter[k],
                                        pbandw[k], 1.0 - pow(pitchchaos, 2.0),
                                        1.0 - pow(beatchaos, 1.0), pmodf[k]);
-      voice[k].note.time = time;
+      voice[k].note.time = dtime;
       lo_send(lo_addr, "/note", "iiif", k, voice[k].note.pitch,
               voice[k].note.length, voice[k].note.time);
     }
   }
 }
 
-int composer_t::inner_process(jack_nframes_t n,
-                              const std::vector<float*>& inBuff,
-                              const std::vector<float*>& outBuff)
+void composer_t::comp_thread()
 {
-  process_time();
-  return 0;
+  tictoc_t tictoc;
+  while(!endthread) {
+    tictoc.tic();
+    process_time();
+    double periodtime(60.0 / (64.0 * bpm / timesig.denominator));
+    double t(tictoc.toc());
+    periodtime -= t;
+    usleep(1.0e6 * std::max(0.0, periodtime));
+  }
 }
 
 int main(int argc, char** argv)
@@ -291,11 +352,9 @@ int main(int argc, char** argv)
   }
   srandom(time(NULL));
   composer_t c(serveraddr, serverport, desturl, configfile, jackname);
-  c.jackc_db_t::activate();
   while(!b_quit) {
     usleep(99625);
   }
-  c.jackc_db_t::deactivate();
   return 0;
 }
 

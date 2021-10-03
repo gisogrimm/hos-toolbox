@@ -20,23 +20,6 @@ OBJECTS = libhos_midi_ctl.o libhos_gainmatrix.o libhos_audiochunks.o tmcm.o  lib
 
 GUIOBJ = hosgui_meter.o hosgui_mixer.o hosgui_sphere.o 
 
-
-
-#	hos_sphere_amb30 \
-#	hos_sphere_xyz \
-#	mm_file \
-#	mm_gui \
-#	mm_midicc \
-#	mm_hdsp \
-#	hos_visualize \
-#	hos_visualize_sphere \
-#	hos_oscrmsmeter \
-#	hos_marker2osc \
-#	hos_markerbroadcast \
-#	hos_sendosc \
-#	mplayer_jack_transport \
-
-
 INSTBIN = $(patsubst %,$(PREFIX)/bin/%,$(BINFILES))
 
 JACKBIN = \
@@ -59,6 +42,8 @@ endif
 
 CXXFLAGS += -Wall -O3 -L./
 #CXXFLAGS += -Wall -g -L./
+
+CXXFLAGS += -Wno-deprecated
 
 EXTERNALS = alsa jack libxml++-2.6 liblo fftw3f sndfile xerces-c
 

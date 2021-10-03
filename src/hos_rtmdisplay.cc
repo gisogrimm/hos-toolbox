@@ -52,20 +52,23 @@ void clef_t::draw_full(Cairo::RefPtr<Cairo::Context> cr, double x, double y)
    \ingroup rtm
  */
 namespace Symbols {
-  clef_t alto = {"", "", 0, 0};
-  clef_t tenor = {"", "", 2, 2};
-  clef_t bass = {"", "", 2, 6};
-  clef_t treble = {"", "", -2, -6};
+  clef_t alto = {"\uE170", "\uE171", 0, 0};
+  clef_t tenor = {"\uE170", "\uE171", 2, 2};
+  clef_t bass = {"\uE174", "\uE175", 2, 6};
+  clef_t treble = {"\uE176", "\uE177", -2, -6};
   // 0:brevis,1:ganze,2:halbe,3:4tel,4:8tel,5:16tel,6:32tel
-  std::string notehead[7] = {"", "", "", "", "", "", ""};
+  std::string notehead[7] = {"\uE2DC", "\uE19B", "\uE19C", "\uE19D",
+                             "\uE19D", "\uE19D", "\uE19D"};
 
-  std::string flag_up[7] = {"", "", "", "", "", "", ""};
+  std::string flag_up[7] = {"", "", "", "", "\uE226", "\uE227", "\uE228"};
 
-  std::string flag_down[7] = {"", "", "", "", "", "", ""};
+  std::string flag_down[7] = {"", "", "", "", "\uE22B", "\uE22C", "\uE22D"};
 
   // double-flat, flat, natural, sharp, double-sharp
-  std::string alteration[5] = {"", "", "", "", ""};
-  std::string rest[7] = {"", "", "", "", "", "", ""};
+  std::string alteration[5] = {"\uE126", "\uE11D", "\uE119", "\uE110",
+                               "\uE118"};
+  std::string rest[7] = {"\uE106", "\uE100", "\uE101", "\uE108",
+                         "\uE10B", "E10C",   "E10D"};
   std::string dot(".");
 } // namespace Symbols
 
@@ -581,13 +584,13 @@ void score_t::set_time_signature(uint32_t numerator, uint32_t denominator,
 score_t::score_t(const std::string& srvaddr, const std::string& srvport,
                  uint32_t numstaves)
     //:
-    //TASCAR::osc_server_t("239.255.1.7","9877"),timescale(20),history(6),time(0),x_left(-105),prev_tpos(0),xshift(0)
+    // TASCAR::osc_server_t("239.255.1.7","9877"),timescale(20),history(6),time(0),x_left(-105),prev_tpos(0),xshift(0)
     : TASCAR::osc_server_t(srvaddr, srvport, "UDP"), numstaves_(numstaves),
       timescale(20), history(6), time(0), x_left(-105), prev_tpos(0), xshift(0)
 {
   pthread_mutex_init(&mutex, NULL);
   Glib::signal_timeout().connect(sigc::mem_fun(*this, &score_t::on_timeout),
-                                 40);
+                                 20);
 #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
   // Connect the signal handler if it isn't already a virtual method override:
   // signal_expose_event().connect(sigc::mem_fun(*this,

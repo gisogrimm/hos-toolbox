@@ -27,7 +27,7 @@
   std::cerr << __FILE__ << ":" << __LINE__ << ": " << __PRETTY_FUNCTION__      \
             << " " << #x << "=" << x << std::endl
 //#define DEBUGMSG(x) std::cerr << __FILE__ << ":" << __LINE__ << ": " << x <<
-//std::endl
+// std::endl
 #define DEBUGMSG(x)                                                            \
   std::cerr << __FILE__ << ":" << __LINE__ << ": " << __PRETTY_FUNCTION__      \
             << " --" << x << "--" << std::endl

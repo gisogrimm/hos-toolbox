@@ -22,6 +22,19 @@ note_t::note_t(int32_t p, uint32_t len, double t)
 {
 }
 
+/**
+ * @brief Return duration (measured in semibreve)
+ *
+ * length is:
+ * 1: breve (2)
+ * 3: semibreve (1)
+ * 5: minim (1/2)
+ * 7: crotchet (1/4)
+ * 9: quaver (1/8)
+ * 11: semiquaver (1/16)
+ *
+ * If the lowest bit is not set, then the duration is dotted value (times 3/2).
+ */
 double duration(uint32_t length)
 {
   return 2.0 * (1.0 + 0.5 * (!(length & 1))) / (double)(1 << (length / 2));
