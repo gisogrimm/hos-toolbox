@@ -1,0 +1,5 @@
+Section: contrib/sound
+Maintainer: Giso Grimm <giso@orlandoviols.com>
+Description: various ORLANDOviols concert tools
+  A collection of tools, developed for experimental concerts
+Homepage: https://orlandoviols.com/
