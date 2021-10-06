@@ -1,4 +1,4 @@
-LICENSE,usr/share/doc/ovclient
+LICENSE,usr/share/doc/hos-toolbox
 build/hos_composer,usr/bin
 build/hos_cyclephase,usr/bin
 build/hos_cyclephasegui,usr/bin
