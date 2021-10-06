@@ -48,10 +48,18 @@ public:
   */
   void connect_input(int client, int port);
   /**
+     \param src Source port name
+  */
+  void connect_input(const std::string& src);
+  /**
      \param client Destination client
      \param port Destination port
   */
   void connect_output(int client, int port);
+  /**
+     \param dest Destination port name
+  */
+  void connect_output(const std::string& dest);
   void start_service();
   void stop_service();
   /**
@@ -68,9 +76,13 @@ private:
 protected:
   void service();
   /**
-     \brief Callback to be called for incoming MIDI events
+     \brief Callback to be called for incoming MIDI CC events
    */
-  virtual void emit_event(int channel, int param, int value) = 0;
+  virtual void emit_event(int channel, int param, int value){};
+  /**
+     \brief Callback to be called for incoming MIDI PC events
+   */
+  virtual void emit_pc(int channel, int prgm){};
 
 private:
   // MIDI sequencer:

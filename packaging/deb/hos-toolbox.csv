@@ -4,6 +4,7 @@ build/hos_cyclephase,usr/bin
 build/hos_cyclephasegui,usr/bin
 build/hos_foacasa,usr/bin
 build/hos_rtm2midi,usr/bin
+build/hos_midipc2cmd,usr/bin
 build/hos_rtmdisplay,usr/bin
 build/hos_sampler,usr/bin
 build/hos_version,usr/bin

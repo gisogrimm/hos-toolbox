@@ -811,7 +811,7 @@ int main(int argc, char** argv)
   win.add(n);
   win.set_title("music");
   win.set_default_size(1024, 480);
-  //win.fullscreen();
+  // win.fullscreen();
   win.show_all();
   Gtk::Main::run(win);
   return 0;

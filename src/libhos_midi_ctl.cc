@@ -21,6 +21,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 #include "libhos_midi_ctl.h"
 #include <pthread.h>
+#include <tascar/errorhandling.h>
+
+#include <iostream>
+#define DEBUG(x)                                                               \
+  std::cerr << __FILE__ << ":" << __LINE__ << " " << #x << "=" << x << std::endl
 
 midi_ctl_t::midi_ctl_t(const std::string& cname)
     : seq(NULL), b_run_service(false)
@@ -120,12 +125,14 @@ void midi_ctl_t::service()
   while(b_run_service) {
     // while( snd_seq_event_input_pending(seq,0) ){
     while(snd_seq_event_input(seq, &ev) >= 0) {
-      if(ev->type == SND_SEQ_EVENT_CONTROLLER) {
-        // DEBUG(ev->data.control.channel);
-        // DEBUG(ev->data.control.param);
-        // DEBUG(ev->data.control.value);
+      switch(ev->type) {
+      case SND_SEQ_EVENT_CONTROLLER:
         emit_event(ev->data.control.channel, ev->data.control.param,
                    ev->data.control.value);
+        break;
+      case SND_SEQ_EVENT_PGMCHANGE:
+        emit_pc(ev->data.control.channel, ev->data.control.value);
+        break;
       }
     }
     usleep(500);
@@ -155,6 +162,24 @@ void midi_ctl_t::send_midi(int channel, int param, int value)
   snd_seq_event_output_direct(seq, &ev);
   snd_seq_drain_output(seq);
   snd_seq_sync_output_queue(seq);
+}
+
+void midi_ctl_t::connect_input(const std::string& src)
+{
+  snd_seq_addr_t sender;
+  if(snd_seq_parse_address(seq, &sender, src.c_str()) == 0)
+    connect_input(sender.client, sender.port);
+  else
+    throw TASCAR::ErrMsg("Invalid MIDI address " + src);
+}
+
+void midi_ctl_t::connect_output(const std::string& src)
+{
+  snd_seq_addr_t sender;
+  if(snd_seq_parse_address(seq, &sender, src.c_str()) == 0)
+    connect_output(sender.client, sender.port);
+  else
+    throw TASCAR::ErrMsg("Invalid MIDI address " + src);
 }
 
 /*

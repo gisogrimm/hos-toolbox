@@ -17,10 +17,10 @@
 #include <tascar/cli.h>
 #include <tascar/errorhandling.h>
 //#include <tascar/jackclient.h>
+#include <sys/time.h>
 #include <tascar/osc_helper.h>
 #include <thread>
 #include <unistd.h>
-#include <sys/time.h>
 
 #define NUM_VOICES 5
 
@@ -31,6 +31,7 @@ public:
   tictoc_t();
   double toc();
   void tic();
+
 private:
   struct timeval tv1;
   struct timeval tv2;
@@ -40,26 +41,26 @@ private:
 
 tictoc_t::tictoc_t()
 {
-  memset(&tv1,0,sizeof(timeval));
-  memset(&tv2,0,sizeof(timeval));
-  memset(&tz,0,sizeof(timezone));
+  memset(&tv1, 0, sizeof(timeval));
+  memset(&tv2, 0, sizeof(timeval));
+  memset(&tz, 0, sizeof(timezone));
   t = 0;
   tic();
 }
 
 void tictoc_t::tic()
 {
-  gettimeofday(&tv1,&tz);
+  gettimeofday(&tv1, &tz);
 }
 
 double tictoc_t::toc()
 {
-  gettimeofday(&tv2,&tz);
+  gettimeofday(&tv2, &tz);
   tv2.tv_sec -= tv1.tv_sec;
-  if( tv2.tv_usec >= tv1.tv_usec )
+  if(tv2.tv_usec >= tv1.tv_usec)
     tv2.tv_usec -= tv1.tv_usec;
-  else{
-    tv2.tv_sec --;
+  else {
+    tv2.tv_sec--;
     tv2.tv_usec += 1000000;
     tv2.tv_usec -= tv1.tv_usec;
   }
@@ -90,8 +91,7 @@ voice_t::voice_t()
 class composer_t : public TASCAR::osc_server_t {
 public:
   composer_t(const std::string& srv_addr, const std::string& srv_port,
-             const std::string& url, const std::string& fname,
-             const std::string& jackname);
+             const std::string& url, const std::string& fname);
   ~composer_t();
 
 private:
@@ -107,7 +107,7 @@ private:
   std::vector<voice_t> voice; ///< A vector of voices
   harmony_model_t harmony;    ///< The harmony model of the current piece
   time_signature_t timesig;   ///< The current time signature
-  uint64_t time = 0;                ///< Time, measured in 1/64
+  uint64_t time = 0;          ///< Time, measured in 1/64
   pmf_t ptimesig;
   pmf_t ptimesigbars;
   lo_address lo_addr;
@@ -146,13 +146,12 @@ int32_t composer_t::get_mode() const
    \param fname Configuration file name
  */
 composer_t::composer_t(const std::string& srv_addr, const std::string& srv_port,
-                       const std::string& url, const std::string& fname,
-                       const std::string& jackname)
+                       const std::string& url, const std::string& fname)
     : osc_server_t(srv_addr, srv_port, "UDP"), timesig(0, 2, 0, 0), time(0),
       lo_addr(lo_address_new_from_url(url.c_str())), timesigcnt(0),
       pcenter(NUM_VOICES, 0.0), pbandw(NUM_VOICES, 48.0),
-      pmodf(NUM_VOICES, 1.0), pitchchaos(0.0), beatchaos(0.0),
-      bpm(60), endthread(false)
+      pmodf(NUM_VOICES, 1.0), pitchchaos(0.0), beatchaos(0.0), bpm(60),
+      endthread(false)
 {
   lo_address_set_ttl(lo_addr, 1);
   voice.resize(NUM_VOICES);
@@ -175,7 +174,7 @@ composer_t::composer_t(const std::string& srv_addr, const std::string& srv_port,
   add_float("/pitchchaos", &pitchchaos);
   add_float("/beatchaos", &beatchaos);
   add_float("/bpm", &bpm);
-  //add_double("/abstime", &dtime);
+  // add_double("/abstime", &dtime);
   add_bool_true("/composer/quit", &b_quit);
   osc_server_t::activate();
   cthread = std::thread(&composer_t::comp_thread, this);
@@ -194,8 +193,8 @@ void composer_t::read_xml(const std::string& fname)
   xmlpp::Element* root(parser.get_document()->get_root_node());
   if(root) {
     harmony.read_xml(root);
-    duration = get_attribute_double(root,"duration",0);
-    bpm = get_attribute_double(root,"bpm",60);
+    duration = get_attribute_double(root, "duration", 0);
+    bpm = get_attribute_double(root, "bpm", 60);
     // process time signatures:
     ptimesig.clear();
     xmlpp::Node::NodeList nTimesig(root->get_children("timesig"));
@@ -270,12 +269,12 @@ bool composer_t::process_timesig()
 void composer_t::process_time()
 {
   ++time;
-  double dtime(time/64.0);
-  if( (duration > 0) && (dtime > duration + 5.5) )
+  double dtime(time / 64.0);
+  if((duration > 0) && (dtime > duration + 5.5))
     b_quit = true;
   else
     lo_send(lo_addr, "/time", "f", dtime);
-  if( (duration > 0) && (dtime > duration) )
+  if((duration > 0) && (dtime > duration))
     return;
   double beat(timesig.beat(dtime));
   double beat_frac(frac(beat));
@@ -308,13 +307,13 @@ void composer_t::process_time()
 void composer_t::comp_thread()
 {
   tictoc_t tictoc;
-  while( !endthread ){
+  while(!endthread) {
     tictoc.tic();
     process_time();
-    double periodtime(60.0/(64.0*bpm/timesig.denominator));
+    double periodtime(60.0 / (64.0 * bpm / timesig.denominator));
     double t(tictoc.toc());
     periodtime -= t;
-    usleep(1.0e6*std::max(0.0,periodtime));
+    usleep(1.0e6 * std::max(0.0, periodtime));
   }
 }
 
@@ -323,12 +322,13 @@ int main(int argc, char** argv)
   std::string serverport("6978");
   std::string serveraddr("239.255.1.7");
   std::string desturl("osc.udp://239.255.1.7:9877/");
-  std::string jackname("composer");
   std::string configfile;
-  const char* options = "hj:u:p:a:";
-  struct option long_options[] = {
-      {"help", 0, 0, 'h'}, {"jackname", 1, 0, 'j'}, {"desturl", 1, 0, 'u'},
-      {"port", 1, 0, 'p'}, {"address", 1, 0, 'a'},  {0, 0, 0, 0}};
+  const char* options = "hu:p:a:";
+  struct option long_options[] = {{"help", 0, 0, 'h'},
+                                  {"desturl", 1, 0, 'u'},
+                                  {"port", 1, 0, 'p'},
+                                  {"address", 1, 0, 'a'},
+                                  {0, 0, 0, 0}};
   int opt(0);
   int option_index(0);
   while((opt = getopt_long(argc, argv, options, long_options, &option_index)) !=
@@ -337,9 +337,6 @@ int main(int argc, char** argv)
     case 'h':
       TASCAR::app_usage("hos_composer", long_options, "configfile");
       return -1;
-    case 'j':
-      jackname = optarg;
-      break;
     case 'u':
       desturl = optarg;
       break;
@@ -358,7 +355,7 @@ int main(int argc, char** argv)
     return -1;
   }
   srandom(time(NULL));
-  composer_t c(serveraddr, serverport, desturl, configfile, jackname);
+  composer_t c(serveraddr, serverport, desturl, configfile);
   while(!b_quit) {
     usleep(99625);
   }

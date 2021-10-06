@@ -315,13 +315,13 @@ note_t melody_model_t::process(double beat, const harmony_model_t& harmony,
       duration = pduration.rand();
     }
     catch(const std::exception& e) {
-      //DEBUG(e.what());
+      // DEBUG(e.what());
       duration = 0.25;
     }
     pitch = PITCH_REST;
-    //DEBUG(duration);
-    //DEBUG(beat);
-    //DEBUG(frac(beat));
+    // DEBUG(duration);
+    // DEBUG(beat);
+    // DEBUG(frac(beat));
   } else {
     duration = dur.rand();
     // DEBUG(duration);

@@ -5,7 +5,7 @@ export FULLVERSION:=$(shell ./get_version.sh)
 
 BINFILES = hos_cyclephase hos_cyclephasegui hos_sampler hos_osc2jack	\
 	 hos_resfilt hos_rtmdisplay hos_composer hos_rtm2midi		\
-	 hos_foacasa hos_version
+	 hos_foacasa hos_version hos_midipc2cmd
 
 BUILDBIN = $(patsubst %,build/%,$(BINFILES))
 
