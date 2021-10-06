@@ -1,4 +1,4 @@
-name: Ubuntu make
+name: Ubuntu 20.04 make
 
 on:
   push:
@@ -13,9 +13,7 @@ jobs:
     - uses: actions/checkout@v2
     - name: fetchtags
       run: git fetch --unshallow --tags
-    - name: submods
-      run: git submodule init && git submodule update && (cd libov && git submodule update --init)
-    - name: tascar
+    - name: packagingtools
       run: wget -qO- https://apt.hoertech.de/openmha-packaging.pub | sudo apt-key add - &&
            sudo apt-add-repository 'deb http://apt.hoertech.de/ bionic universe'
     - name: dependencies
@@ -24,7 +22,7 @@ jobs:
     - name: make
       run: make
     - name: packaging
-      run: make packaging
+      run: make -C packaging/deb pack
     - uses: actions/upload-artifact@v2
       with:
         name: debian
