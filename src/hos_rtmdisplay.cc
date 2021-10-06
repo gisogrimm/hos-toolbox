@@ -14,7 +14,7 @@
 #include <tascar/errorhandling.h>
 #include <tascar/osc_helper.h>
 
-#define DRAWKEY
+//#define DRAWKEY
 
 /**
    \ingroup rtm
@@ -633,8 +633,10 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
   pthread_mutex_lock(&mutex);
   // clean time database:
   double t0(time - history);
+  DEBUG(t0);
   while(xpositions.size() && (xpositions.begin()->first < t0))
     xpositions.erase(xpositions.begin());
+  DEBUG(xpositions.size());
   for(std::vector<staff_t>::iterator staff = staves.begin();
       staff != staves.end(); ++staff)
     staff->clear_music(t0);
@@ -768,6 +770,7 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
 
 bool score_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 {
+  // clear canvas:
   Gtk::Allocation allocation = get_allocation();
   const int width = allocation.get_width();
   const int height = allocation.get_height();
@@ -775,20 +778,19 @@ bool score_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
   cr->clip();
   cr->translate(0.5 * width, 0.5 * height);
   cr->scale(0.004 * width, 0.004 * width);
-  // cr->set_line_width(0.1);
   cr->set_line_width(0.2);
   cr->save();
-  // cr->set_source_rgb( 0,0.07,0.06 );
   cr->set_source_rgb(1, 1, 1);
   cr->paint();
   cr->restore();
+  // now draw score:
   draw(cr);
   return true;
 }
 
 bool score_t::on_timeout()
 {
-  // force our program to redraw the entire clock.
+  // force our program to redraw the entire score
   Glib::RefPtr<Gdk::Window> win = get_window();
   if(win) {
     Gdk::Rectangle r(0, 0, get_allocation().get_width(),
@@ -809,7 +811,7 @@ int main(int argc, char** argv)
   win.add(n);
   win.set_title("music");
   win.set_default_size(1024, 480);
-  win.fullscreen();
+  //win.fullscreen();
   win.show_all();
   Gtk::Main::run(win);
   return 0;

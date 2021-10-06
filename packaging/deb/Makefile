@@ -1,8 +1,8 @@
 all:
 
-VERSION=0
-MINORVERSION=1
-FULLVERSION=0.1
+VERSION=$(shell cat ../../.hos_version)
+MINORVERSION=$(shell cat ../../.hos_minor_version)
+FULLVERSION=$(shell cat ../../.hos_full_version)
 CODENAME:=$(shell lsb_release -sc)
 REPO=../..
 PACKVER:=$(FULLVERSION)-$(shell lsb_release -si)$(shell lsb_release -sr)

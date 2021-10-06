@@ -19,3 +19,6 @@ build
 # generated documentation
 html
 latex
+
+# temporary version files
+.*version

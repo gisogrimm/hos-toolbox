@@ -17,10 +17,10 @@
 #include <tascar/cli.h>
 #include <tascar/errorhandling.h>
 //#include <tascar/jackclient.h>
-#include <sys/time.h>
 #include <tascar/osc_helper.h>
 #include <thread>
 #include <unistd.h>
+#include <sys/time.h>
 
 #define NUM_VOICES 5
 
@@ -31,7 +31,6 @@ public:
   tictoc_t();
   double toc();
   void tic();
-
 private:
   struct timeval tv1;
   struct timeval tv2;
@@ -41,26 +40,26 @@ private:
 
 tictoc_t::tictoc_t()
 {
-  memset(&tv1, 0, sizeof(timeval));
-  memset(&tv2, 0, sizeof(timeval));
-  memset(&tz, 0, sizeof(timezone));
+  memset(&tv1,0,sizeof(timeval));
+  memset(&tv2,0,sizeof(timeval));
+  memset(&tz,0,sizeof(timezone));
   t = 0;
   tic();
 }
 
 void tictoc_t::tic()
 {
-  gettimeofday(&tv1, &tz);
+  gettimeofday(&tv1,&tz);
 }
 
 double tictoc_t::toc()
 {
-  gettimeofday(&tv2, &tz);
+  gettimeofday(&tv2,&tz);
   tv2.tv_sec -= tv1.tv_sec;
-  if(tv2.tv_usec >= tv1.tv_usec)
+  if( tv2.tv_usec >= tv1.tv_usec )
     tv2.tv_usec -= tv1.tv_usec;
-  else {
-    tv2.tv_sec--;
+  else{
+    tv2.tv_sec --;
     tv2.tv_usec += 1000000;
     tv2.tv_usec -= tv1.tv_usec;
   }
@@ -108,7 +107,7 @@ private:
   std::vector<voice_t> voice; ///< A vector of voices
   harmony_model_t harmony;    ///< The harmony model of the current piece
   time_signature_t timesig;   ///< The current time signature
-  uint64_t time;              ///< Time, measured in 1/64
+  uint64_t time = 0;                ///< Time, measured in 1/64
   pmf_t ptimesig;
   pmf_t ptimesigbars;
   lo_address lo_addr;
@@ -118,7 +117,8 @@ private:
   std::vector<float> pmodf;
   float pitchchaos;
   float beatchaos;
-  float bpm;
+  float bpm = 60;
+  float duration = 0;
   std::thread cthread;
   bool endthread;
 };
@@ -151,8 +151,8 @@ composer_t::composer_t(const std::string& srv_addr, const std::string& srv_port,
     : osc_server_t(srv_addr, srv_port, "UDP"), timesig(0, 2, 0, 0), time(0),
       lo_addr(lo_address_new_from_url(url.c_str())), timesigcnt(0),
       pcenter(NUM_VOICES, 0.0), pbandw(NUM_VOICES, 48.0),
-      pmodf(NUM_VOICES, 1.0), pitchchaos(0.0), beatchaos(0.0), bpm(60),
-      endthread(false)
+      pmodf(NUM_VOICES, 1.0), pitchchaos(0.0), beatchaos(0.0),
+      bpm(60), endthread(false)
 {
   lo_address_set_ttl(lo_addr, 1);
   voice.resize(NUM_VOICES);
@@ -175,7 +175,7 @@ composer_t::composer_t(const std::string& srv_addr, const std::string& srv_port,
   add_float("/pitchchaos", &pitchchaos);
   add_float("/beatchaos", &beatchaos);
   add_float("/bpm", &bpm);
-  // add_double("/abstime", &dtime);
+  //add_double("/abstime", &dtime);
   add_bool_true("/composer/quit", &b_quit);
   osc_server_t::activate();
   cthread = std::thread(&composer_t::comp_thread, this);
@@ -194,6 +194,8 @@ void composer_t::read_xml(const std::string& fname)
   xmlpp::Element* root(parser.get_document()->get_root_node());
   if(root) {
     harmony.read_xml(root);
+    duration = get_attribute_double(root,"duration",0);
+    bpm = get_attribute_double(root,"bpm",60);
     // process time signatures:
     ptimesig.clear();
     xmlpp::Node::NodeList nTimesig(root->get_children("timesig"));
@@ -268,8 +270,13 @@ bool composer_t::process_timesig()
 void composer_t::process_time()
 {
   ++time;
-  double dtime(time / 64.0);
-  lo_send(lo_addr, "/time", "f", dtime);
+  double dtime(time/64.0);
+  if( (duration > 0) && (dtime > duration + 5.5) )
+    b_quit = true;
+  else
+    lo_send(lo_addr, "/time", "f", dtime);
+  if( (duration > 0) && (dtime > duration) )
+    return;
   double beat(timesig.beat(dtime));
   double beat_frac(frac(beat));
   if((beat == 0) || ((timesig.numerator == 0) && (beat_frac == 0))) {
@@ -301,13 +308,13 @@ void composer_t::process_time()
 void composer_t::comp_thread()
 {
   tictoc_t tictoc;
-  while(!endthread) {
+  while( !endthread ){
     tictoc.tic();
     process_time();
-    double periodtime(60.0 / (64.0 * bpm / timesig.denominator));
+    double periodtime(60.0/(64.0*bpm/timesig.denominator));
     double t(tictoc.toc());
     periodtime -= t;
-    usleep(1.0e6 * std::max(0.0, periodtime));
+    usleep(1.0e6*std::max(0.0,periodtime));
   }
 }
 
