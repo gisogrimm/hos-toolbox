@@ -120,6 +120,7 @@ private:
   float duration = 0;
   std::thread cthread;
   bool endthread;
+  bool first = true;
 };
 
 /**
@@ -238,6 +239,7 @@ void composer_t::read_xml(const std::string& fname)
 
 bool composer_t::process_timesig()
 {
+  double dtime(time / 64.0);
   if(timesigcnt)
     timesigcnt--;
   if(!timesigcnt) {
@@ -248,7 +250,7 @@ bool composer_t::process_timesig()
     catch(const std::exception& e) {
       DEBUG(e.what());
     }
-    timesig.starttime = time;
+    timesig.starttime = dtime;
     // DEBUG(time);
     // DEBUG(frac(time));
     try {
@@ -267,14 +269,15 @@ bool composer_t::process_timesig()
  */
 void composer_t::process_time()
 {
-  ++time;
   double dtime(time / 64.0);
   if((duration > 0) && (dtime > duration + 5.5))
     b_quit = true;
   else
     lo_send(lo_addr, "/time", "f", dtime);
-  if((duration > 0) && (dtime > duration))
+  if((duration > 0) && (dtime > duration)) {
+    ++time;
     return;
+  }
   double beat(timesig.beat(dtime));
   double beat_frac(frac(beat));
   if((beat == 0) || ((timesig.numerator == 0) && (beat_frac == 0))) {
@@ -293,15 +296,19 @@ void composer_t::process_time()
   if(harmony.process(beat))
     lo_send(lo_addr, "/key", "fii", dtime, get_key(), get_mode());
   for(unsigned int k = 0; k < voice.size(); k++) {
-    if(voice[k].note.end_time() <= dtime) {
-      voice[k].note = voice[k].process(beat, harmony, timesig, pcenter[k],
-                                       pbandw[k], 1.0 - pow(pitchchaos, 2.0),
-                                       1.0 - pow(beatchaos, 1.0), pmodf[k]);
-      voice[k].note.time = dtime;
-      lo_send(lo_addr, "/note", "iiif", k, voice[k].note.pitch,
-              voice[k].note.length, voice[k].note.time);
+    if(voice[k].pbeat.size()) {
+      if((voice[k].note.end_time() <= dtime) || first) {
+        voice[k].note = voice[k].process(beat, harmony, timesig, pcenter[k],
+                                         pbandw[k], 1.0 - pow(pitchchaos, 2.0),
+                                         1.0 - pow(beatchaos, 1.0), pmodf[k]);
+        voice[k].note.time = dtime;
+        lo_send(lo_addr, "/note", "iiif", k, voice[k].note.pitch,
+                voice[k].note.length, voice[k].note.time);
+      }
     }
   }
+  first = false;
+  ++time;
 }
 
 void composer_t::comp_thread()

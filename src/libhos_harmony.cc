@@ -300,11 +300,9 @@ note_t melody_model_t::process(double beat, const harmony_model_t& harmony,
   else
     triadw = 1.0 - offbeatscale;
   pmf_t notes(harmony.notes(triadw));
-  // pmf_t notes(harmony.notes(1.0));
   // medoly model step processing:
   if(last_pitch != PITCH_REST)
     notes *= pstep.vadd(last_pitch);
-  // DEBUG(notes);
   // release of rules:
   if(harmonyweight != 1.0) {
     pmf_t equal;
@@ -313,6 +311,7 @@ note_t melody_model_t::process(double beat, const harmony_model_t& harmony,
     equal.update();
     notes = notes * harmonyweight + equal * (1.0 - harmonyweight);
   }
+  // pmf_t notes(harmony.notes(1.0));
   // limit to instrument ambitus:
   notes *= pambitus;
   // tilt/center by input range:
@@ -367,6 +366,11 @@ note_t melody_model_t::process(double beat, const harmony_model_t& harmony,
     pitch = PITCH_REST;
   } else {
     duration = dur.rand();
+    if(limittobars) {
+      if(duration > (timesig.numerator - beat) / timesig.denominator) {
+        duration = (timesig.numerator - beat) / timesig.denominator;
+      }
+    }
   }
   last_pitch = pitch;
   uint32_t newlen(closest_length(duration));
@@ -377,6 +381,8 @@ note_t melody_model_t::process(double beat, const harmony_model_t& harmony,
 void melody_model_t::read_xml(xmlpp::Element* e)
 {
   name = e->get_attribute_value("name");
+  limittobars =
+      std::string(e->get_attribute_value("limittobars")) == std::string("true");
   onbeatscale = get_attribute_double(e, "onbeatscale", 0.0);
   offbeatscale = get_attribute_double(e, "offbeatscale", 0.0);
   // ambitus:

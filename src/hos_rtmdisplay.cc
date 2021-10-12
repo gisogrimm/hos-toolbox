@@ -14,7 +14,7 @@
 #include <tascar/errorhandling.h>
 #include <tascar/osc_helper.h>
 
-//#define DRAWKEY
+#define DRAWKEY
 
 /**
    \ingroup rtm
@@ -741,32 +741,35 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
         it != timesig.rend(); ++it) {
       if(bar_endtime > prev_tpos) {
         double bar_starttime(std::max(prev_tpos, it->second.starttime));
-        if(bar_starttime > 0) {
+        // double bar_starttime(std::max(tpos, it->second.starttime));
+        if(bar_starttime >= 0) {
           // draw bar lines from ... to bar_endtime
           for(double bar = ceil(it->second.bar(bar_starttime));
               bar < ceil(it->second.bar(bar_endtime)); bar += 1) {
-            double xbar(get_xpos(it->second.time(bar)) - 1.0);
-            if(it->second.time(bar) == it->first)
-              xbar += it->second.space(cr);
-            // bar numbers for debugging:
-            cr->save();
-            cr->select_font_face("Arial", Cairo::FONT_SLANT_NORMAL,
-                                 Cairo::FONT_WEIGHT_NORMAL);
-            cr->set_font_size(3);
-            char ctmp[40];
-            cr->move_to(x_left + xbar, -(staves.begin()->y_0 + 10));
-            sprintf(ctmp, "%g (%g)", bar, it->second.time(bar));
-            cr->show_text(ctmp);
-            cr->restore();
-            // end bar numbers.
-            for(std::vector<staff_t>::iterator staff = staves.begin();
-                staff != staves.end(); ++staff) {
-              std::vector<staff_t>::iterator nstaff(staff);
-              nstaff++;
-              if(nstaff != staves.end()) {
-                cr->move_to(x_left + xbar, -(staff->y_0 - 4));
-                cr->line_to(x_left + xbar, -(nstaff->y_0 + 4));
-                cr->stroke();
+            if(bar > 0) {
+              double xbar(get_xpos(it->second.time(bar)) - 1.0);
+              if(it->second.time(bar) == it->first)
+                xbar += it->second.space(cr);
+              // bar numbers for debugging:
+              cr->save();
+              cr->select_font_face("Arial", Cairo::FONT_SLANT_NORMAL,
+                                   Cairo::FONT_WEIGHT_NORMAL);
+              cr->set_font_size(3);
+              char ctmp[40];
+              cr->move_to(x_left + xbar, -(staves.begin()->y_0 + 10));
+              sprintf(ctmp, "%g (%g)", bar, it->second.time(bar));
+              cr->show_text(ctmp);
+              cr->restore();
+              // end bar numbers.
+              for(std::vector<staff_t>::iterator staff = staves.begin();
+                  staff != staves.end(); ++staff) {
+                std::vector<staff_t>::iterator nstaff(staff);
+                nstaff++;
+                if(nstaff != staves.end()) {
+                  cr->move_to(x_left + xbar, -(staff->y_0 - 4));
+                  cr->line_to(x_left + xbar, -(nstaff->y_0 + 4));
+                  cr->stroke();
+                }
               }
             }
           }

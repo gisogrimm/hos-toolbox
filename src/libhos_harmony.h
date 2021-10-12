@@ -87,6 +87,7 @@ public:
   double phraselengthvar = 0; ///< Standard deviation of phrase length
   double restlength = 0; ///< Average rest length between phrases in note values
   double restlengthvar = 0; ///< Standard deviation of rest length
+  bool limittobars = false; ///< Limit note durations to avoid overlap with bars
 private:
   int32_t last_pitch = 0;
   double onbeatscale; ///< Weight, to what extent the underlying scale should be
