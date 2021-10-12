@@ -14,10 +14,9 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
 #include <tascar/cli.h>
 #include <tascar/errorhandling.h>
-//#include <tascar/jackclient.h>
-#include <sys/time.h>
 #include <tascar/osc_helper.h>
 #include <thread>
 #include <unistd.h>

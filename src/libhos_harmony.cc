@@ -251,7 +251,48 @@ note_t melody_model_t::process(double beat, const harmony_model_t& harmony,
                                double bandw, double harmonyweight,
                                double beatweight, double modf)
 {
+  if(phraserem <= 0.0) {
+    // phrase is over
+    if(restmode || ((restlength == 0.0) && (restlengthvar == 0.0))) {
+      restmode = false;
+      if(phraselengthvar == 0.0)
+        phraserem = phraselength;
+      else
+        phraserem = gauss(phraselength, phraselengthvar, 0, 4 * phraselength,
+                          0.5 / timesig.denominator)
+                        .rand();
+    } else {
+      restmode = true;
+      if(restlengthvar == 0.0)
+        phraserem = restlength;
+      else
+        phraserem = gauss(restlength, restlengthvar, 0, 4 * restlength,
+                          0.5 / timesig.denominator)
+                        .rand();
+    }
+  }
   beat = rint(BEATRES * beat) / BEATRES;
+  if(restmode) {
+    uint32_t remlen(
+        closest_length((timesig.numerator - beat) / timesig.denominator));
+    double remdur(duration(remlen));
+    if(phraserem >= remdur) {
+      // add full bar rest
+      phraserem -= remdur;
+      last_pitch = PITCH_REST;
+      return note_t(PITCH_REST, remlen);
+    } else {
+      if((phraserem >= 1.0 / timesig.denominator) && (frac(beat) != 0))
+        // fill to closest beat
+        remlen = closest_length((1.0 - frac(beat)) * timesig.denominator);
+      else
+        remlen = closest_length(phraserem);
+      remdur = duration(remlen);
+      phraserem -= remdur;
+      last_pitch = PITCH_REST;
+      return note_t(PITCH_REST, remlen);
+    }
+  }
   bool onbeat(fabs(frac(beat)) < EPS);
   double triadw(1.0);
   if(onbeat)
@@ -261,7 +302,8 @@ note_t melody_model_t::process(double beat, const harmony_model_t& harmony,
   pmf_t notes(harmony.notes(triadw));
   // pmf_t notes(harmony.notes(1.0));
   // medoly model step processing:
-  notes *= pstep.vadd(last_pitch);
+  if(last_pitch != PITCH_REST)
+    notes *= pstep.vadd(last_pitch);
   // DEBUG(notes);
   // release of rules:
   if(harmonyweight != 1.0) {
@@ -301,36 +343,35 @@ note_t melody_model_t::process(double beat, const harmony_model_t& harmony,
   dur.update();
   double duration(0);
   if(dur.icdfempty()) {
-    pmf_t p1(pbeat.vadd(-beat));
-    std::cout << p1;
-    pmf_t p2(pbeat.vadd(-beat + timesig.numerator));
-    std::cout << p2;
-    pmf_t p3(p1 + p2);
-    std::cout << p3;
-    pmf_t p4(p3.vthreshold(0));
-    std::cout << p4;
-    pmf_t p5(p4.vscale(1.0 / timesig.denominator));
-    std::cout << p5;
-    try {
-      duration = pduration.rand();
-    }
-    catch(const std::exception& e) {
-      // DEBUG(e.what());
-      duration = 0.25;
-    }
+    // DEBUG(dur.icdfempty());
+    // pmf_t p1(pbeat.vadd(-beat));
+    // std::cout << p1;
+    // pmf_t p2(pbeat.vadd(-beat + timesig.numerator));
+    // std::cout << p2;
+    // pmf_t p3(p1 + p2);
+    // std::cout << p3;
+    // pmf_t p4(p3.vthreshold(0));
+    // std::cout << p4;
+    // pmf_t p5(p4.vscale(1.0 / timesig.denominator));
+    // std::cout << p5;
+    // try {
+    // duration = pduration.rand();
+    duration = (1.0 - frac(beat)) * timesig.denominator;
+    //  DEBUG(duration);
+    //  DEBUG(frac(beat));
+    //}
+    // catch(const std::exception& e) {
+    //  // DEBUG(e.what());
+    //  duration = 0.25;
+    //}
     pitch = PITCH_REST;
-    // DEBUG(duration);
-    // DEBUG(beat);
-    // DEBUG(frac(beat));
   } else {
     duration = dur.rand();
-    // DEBUG(duration);
-    // DEBUG(beat);
-    // DEBUG(frac(beat));
   }
-  if(pitch != PITCH_REST)
-    last_pitch = pitch;
-  return note_t(pitch, closest_length(duration));
+  last_pitch = pitch;
+  uint32_t newlen(closest_length(duration));
+  phraserem -= ::duration(newlen);
+  return note_t(pitch, newlen);
 }
 
 void melody_model_t::read_xml(xmlpp::Element* e)
@@ -340,6 +381,11 @@ void melody_model_t::read_xml(xmlpp::Element* e)
   offbeatscale = get_attribute_double(e, "offbeatscale", 0.0);
   // ambitus:
   pambitus.clear();
+  phraselength = get_attribute_double(e, "phraselength", 8);
+  phraselengthvar = get_attribute_double(e, "phraselengthvar", 0);
+  restlength = get_attribute_double(e, "restlength", 0);
+  restlengthvar = get_attribute_double(e, "restlengthvar", 0);
+  restmode = false;
   int32_t pitch_min(get_attribute_double(e, "lowest", -12));
   int32_t pitch_max(get_attribute_double(e, "highest", 12));
   int32_t pitch_central(get_attribute_double(e, "central", 0));
@@ -379,6 +425,17 @@ void melody_model_t::read_xml(xmlpp::Element* e)
     if(eBeat)
       pbeat.set(get_attribute_double(eBeat, "v"),
                 get_attribute_double(eBeat, "p"));
+  }
+  for(auto beatrange : e->get_children("beatrange")) {
+    xmlpp::Element* eBeat(dynamic_cast<xmlpp::Element*>(beatrange));
+    if(eBeat) {
+      double bmin(get_attribute_double(eBeat, "min", 0.0));
+      double bmax(get_attribute_double(eBeat, "max", 1.0));
+      double bstep(get_attribute_double(eBeat, "step", 1.0));
+      double val(get_attribute_double(eBeat, "p"));
+      for(double b = bmin; b <= bmax; b += bstep)
+        pbeat.set(b, val);
+    }
   }
   pbeat.update();
   if(pduration.icdfempty())

@@ -68,7 +68,8 @@ namespace Symbols {
   std::string alteration[5] = {"\uE126", "\uE11D", "\uE119", "\uE110",
                                "\uE118"};
   std::string rest[7] = {"\uE106", "\uE100", "\uE101", "\uE108",
-                         "\uE10B", "E10C",   "E10D"};
+                         "\uE10B", "\uE10C", "\uE10D"};
+  int16_t restpos[7] = {0, 2, 0, 0, 0, 0, 0};
   std::string dot(".");
 } // namespace Symbols
 
@@ -144,6 +145,7 @@ graphical_note_t::graphical_note_t(const note_t& note, const clef_t& clef,
       sym_flag = Symbols::flag_up[checklen(length) / 2];
   } else {
     y = 2 * (length == 1);
+    y = Symbols::restpos[checklen(length) / 2];
     alteration = 0;
     sym_head = Symbols::rest[checklen(length) / 2];
     sym_alteration = "";

@@ -81,17 +81,23 @@ public:
   pmf_t
       pambitus; ///< Voice/instrument specific ambitus or list of possible notes
   pmf_t pstep;  ///< List of possible melody intervals
-  pmf_t pduration; ///< List of possible note durations
-  pmf_t pbeat;     ///< List of possible note beats
+  pmf_t pduration;            ///< List of possible note durations
+  pmf_t pbeat;                ///< List of possible note beats
+  double phraselength = 8;    ///< Average phrase length in note values
+  double phraselengthvar = 0; ///< Standard deviation of phrase length
+  double restlength = 0; ///< Average rest length between phrases in note values
+  double restlengthvar = 0; ///< Standard deviation of rest length
 private:
-  int32_t last_pitch;
+  int32_t last_pitch = 0;
   double onbeatscale; ///< Weight, to what extent the underlying scale should be
                       ///< used for on-beat notes (0=any pitch allowed, 1=only
                       ///< scale pitch is allowed)
-  double offbeatscale; ///< Weight, to what extent the underlying scale should
-                       ///< be used for off-beat notes (0=any pitch allowed,
-                       ///< 1=only scale pitch is allowed)
-  std::string name;    ///< Voice name
+  double offbeatscale;   ///< Weight, to what extent the underlying scale should
+                         ///< be used for off-beat notes (0=any pitch allowed,
+                         ///< 1=only scale pitch is allowed)
+  std::string name;      ///< Voice name
+  bool restmode = false; ///< Flag, if true then rest are generated
+  double phraserem = 0;  ///< Remaining phrase or rest length
 };
 
 #endif

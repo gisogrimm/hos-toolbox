@@ -159,7 +159,6 @@ keysig_t::keysig_t(const std::string& name)
       throw TASCAR::ErrMsg("Unknown key signature name \"" + name + "\".");
     fifths = (int32_t)fc - 6;
   }
-  DEBUG(*this);
 }
 
 keysig_t::keysig_t(uint32_t hash)
