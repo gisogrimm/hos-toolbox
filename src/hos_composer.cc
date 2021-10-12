@@ -289,6 +289,7 @@ void composer_t::process_time()
   beat_frac = frac(beat);
   if(beat_frac == 0) {
     lo_send(lo_addr, "/beat", "f", beat);
+    lo_send(lo_addr, "/beat", "fff", dtime, beat, (float)timesig.denominator);
   }
   if(harmony.process(beat))
     lo_send(lo_addr, "/key", "fii", dtime, get_key(), get_mode());

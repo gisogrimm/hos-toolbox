@@ -401,6 +401,9 @@ public:
                          int argc, lo_message msg, void* user_data);
   static int set_keysig(const char* path, const char* types, lo_arg** argv,
                         int argc, lo_message msg, void* user_data);
+  static int add_beat(const char* path, const char* types, lo_arg** argv,
+                      int argc, lo_message msg, void* user_data);
+  void add_beat(double time, double beat, double duration);
   void set_time(double t);
   void clear_all();
   void add_note(unsigned int voice, int pitch, unsigned int length,
@@ -428,6 +431,7 @@ protected:
   std::map<double, graphical_time_signature_t> timesig;
   std::map<double, keysig_t> keysig;
   pthread_mutex_t mutex;
+  // std::ofstream debugfile;
 };
 
 void score_t::set_keysig(double time, int32_t pitch, keysig_t::mode_t mode)
@@ -455,6 +459,8 @@ double score_t::bar(double time)
 
 double score_t::get_xpos(double time)
 {
+  if(time < 0.0)
+    time = 0.0;
   if(xpositions.empty())
     return 0;
   std::map<double, double>::const_iterator xp1(xpositions.lower_bound(time));
@@ -466,9 +472,10 @@ double score_t::get_xpos(double time)
   if(xp1->first == time)
     // exact match, return second:
     return xp1->second;
-  if(xp1 == xpositions.begin())
+  if(xp1 == xpositions.begin()) {
     // time is less than all stored positions, extrapolate:
-    return xp1->second + (time - xp1->first) * timescale;
+    return std::max(0.0, xp1->second + (time - xp1->first) * timescale);
+  }
   // interpolate:
   // return xp1->second + xshift;
   std::map<double, double>::const_iterator xp0(xp1);
@@ -513,6 +520,14 @@ int score_t::add_note(const char* path, const char* types, lo_arg** argv,
   return 0;
 }
 
+int score_t::add_beat(const char* path, const char* types, lo_arg** argv,
+                      int argc, lo_message msg, void* user_data)
+{
+  if(user_data && (argc == 3))
+    ((score_t*)user_data)->add_beat(argv[0]->f, argv[1]->f, argv[2]->f);
+  return 0;
+}
+
 int score_t::clear_all(const char* path, const char* types, lo_arg** argv,
                        int argc, lo_message msg, void* user_data)
 {
@@ -538,6 +553,14 @@ void score_t::clear_all()
   timesig.clear();
   keysig.clear();
   xshift = 0;
+  prev_tpos = -history;
+  pthread_mutex_unlock(&mutex);
+}
+
+void score_t::add_beat(double time, double beat, double dur)
+{
+  pthread_mutex_lock(&mutex);
+  xpositions[time] = dur * timescale;
   pthread_mutex_unlock(&mutex);
 }
 
@@ -583,10 +606,9 @@ void score_t::set_time_signature(uint32_t numerator, uint32_t denominator,
 
 score_t::score_t(const std::string& srvaddr, const std::string& srvport,
                  uint32_t numstaves)
-    //:
-    // TASCAR::osc_server_t("239.255.1.7","9877"),timescale(20),history(6),time(0),x_left(-105),prev_tpos(0),xshift(0)
     : TASCAR::osc_server_t(srvaddr, srvport, "UDP"), numstaves_(numstaves),
-      timescale(20), history(6), time(0), x_left(-105), prev_tpos(0), xshift(0)
+      timescale(20), history(6), time(0), x_left(-105), prev_tpos(0),
+      xshift(0) //, debugfile("rtmdisplaydebug")
 {
   pthread_mutex_init(&mutex, NULL);
   Glib::signal_timeout().connect(sigc::mem_fun(*this, &score_t::on_timeout),
@@ -608,6 +630,7 @@ score_t::score_t(const std::string& srvaddr, const std::string& srvport,
   staves[4].clef = Symbols::bass;
   add_method("/time", "f", score_t::set_time, this);
   add_method("/note", "iiif", score_t::add_note, this);
+  add_method("/beat", "fff", score_t::add_beat, this);
   add_method("/clear", "", score_t::clear_all, this);
   add_method("/timesig", "fii", score_t::set_timesig, this);
   add_method("/key", "fii", score_t::set_keysig, this);
@@ -633,10 +656,8 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
   pthread_mutex_lock(&mutex);
   // clean time database:
   double t0(time - history);
-  DEBUG(t0);
-  while(xpositions.size() && (xpositions.begin()->first < t0))
+  while(xpositions.size() > 1 && (xpositions.begin()->first < t0))
     xpositions.erase(xpositions.begin());
-  DEBUG(xpositions.size());
   for(std::vector<staff_t>::iterator staff = staves.begin();
       staff != staves.end(); ++staff)
     staff->clear_music(t0);
@@ -663,12 +684,19 @@ void score_t::draw(Cairo::RefPtr<Cairo::Context> cr)
   if(xpositions.size()) {
     tpos = xpositions.begin()->first;
   }
-  if((tpos != prev_tpos) && (prev_tpos != 0)) {
+  if((tpos != prev_tpos) && (prev_tpos != -history)) {
     xshift = xpositions[tpos];
   }
   xshift -= 0.05 * xshift;
   // main music draw section:
   double xpos(0);
+  //{
+  //  double tmp(-1);
+  //  if( xpositions.size() )
+  //    tmp = xpositions.begin()->first;
+  //  debugfile << time << ", " << xshift << ", " << x_marker << ", " <<
+  //  xpositions.size() << ", " << tmp << ", " << x_left << std::endl;
+  //}
   for(std::map<double, double>::iterator xp = xpositions.begin();
       xp != xpositions.end(); ++xp) {
     double lspace(0);
