@@ -121,6 +121,7 @@ private:
   std::thread cthread;
   bool endthread;
   bool first = true;
+  float dpitch = 0.0f;
 };
 
 /**
@@ -173,6 +174,7 @@ composer_t::composer_t(const std::string& srv_addr, const std::string& srv_port,
   }
   add_float("/pitchchaos", &pitchchaos);
   add_float("/beatchaos", &beatchaos);
+  add_float("/dpitch", &dpitch);
   add_float("/bpm", &bpm);
   // add_double("/abstime", &dtime);
   add_bool_true("/composer/quit", &b_quit);
@@ -298,9 +300,9 @@ void composer_t::process_time()
   for(unsigned int k = 0; k < voice.size(); k++) {
     if(voice[k].pbeat.size()) {
       if((voice[k].note.end_time() <= dtime) || first) {
-        voice[k].note = voice[k].process(beat, harmony, timesig, pcenter[k],
-                                         pbandw[k], 1.0 - pow(pitchchaos, 2.0),
-                                         1.0 - pow(beatchaos, 1.0), pmodf[k]);
+        voice[k].note = voice[k].process(
+            beat, harmony, timesig, pcenter[k] + dpitch, pbandw[k],
+            1.0 - pow(pitchchaos, 2.0), 1.0 - pow(beatchaos, 1.0), pmodf[k]);
         voice[k].note.time = dtime;
         lo_send(lo_addr, "/note", "iiif", k, voice[k].note.pitch,
                 voice[k].note.length, voice[k].note.time);

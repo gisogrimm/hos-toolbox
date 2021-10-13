@@ -11,6 +11,7 @@
 #include <gtkmm/main.h>
 #include <gtkmm/window.h>
 #include <lo/lo.h>
+#include <tascar/cli.h>
 #include <tascar/errorhandling.h>
 #include <tascar/osc_helper.h>
 
@@ -570,22 +571,24 @@ void score_t::add_note(unsigned int voice, int pitch, unsigned int length,
                        double time)
 {
   pthread_mutex_lock(&mutex);
-  note_t n;
-  n.pitch = pitch;
-  n.length = length;
-  n.time = time;
-  int fifths(0);
-  if(!keysig.empty()) {
-    std::map<double, keysig_t>::iterator ks(keysig.upper_bound(time));
-    if(ks != keysig.begin())
-      ks--;
-    fifths = ks->second.fifths;
+  if(voice < staves.size()) {
+    note_t n;
+    n.pitch = pitch;
+    n.length = length;
+    n.time = time;
+    int fifths(0);
+    if(!keysig.empty()) {
+      std::map<double, keysig_t>::iterator ks(keysig.upper_bound(time));
+      if(ks != keysig.begin())
+        ks--;
+      fifths = ks->second.fifths;
+    }
+    staves[voice].add_note(n, fifths);
+    // get maximum x-position:
+    double xmax(0);
+    xmax = n.duration() * timescale;
+    xpositions[time] = xmax;
   }
-  staves[voice].add_note(n, fifths);
-  // get maximum x-position:
-  double xmax(0);
-  xmax = n.duration() * timescale;
-  xpositions[time] = xmax;
   pthread_mutex_unlock(&mutex);
 }
 
@@ -626,10 +629,14 @@ score_t::score_t(const std::string& srvaddr, const std::string& srvport,
                          -20.0 * (k - 0.5 * (staves.size() - 1.0)));
     // staves[k].key = 0;
   }
-  staves[0].clef = Symbols::treble;
-  staves[1].clef = Symbols::treble;
-  staves[3].clef = Symbols::bass;
-  staves[4].clef = Symbols::bass;
+  if(staves.size() > 0)
+    staves[0].clef = Symbols::treble;
+  if(staves.size() > 1)
+    staves[1].clef = Symbols::treble;
+  if(staves.size() > 3)
+    staves[3].clef = Symbols::bass;
+  if(staves.size() > 4)
+    staves[4].clef = Symbols::bass;
   add_method("/time", "f", score_t::set_time, this);
   add_method("/note", "iiif", score_t::add_note, this);
   add_method("/beat", "fff", score_t::add_beat, this);
@@ -837,14 +844,43 @@ int main(int argc, char** argv)
 {
   std::string srvaddr("239.255.1.7");
   std::string srvport("9877");
+  bool fullscreen(false);
   uint32_t numstaves(5);
+  const char* options = "hp:a:fn:";
+  struct option long_options[] = {
+      {"help", 0, 0, 'h'},      {"port", 1, 0, 'p'},
+      {"address", 1, 0, 'a'},   {"fullscreen", 0, 0, 'f'},
+      {"numstaves", 1, 0, 'n'}, {0, 0, 0, 0}};
+  int opt(0);
+  int option_index(0);
+  while((opt = getopt_long(argc, argv, options, long_options, &option_index)) !=
+        -1) {
+    switch(opt) {
+    case 'h':
+      TASCAR::app_usage("hos_rtmdisplay", long_options, "");
+      return -1;
+    case 'p':
+      srvport = optarg;
+      break;
+    case 'a':
+      srvaddr = optarg;
+      break;
+    case 'n':
+      numstaves = atoi(optarg);
+      break;
+    case 'f':
+      fullscreen = true;
+      break;
+    }
+  }
   Gtk::Main kit(argc, argv);
   Gtk::Window win;
   score_t n(srvaddr, srvport, numstaves);
   win.add(n);
   win.set_title("music");
   win.set_default_size(1024, 480);
-  // win.fullscreen();
+  if(fullscreen)
+    win.fullscreen();
   win.show_all();
   Gtk::Main::run(win);
   return 0;
