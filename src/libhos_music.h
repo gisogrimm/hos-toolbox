@@ -15,7 +15,7 @@ double duration(uint32_t len);
 double frac(double x, double eps = 8192.0);
 
 #define PITCH_REST 1000
-#define MAXLEN 12
+#define MAXLEN 11
 
 /**
    \ingroup rtm

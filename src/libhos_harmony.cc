@@ -355,9 +355,14 @@ note_t melody_model_t::process(double beat, const harmony_model_t& harmony,
     // std::cout << p5;
     // try {
     // duration = pduration.rand();
-    duration = (1.0 - frac(beat)) * timesig.denominator;
-    //  DEBUG(duration);
-    //  DEBUG(frac(beat));
+    std::cerr << "------\n";
+    duration = (1.0 - frac(beat)) / timesig.denominator;
+    uint32_t newlen(closest_length(duration));
+    DEBUG(1.0 - frac(beat));
+    DEBUG(duration);
+    DEBUG(newlen);
+    DEBUG(frac(beat));
+    DEBUG(beat);
     //}
     // catch(const std::exception& e) {
     //  // DEBUG(e.what());
@@ -374,6 +379,8 @@ note_t melody_model_t::process(double beat, const harmony_model_t& harmony,
   }
   last_pitch = pitch;
   uint32_t newlen(closest_length(duration));
+  if(newlen >= 12)
+    --newlen;
   phraserem -= ::duration(newlen);
   return note_t(pitch, newlen);
 }
