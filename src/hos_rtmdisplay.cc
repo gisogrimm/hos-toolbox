@@ -843,7 +843,7 @@ bool score_t::on_timeout()
 int main(int argc, char** argv)
 {
   std::string srvaddr("239.255.1.7");
-  std::string srvport("9877");
+  std::string srvport("9887");
   bool fullscreen(false);
   uint32_t numstaves(5);
   const char* options = "hp:a:fn:";

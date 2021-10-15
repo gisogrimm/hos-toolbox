@@ -174,7 +174,7 @@ void midi_t::process(jack_nframes_t nframes)
 }
 
 midi_t::midi_t(const std::string& name)
-    : TASCAR::osc_server_t("239.255.1.7", "9877", "UDP"), time(0),
+    : TASCAR::osc_server_t("239.255.1.7", "9887", "UDP"), time(0),
       samples_per_brevis(48000), timecnt(0)
 {
   notes.resize(512);

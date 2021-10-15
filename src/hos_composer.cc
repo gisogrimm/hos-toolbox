@@ -330,7 +330,7 @@ int main(int argc, char** argv)
 {
   std::string serverport("6978");
   std::string serveraddr("239.255.1.7");
-  std::string desturl("osc.udp://239.255.1.7:9877/");
+  std::string desturl("osc.udp://239.255.1.7:9887/");
   std::string configfile;
   const char* options = "hu:p:a:";
   struct option long_options[] = {{"help", 0, 0, 'h'},
