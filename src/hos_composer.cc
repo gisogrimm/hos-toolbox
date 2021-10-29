@@ -83,6 +83,36 @@ voice_t::voice_t()
   note.time = 0;
 }
 
+class osctrigger_t {
+public:
+  osctrigger_t(const std::string& url, const std::string& path, double dtime);
+  ~osctrigger_t();
+  void emit();
+  double dtime;
+
+private:
+  lo_address lo_addr;
+  std::string path;
+};
+
+osctrigger_t::osctrigger_t(const std::string& url, const std::string& path,
+                           double dtime)
+    : dtime(dtime), lo_addr(lo_address_new_from_url(url.c_str())), path(path)
+{
+  if(!lo_addr)
+    throw TASCAR::ErrMsg("Invalid url: " + url);
+}
+
+osctrigger_t::~osctrigger_t()
+{
+  lo_address_free(lo_addr);
+}
+
+void osctrigger_t::emit()
+{
+  lo_send(lo_addr, path.c_str(), "f", 1.0f);
+}
+
 /**
    \brief Composition class
    \ingroup rtm
@@ -122,6 +152,7 @@ private:
   bool endthread;
   bool first = true;
   float dpitch = 0.0f;
+  std::vector<osctrigger_t*> triggers;
 };
 
 /**
@@ -187,6 +218,8 @@ composer_t::~composer_t()
   endthread = true;
   if(cthread.joinable())
     cthread.join();
+  for(auto& trigger : triggers)
+    delete trigger;
 }
 
 void composer_t::read_xml(const std::string& fname)
@@ -236,6 +269,15 @@ void composer_t::read_xml(const std::string& fname)
         voice[voiceID].read_xml(eVoice);
       }
     }
+    for(auto& triggerevent : root->get_children("osctrigger")) {
+      xmlpp::Element* etrigger(dynamic_cast<xmlpp::Element*>(triggerevent));
+      if(etrigger) {
+        std::string url(etrigger->get_attribute_value("url"));
+        std::string path(etrigger->get_attribute_value("path"));
+        double dtime(get_attribute_double(etrigger, "at"));
+        triggers.push_back(new osctrigger_t(url, path, dtime));
+      }
+    }
   }
 }
 
@@ -282,6 +324,12 @@ void composer_t::process_time()
   }
   double beat(timesig.beat(dtime));
   double beat_frac(frac(beat));
+  // send triggers:
+  for(auto trigger : triggers) {
+    if(dtime == trigger->dtime) {
+      trigger->emit();
+    }
+  }
   if((beat == 0) || ((timesig.numerator == 0) && (beat_frac == 0))) {
     // new bar, optionally update time signature:
     if(process_timesig()) {
