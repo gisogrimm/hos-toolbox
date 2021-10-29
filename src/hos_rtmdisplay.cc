@@ -612,7 +612,7 @@ void score_t::set_time_signature(uint32_t numerator, uint32_t denominator,
 score_t::score_t(const std::string& srvaddr, const std::string& srvport,
                  uint32_t numstaves)
     : TASCAR::osc_server_t(srvaddr, srvport, "UDP"), numstaves_(numstaves),
-      timescale(20), history(6), time(0), x_left(-105), prev_tpos(0),
+      timescale(15), history(6), time(0), x_left(-105), prev_tpos(0),
       xshift(0) //, debugfile("rtmdisplaydebug")
 {
   pthread_mutex_init(&mutex, NULL);
