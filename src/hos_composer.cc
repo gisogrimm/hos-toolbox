@@ -85,10 +85,12 @@ voice_t::voice_t()
 
 class osctrigger_t {
 public:
-  osctrigger_t(const std::string& url, const std::string& path, double dtime);
+  osctrigger_t(const std::string& url, const std::string& path, double dtime,
+               double beat = -1);
   ~osctrigger_t();
   void emit();
   double dtime;
+  double beat;
 
 private:
   lo_address lo_addr;
@@ -96,8 +98,9 @@ private:
 };
 
 osctrigger_t::osctrigger_t(const std::string& url, const std::string& path,
-                           double dtime)
-    : dtime(dtime), lo_addr(lo_address_new_from_url(url.c_str())), path(path)
+                           double dtime, double beat)
+    : dtime(dtime), beat(beat), lo_addr(lo_address_new_from_url(url.c_str())),
+      path(path)
 {
   if(!lo_addr)
     throw TASCAR::ErrMsg("Invalid url: " + url);
@@ -275,7 +278,8 @@ void composer_t::read_xml(const std::string& fname)
         std::string url(etrigger->get_attribute_value("url"));
         std::string path(etrigger->get_attribute_value("path"));
         double dtime(get_attribute_double(etrigger, "at"));
-        triggers.push_back(new osctrigger_t(url, path, dtime));
+        double beat(get_attribute_double(etrigger, "beat", -1.0));
+        triggers.push_back(new osctrigger_t(url, path, dtime, beat));
       }
     }
   }
@@ -324,12 +328,6 @@ void composer_t::process_time()
   }
   double beat(timesig.beat(dtime));
   double beat_frac(frac(beat));
-  // send triggers:
-  for(auto trigger : triggers) {
-    if(dtime == trigger->dtime) {
-      trigger->emit();
-    }
-  }
   if((beat == 0) || ((timesig.numerator == 0) && (beat_frac == 0))) {
     // new bar, optionally update time signature:
     if(process_timesig()) {
@@ -339,6 +337,18 @@ void composer_t::process_time()
   }
   beat = timesig.beat(dtime);
   beat_frac = frac(beat);
+  // send triggers:
+  for(auto trigger : triggers) {
+    if(trigger->beat < 0) {
+      if(dtime == trigger->dtime) {
+        trigger->emit();
+      }
+    } else {
+      if((dtime >= trigger->dtime) && (beat == trigger->beat)) {
+        trigger->emit();
+      }
+    }
+  }
   if(beat_frac == 0) {
     lo_send(lo_addr, "/beat", "f", beat);
     lo_send(lo_addr, "/beat", "fff", dtime, beat, (float)timesig.denominator);
