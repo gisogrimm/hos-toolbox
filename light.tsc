@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<session license="CC0">
+  <modules>
+    <lightctl driver="opendmxusb">
+      <lightscene channels="3">
+        <layout>
+          <fixture addr="110"/>
+        </layout>
+      </lightscene>
+    </lightctl>
+  </modules>
+</session>
