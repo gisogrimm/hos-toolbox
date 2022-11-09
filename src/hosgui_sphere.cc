@@ -30,6 +30,7 @@
 #include "hosgui_sphere.h"
 #include "hos_defs.h"
 #include <math.h>
+#include <tascar/defs.h>
 
 using namespace HoSGUI;
 
@@ -235,7 +236,7 @@ bool visualize_t::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
   for(unsigned int k = 0; k < vTail.size(); k++) {
     set_hoscolor(k, cr, 1);
     cr->move_to(0, 0);
-    pos_t p(6, PI2 * ((double)k + 0.75) / vTail.size() - rotate);
+    pos_t p(6, TASCAR_PI2 * ((double)k + 0.75) / vTail.size() - rotate);
     cr->line_to(p.get_x(), p.get_y());
     cr->stroke();
     cr->move_to(p.get_x(), p.get_y());

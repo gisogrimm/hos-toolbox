@@ -2,6 +2,7 @@
 #include "hos_defs.h"
 #include <math.h>
 #include <stdlib.h>
+#include <tascar/defs.h>
 #include <tascar/errorhandling.h>
 
 double drand()

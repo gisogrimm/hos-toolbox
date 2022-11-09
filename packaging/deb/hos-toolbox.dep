@@ -1,1 +1,1 @@
-libtascar
+libtascar, ${shlibsDepends}
