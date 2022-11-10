@@ -59,8 +59,9 @@ private:
   HoS::filter_array_t mean_lp;
   HoS::filter_array_t std_lp;
   TASCAR::biquadf_t val_lp;
-  float tau_std = 0.05f;
+  float tau_std = 0.1f;
   float tau_val = 2.0f;
+  float sigma0 = 2.0f;
   std::vector<float> pitches;
   lo_message msg;
   lo_address target;
@@ -71,6 +72,7 @@ private:
   int p_scale;
   int method = 1;
   TASCAR::bandpassf_t bp;
+  bool usestd = false;
 };
 
 pitch2colour_t::pitch2colour_t(const std::string& server_addr,
@@ -93,7 +95,9 @@ pitch2colour_t::pitch2colour_t(const std::string& server_addr,
   set_prefix("/" + jackname + "/");
   add_bool_true("quit", &b_quit);
   add_float("tau", &tau_std);
+  add_float("sigma", &sigma0);
   add_int("method", &method);
+  add_bool("usestd", &usestd);
   add_input_port("in");
   pitches.resize(12);
   lo_message_add_float(msg, 0.0f);
@@ -131,6 +135,7 @@ int pitch2colour_t::inner_process(jack_nframes_t n,
     return 1;
   for(auto& p : pitches)
     p = 0.0f;
+  float sigma0_corr(0.69315f / sigma0);
   TASCAR::wave_t w_in(n, inBuf[0]);
   bp.filter(w_in);
   mean_lp.set_lowpass(tau_std);
@@ -146,6 +151,12 @@ int pitch2colour_t::inner_process(jack_nframes_t n,
     float ifreq(std::arg(dtfft.s.b[k]) * ifscale);
     float ifreq_mean(mean_lp.filter(k, ifreq));
     float intens = std::abs(dtfft.s.b[k]);
+    float ifreq_diff(ifreq_mean - ifreq);
+    ifreq_diff *= ifreq_diff;
+    float ifreq_std(sqrtf(std::max(0.0f, std_lp.filter(k, ifreq_diff))));
+    float gain = expf(-ifreq_std * sigma0_corr);
+    if(usestd)
+      intens *= gain;
     intens *= intens;
     if((ifreq_mean > 100.0f) && (ifreq_mean < 4000.0f)) {
       float octave = log2f(ifreq_mean / 440.0f);
