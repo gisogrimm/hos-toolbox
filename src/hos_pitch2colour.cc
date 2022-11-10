@@ -72,7 +72,7 @@ private:
   int p_scale;
   int method = 1;
   TASCAR::bandpassf_t bp;
-  bool usestd = false;
+  bool usestd = true;
 };
 
 pitch2colour_t::pitch2colour_t(const std::string& server_addr,
