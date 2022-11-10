@@ -31,10 +31,13 @@
 #include <iostream>
 #include <signal.h>
 #include <stdlib.h>
+#include <tascar/filterclass.h>
 #include <tascar/jackclient.h>
 #include <tascar/ola.h>
 #include <tascar/osc_helper.h>
 #include <unistd.h>
+
+std::complex<float> i_f = {0.0f, 1.0f};
 
 static bool b_quit(false);
 
@@ -55,15 +58,19 @@ private:
   float ifscale;
   HoS::filter_array_t mean_lp;
   HoS::filter_array_t std_lp;
-  HoS::filter_array_t pow_lp;
-  float tau_std;
+  TASCAR::biquadf_t val_lp;
+  float tau_std = 0.05f;
+  float tau_val = 2.0f;
   std::vector<float> pitches;
   lo_message msg;
   lo_address target;
   std::string path_;
-  float* p_hue;
-  float* p_sat;
+  float* p_hue = NULL;
+  float* p_sat = NULL;
+  float* p_val = NULL;
   int p_scale;
+  int method = 1;
+  TASCAR::bandpassf_t bp;
 };
 
 pitch2colour_t::pitch2colour_t(const std::string& server_addr,
@@ -77,16 +84,16 @@ pitch2colour_t::pitch2colour_t(const std::string& server_addr,
           TASCAR::stft_t::WND_HANNING, 0.5),
       dtfft(4 * fragsize, 2 * fragsize, fragsize, TASCAR::stft_t::WND_HANNING,
             0.5),
-      d1(fragsize), ifscale(-srate / (TASCAR_PI2)),
+      d1(fragsize), ifscale(-srate / TASCAR_PI2),
       mean_lp(ola.s.n_, srate / (double)fragsize),
-      std_lp(ola.s.n_, srate / (double)fragsize),
-      pow_lp(2, srate / (double)fragsize), tau_std(0.05), msg(lo_message_new()),
+      std_lp(ola.s.n_, srate / (double)fragsize), msg(lo_message_new()),
       target(lo_address_new_from_url(url.c_str())), path_(path),
-      p_scale(p_scale)
+      p_scale(p_scale), bp(100.0f, 4000.0f, srate)
 {
   set_prefix("/" + jackname + "/");
   add_bool_true("quit", &b_quit);
   add_float("tau", &tau_std);
+  add_int("method", &method);
   add_input_port("in");
   pitches.resize(12);
   lo_message_add_float(msg, 0.0f);
@@ -96,6 +103,7 @@ pitch2colour_t::pitch2colour_t(const std::string& server_addr,
   auto argv = lo_message_get_argv(msg);
   p_hue = &(argv[0]->f);
   p_sat = &(argv[1]->f);
+  p_val = &(argv[2]->f);
 }
 
 void pitch2colour_t::activate()
@@ -124,20 +132,29 @@ int pitch2colour_t::inner_process(jack_nframes_t n,
   for(auto& p : pitches)
     p = 0.0f;
   TASCAR::wave_t w_in(n, inBuf[0]);
+  bp.filter(w_in);
   mean_lp.set_lowpass(tau_std);
   std_lp.set_lowpass(tau_std);
+  val_lp.set_butterworth(1.0f / tau_val, srate / n);
   d1.process(w_in);
   ola.process(w_in);
   dtfft.process(d1);
+  std::complex<float> c_mean = 0.0f;
+  float int_total = 0.0f;
   for(unsigned int k = 0; k < dtfft.s.n_; k++) {
     dtfft.s.b[k] *= conj(ola.s.b[k]);
     float ifreq(std::arg(dtfft.s.b[k]) * ifscale);
     float ifreq_mean(mean_lp.filter(k, ifreq));
     float intens = std::abs(dtfft.s.b[k]);
     intens *= intens;
-    int key = 12.0f * log2f(ifreq_mean / 440.0f);
-    key = key % 12;
-    pitches[key] += intens;
+    if((ifreq_mean > 100.0f) && (ifreq_mean < 4000.0f)) {
+      float octave = log2f(ifreq_mean / 440.0f);
+      int key = 12.0f * octave;
+      key = key % 12;
+      pitches[key] += intens;
+      c_mean += std::exp(TASCAR_2PIf * i_f * octave) * intens;
+      int_total += intens;
+    }
   }
   float i_mean = 0.0f;
   size_t k_max = 0;
@@ -152,8 +169,26 @@ int pitch2colour_t::inner_process(jack_nframes_t n,
   // i_mean /= pitches.size();
   i_max /= (i_mean + EPSf);
   // std::cout << k_max << "  " << i_max << std::endl;
-  *p_hue = (k_max * 30 * p_scale) % 360;
-  *p_sat = std::max(0.0f, std::min(1.0f, i_max));
+  float phase = std::arg(c_mean);
+  if(phase < 0.0f)
+    phase += TASCAR_2PIf;
+  float cval = std::abs(c_mean) / (int_total + EPSf);
+  switch(method) {
+  case 1:
+    *p_hue = RAD2DEG * phase;
+    *p_sat = cval;
+    *p_val = std::max(0.0f, std::min(1.0f, val_lp.filter(cval)));
+    break;
+  case 0:
+    *p_hue = (k_max * 30 * p_scale) % 360;
+    *p_sat = std::max(0.0f, std::min(1.0f, i_max));
+    *p_val = std::max(0.0f, std::min(1.0f, val_lp.filter(i_max)));
+    break;
+  default:
+    *p_hue = 0.0f;
+    *p_sat = 0.0f;
+    *p_val = 0.0f;
+  }
   lo_send_message(target, path_.c_str(), msg);
   return 0;
 }
